@@ -113,16 +113,25 @@ export default function Home() {
 	const [previewContent, setPreviewContent] = useState('')
 	const [previewMode, setPreviewMode] = useState<'shell' | 'txt'>('shell')
 	const [previewSearch, setPreviewSearch] = useState('')
+	const [debouncedPreviewSearch, setDebouncedPreviewSearch] = useState('')
+	const [enableHighlight, setEnableHighlight] = useState(true)
+	const MAX_HIGHLIGHT_BYTES = 300000
 	const previewContainerRef = useRef<HTMLDivElement | null>(null)
 	const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
+	useEffect(() => {
+		const t = setTimeout(() => setDebouncedPreviewSearch(previewSearch), 300)
+		return () => clearTimeout(t)
+	}, [previewSearch])
+	useEffect(() => { setEnableHighlight(previewContent.length <= MAX_HIGHLIGHT_BYTES) }, [previewContent])
 	const previewMatches = useMemo(() => {
-		if (!previewSearch) return 0
-		try { const re = new RegExp(previewSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'); return (previewContent.match(re) || []).length } catch { return 0 }
-	}, [previewSearch, previewContent])
+		if (!debouncedPreviewSearch || !enableHighlight) return 0
+		try { const slice = previewContent.slice(0, MAX_HIGHLIGHT_BYTES); const re = new RegExp(debouncedPreviewSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'); return (slice.match(re) || []).length } catch { return 0 }
+	}, [debouncedPreviewSearch, previewContent, enableHighlight])
 	useEffect(() => { setCurrentMatchIndex(0) }, [previewSearch, previewVisible])
 	const jumpMatch = (delta: number) => {
 		const cont = previewContainerRef.current
 		if (!cont) return
+		if (!enableHighlight) return
 		const marks = Array.from(cont.querySelectorAll('mark'))
 		if (marks.length === 0) return
 		const next = (currentMatchIndex + delta + marks.length) % marks.length
@@ -190,10 +199,11 @@ export default function Home() {
 
 	// 预览高亮渲染
 	const renderHighlighted = (text: string, q: string) => {
-		if (!q) return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{text}</pre>)
+		if (!q || !enableHighlight) return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{text}</pre>)
 		try {
+			const slice = text.slice(0, MAX_HIGHLIGHT_BYTES)
 			const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
-			const html = text.replace(re, (m) => `<mark style="background:#fde68a">${m}</mark>`)
+			const html = slice.replace(re, (m) => `<mark style="background:#fde68a">${m}</mark>`) + (text.length > MAX_HIGHLIGHT_BYTES ? `\n\n【提示】内容较大（${(text.length/1024).toFixed(0)}KB），仅对前 ${(MAX_HIGHLIGHT_BYTES/1024).toFixed(0)}KB 启用高亮。` : '')
 			return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: html }} />)
 		} catch {
 			return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{text}</pre>)
