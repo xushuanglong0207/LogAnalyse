@@ -4,7 +4,10 @@
       "Bash(sudo apt update)",
       "Bash(sudo:*)",
       "Bash(apt:*)",
-      "Read(/D:\\etc/**)"
+      "Read(/D:\\etc/**)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []
