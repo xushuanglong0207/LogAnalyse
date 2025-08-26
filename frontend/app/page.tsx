@@ -475,11 +475,8 @@ export default function Home() {
 						<button onClick={() => setPreviewMode('shell')} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb', background: previewMode === 'shell' ? '#111827' : '#fff', color: previewMode === 'shell' ? '#d1fae5' : '#111' }}>Shell</button>
 						<button onClick={() => setPreviewMode('txt')} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb', background: previewMode === 'txt' ? '#111827' : '#fff', color: previewMode === 'txt' ? '#d1fae5' : '#111' }}>TXT</button>
 					</div>
-					<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-						<input placeholder="搜索 (回车下一个，Shift+回车上一个)" value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); jumpMatch(e.shiftKey ? -1 : 1) } }} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }} />
-						<span style={{ color: '#6b7280', fontSize: 12, fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>匹配: {previewMatches}{previewMatches>0?`（第 ${currentMatchIndex+1} / ${previewMatches} 个）`:''}</span>
-						<button onClick={() => setPreviewSearch('')} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>清空</button>
-					</div>
+					{/* 搜索功能已移除以避免性能问题 */}
+					<div />
 				</div>
 				<div ref={previewContainerRef} style={{ maxHeight: '65vh', overflow: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
 					{previewMode === 'shell' ? (
