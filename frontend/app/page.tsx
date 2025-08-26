@@ -144,6 +144,10 @@ export default function Home() {
 
 	// 状态卡
 	const [cardExpanded, setCardExpanded] = useState(true)
+	useEffect(() => {
+		const timer = setTimeout(() => setCardExpanded(false), 10000)
+		return () => clearTimeout(timer)
+	}, [])
 
 	const checkBackendStatus = async (base?: string) => {
 		const urlBase = base || getApiBase()
@@ -661,7 +665,7 @@ export default function Home() {
 				<div style={{ padding: '2rem', color: '#6b7280' }}>请先登录以使用平台功能。</div>
 			)}
 
-			<div onClick={() => setCardExpanded(v => !v)} onMouseEnter={() => setCardExpanded(true)} style={{ position: 'fixed', bottom: 16, right: 16, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.6)', borderRadius: 12, boxShadow: '0 20px 60px rgba(2,6,23,0.15)', padding: cardExpanded ? 16 : 0, width: cardExpanded ? 360 : 8, height: cardExpanded ? 'auto' : 140, transition: 'all .25s ease', cursor: 'pointer', zIndex: 60, overflow: 'hidden' }}>
+			<div onClick={() => setCardExpanded(v => !v)} title={cardExpanded ? '点击收起' : '点击展开'} style={{ position: 'fixed', bottom: 16, right: 16, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.6)', borderRadius: 12, boxShadow: '0 20px 60px rgba(2,6,23,0.15)', padding: cardExpanded ? 16 : 0, width: cardExpanded ? 360 : 8, height: cardExpanded ? 'auto' : 140, transition: 'all .25s ease', cursor: 'pointer', zIndex: 60, overflow: 'hidden' }}>
 				<div style={{ opacity: cardExpanded ? 1 : 0, transition: 'opacity .2s ease', padding: cardExpanded ? 0 : 0 }}>
 					<div style={{ fontSize: 14 }}>
 						<div style={{ color: '#059669', fontWeight: 700 }}>✅ 前端: 运行正常</div>
