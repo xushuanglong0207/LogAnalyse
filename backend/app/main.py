@@ -16,6 +16,7 @@ MAX_CONTENT_BYTES = 5 * 1024 * 1024
 # 会话有效期
 DEFAULT_TTL_HOURS = 24
 REMEMBER_TTL_DAYS = 30
+RETENTION_DAYS = int(os.environ.get("LOG_RETENTION_DAYS", "30"))  # 日志保留天数
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -54,6 +55,9 @@ try:
         uploaded_files = []
 except Exception:
     uploaded_files = []
+
+# 启动后立即执行一次过期清理
+purge_old_uploads()
 
 
 def save_index():
@@ -247,6 +251,8 @@ async def upload_log_file(file: UploadFile = File(...), ctx: Dict[str, Any] = De
         }
         uploaded_files.append(file_info)
         save_index()
+        # 上传后也清理一次过期数据
+        purge_old_uploads()
         return {"message": "文件上传成功", "file_id": file_info["id"], "filename": filename, "size": len(content)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
