@@ -203,6 +203,25 @@ for r in detection_rules:
     r["operator"] = "OR"
     r["is_regex"] = True
 
+# 规范化问题类型：将各种写法映射为规则名
+def normalize_error_type(et: str) -> str:
+    try:
+        et_l = (et or "").strip()
+        for rr in detection_rules:
+            if et_l == rr.get("name"):
+                return rr["name"]
+            pats = rr.get("patterns", []) or []
+            joined = "|".join(pats)
+            if et_l == joined:
+                return rr["name"]
+            for p in pats:
+                pl = (p or "").lower(); el = et_l.lower()
+                if pl == el or pl in el or el in pl:
+                    return rr["name"]
+        return et_l
+    except Exception:
+        return et
+
 # —— 问题库模型 ——
 class ProblemCreate(BaseModel):
     title: str
@@ -625,7 +644,7 @@ async def delete_folder(folder_id: int, ctx: Dict[str, Any] = Depends(require_au
 async def list_problems(error_type: Optional[str] = None, q: Optional[str] = None, category: Optional[str] = None, ctx: Dict[str, Any] = Depends(require_auth)):
     items = problems
     if error_type:
-        items = [p for p in items if (p.get("error_type") or "") == error_type]
+        items = [p for p in items if normalize_error_type(p.get("error_type") or "") == error_type]
     if category:
         items = [p for p in items if (p.get("category") or "") == category]
     if q:
@@ -639,7 +658,7 @@ async def create_problem(payload: ProblemCreate, ctx: Dict[str, Any] = Depends(r
         "id": (max([p["id"] for p in problems]) + 1) if problems else 1,
         "title": payload.title,
         "url": payload.url,
-        "error_type": payload.error_type,
+        "error_type": normalize_error_type(payload.error_type),
         "category": payload.category or "",
         "created_at": datetime.now().isoformat()
     }
@@ -653,7 +672,10 @@ async def update_problem(pid: int, payload: ProblemUpdate, ctx: Dict[str, Any] =
     if not pr:
         raise HTTPException(status_code=404, detail="问题不存在")
     for k, v in payload.dict(exclude_unset=True).items():
-        pr[k] = v
+        if k == "error_type" and v is not None:
+            pr[k] = normalize_error_type(v)
+        else:
+            pr[k] = v
     save_problems()
     return {"message": "已更新", "problem": pr}
 
@@ -675,7 +697,7 @@ async def problem_stats(types: Optional[str] = None, ctx: Dict[str, Any] = Depen
         wanted = set([t for t in types.split(',') if t])
     by_type: Dict[str, int] = {}
     for p in problems:
-        et = p.get("error_type") or ""
+        et = normalize_error_type(p.get("error_type") or "")
         if wanted and et not in wanted:
             continue
         by_type[et] = by_type.get(et, 0) + 1

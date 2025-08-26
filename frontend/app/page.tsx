@@ -92,6 +92,7 @@ export default function Home() {
 	const [problemFilterQuery, setProblemFilterQuery] = useState<string>('')
 	const [problemFilterCategory, setProblemFilterCategory] = useState<string>('')
 	const [problemStatsByType, setProblemStatsByType] = useState<Record<string, number>>({})
+	const [highlightProblemId, setHighlightProblemId] = useState<number | null>(null)
 
 	// Toast 通知状态
 	const [toasts, setToasts] = useState<any[]>([])
@@ -723,7 +724,20 @@ export default function Home() {
 		} catch { showToast('保存失败', 'error') }
 	}
 	const deleteProblem = async (id: number) => { const ok = await askConfirm('确定删除该问题？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/problems/${id}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory), fetchProblemStats(null)]); showToast('已删除', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
-	const goToProblems = async (type: string) => { setCurrentPage('problems'); setProblemFilterType(type); await Promise.all([fetchProblems(type, problemFilterQuery, problemFilterCategory), fetchProblemStats([type])]) }
+	const goToProblems = async (type: string) => {
+		setDetailVisible(false)
+		setCurrentPage('problems')
+		setProblemFilterType(type)
+		try {
+			const params = new URLSearchParams(); if (type) params.set('error_type', type)
+			const [r1, r2] = await Promise.all([
+			authedFetch(`${getApiBase()}/api/problems?${params.toString()}`),
+			authedFetch(`${getApiBase()}/api/problems/stats?types=${encodeURIComponent(type)}`)
+			])
+			if (r1.ok) { const d = await r1.json(); setProblems(d.problems || []); setHighlightProblemId((d.problems||[])[0]?.id || null) }
+			if (r2.ok) { const d2 = await r2.json(); setProblemStatsByType(d2.by_type || {}) }
+		} catch {}
+	}
 
 	// 问题库页面
 	const ProblemsPage = () => (
@@ -737,22 +751,26 @@ export default function Home() {
 					<button className="btn btn-primary" onClick={openProblemAdd}>+ 新增问题</button>
 				</div>
 			</div>
-			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
-				<h4 style={{ marginTop: 0 }}>统计</h4>
-				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-					{Object.entries(problemStatsByType).map(([k,v]) => (
-						<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory) }} style={{ background: '#fff' }}>{k}（{v}）</button>
-					))}
-					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
+							<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
+					<h4 style={{ marginTop: 0 }}>统计</h4>
+					<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+						{Object.entries(problemStatsByType).length === 0 ? (
+							<span style={{ color: '#6b7280' }}>暂无统计</span>
+						) : (
+							Object.entries(problemStatsByType).map(([k,v]) => (
+								<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory) }} style={{ background: '#fff' }}>{k}（{v}）</button>
+							))
+						)}
+						<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
+					</div>
 				</div>
-			</div>
 							<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
 					<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
 						<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
 					</div>
 					<div style={{ maxHeight: 480, overflow: 'auto' }}>
 						{problems.map((p) => (
-							<div key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
+							<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent') }}>
 								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>{p.title}</div>
 								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
 								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.error_type}>{p.error_type}</div>
@@ -771,7 +789,7 @@ export default function Home() {
 				<div className="form-grid">
 					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => setProblemForm({ ...problemForm, title: e.target.value })} /></div>
 					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => setProblemForm({ ...problemForm, url: e.target.value })} /></div>
-					<div className="form-col"><div className="label">问题类型*</div><select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>{detectionRules.map((r:any)=>(<option key={r.id} value={(r.patterns?.[0]||r.name)}>{r.name}（{r.description}）</option>))}</select></div>
+					<div className="form-col"><div className="label">问题类型*</div><select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>{detectionRules.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description}）</option>))}</select></div>
 				</div>
 			</Modal>
 		</div>
@@ -825,8 +843,8 @@ export default function Home() {
 											<div style={{ fontWeight: 800, color: '#111827' }}>{typeKey} <span style={{ marginLeft: 8, color: '#ef4444', fontWeight: 700 }}>{zh}</span></div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<span style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[key] ? '点击展开' : '点击折叠'} · {list.length}</span>
-																			<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[detailData?.data?.issues?.[0]?.rule_name || typeKey] || problemStatsByType[typeKey] || 0}</span>
-							<button onClick={(e) => { e.stopPropagation(); goToProblems(detailData?.data?.issues?.[0]?.rule_name || typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
+												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[list?.[0]?.rule_name || typeKey] || 0}</span>
+												<button onClick={(e) => { e.stopPropagation(); goToProblems(list?.[0]?.rule_name || typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
 											</div>
 										</div>
 										{!collapsedGroups[key] && (
