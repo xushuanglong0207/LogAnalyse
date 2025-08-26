@@ -801,7 +801,7 @@ export default function Home() {
 			</div>
 			<Modal visible={problemModalVisible} title={problemForm.id ? '编辑问题' : '新增问题'} onClose={() => setProblemModalVisible(false)} footer={[
 				<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
-				<button key="ok" className="btn btn-primary" disabled={!problemForm.title || !problemForm.url || !problemForm.error_type} onClick={submitProblem}>保存</button>
+				<button key="ok" className="btn btn-primary" onClick={submitProblem}>保存</button>
 			]}>
 				<div className="form-grid">
 					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => {
