@@ -592,8 +592,6 @@ export default function Home() {
 					</div>
 				</div>
 			</Modal>
-
-			<FolderModal />
 		</div>
 	)
 
@@ -800,7 +798,6 @@ export default function Home() {
 
 			{/* 个人中心 */}
 			<ProfileModal />
-			<FolderModal />
 
 			<Toasts toasts={toasts} remove={removeToast} />
 			<ConfirmModal visible={confirmState.visible} text={confirmState.text} onConfirm={() => { confirmState.resolve && confirmState.resolve(true); setConfirmState({ visible: false, text: '', resolve: null }) }} onCancel={() => { confirmState.resolve && confirmState.resolve(false); setConfirmState({ visible: false, text: '', resolve: null }) }} />
@@ -895,4 +892,4 @@ function ProfileCenter({ currentUser, onLogout }: any) {
 		</>
 	)
 }
-  
+ 
