@@ -457,21 +457,6 @@ export default function Home() {
 					)}
 				</div>
 			</Modal>
-
-			<Modal visible={detailVisible} title={detailData?.title || '分析详情'} onClose={() => setDetailVisible(false)}>
-				{detailData && (
-					<div style={{ maxHeight: '65vh', overflow: 'auto' }}>
-						<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题</div>
-						{detailData.data.issues.map((it: any, idx: number) => (
-							<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-								<div style={{ fontWeight: 600 }}>{it.rule_name} <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
-								<div style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>{it.matched_text}</div>
-								<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12 }}>{it.context}</pre>
-							</div>
-						))}
-					</div>
-				)}
-			</Modal>
 		</div>
 	)
 
@@ -694,6 +679,21 @@ export default function Home() {
 
 			<Toasts toasts={toasts} remove={removeToast} />
 			<ConfirmModal visible={confirmState.visible} text={confirmState.text} onConfirm={() => { confirmState.resolve && confirmState.resolve(true); setConfirmState({ visible: false, text: '', resolve: null }) }} onCancel={() => { confirmState.resolve && confirmState.resolve(false); setConfirmState({ visible: false, text: '', resolve: null }) }} />
+			{/* 全局分析详情 Modal：支持从任何页面打开 */}
+			<Modal visible={detailVisible} title={detailData?.title || '分析详情'} onClose={() => setDetailVisible(false)}>
+				{detailData && (
+					<div style={{ maxHeight: '65vh', overflow: 'auto' }}>
+						<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题</div>
+						{detailData.data.issues.map((it: any, idx: number) => (
+							<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 8 }}>
+								<div style={{ fontWeight: 600 }}>{it.rule_name} <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
+								<div style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>{it.matched_text}</div>
+								<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12 }}>{it.context}</pre>
+							</div>
+						))}
+					</div>
+				)}
+			</Modal>
 		</div>
 	)
 }
