@@ -84,6 +84,13 @@ export default function Home() {
 	const [analysisResults, setAnalysisResults] = useState<any[]>([])
 	const [users, setUsers] = useState<any[]>([])
 
+	// —— 问题库：状态 ——
+	const [problems, setProblems] = useState<any[]>([])
+	const [problemModalVisible, setProblemModalVisible] = useState(false)
+	const [problemForm, setProblemForm] = useState<any>({ id: null, title: '', url: '', error_type: '' })
+	const [problemFilterType, setProblemFilterType] = useState<string>('')
+	const [problemStatsByType, setProblemStatsByType] = useState<Record<string, number>>({})
+
 	// Toast 通知状态
 	const [toasts, setToasts] = useState<any[]>([])
 	const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -129,6 +136,11 @@ export default function Home() {
 	const [detailData, setDetailData] = useState<any>(null)
 	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 	useEffect(() => { if (detailVisible) setCollapsedGroups({}) }, [detailVisible])
+	useEffect(() => {
+		if (!detailVisible || !detailData?.data?.issues) return
+		const types = Array.from(new Set((detailData.data.issues || []).map((it: any) => String(it.matched_text || it.rule_name || '其他'))))
+		fetchProblemStats(types)
+	}, [detailVisible, detailData])
 
 	// 用户/规则弹窗
 	const [userModalVisible, setUserModalVisible] = useState(false)
@@ -273,6 +285,7 @@ export default function Home() {
 					{ id: 'dashboard', label: '📊 仪表板' },
 					{ id: 'logs', label: '📁 日志管理' },
 					{ id: 'rules', label: '🔍 规则管理' },
+					{ id: 'problems', label: '📚 问题库' },
 					{ id: 'users', label: '👥 用户管理' }
 				].map(nav => (
 					<button key={nav.id} onClick={() => setCurrentPage(nav.id)} className="btn" style={{ background: currentPage === nav.id ? 'linear-gradient(135deg, var(--brand), var(--brand2))' : '#fff', color: currentPage === nav.id ? '#fff' : '#374151' }}>{nav.label}</button>
@@ -660,10 +673,90 @@ export default function Home() {
 	const getStatusColor = () => backendStatus === 'connected' ? '#059669' : backendStatus === 'connecting' ? '#2563eb' : '#dc2626'
 	const getStatusText = () => backendStatus === 'connected' ? '✅ 后端: 运行正常' : backendStatus === 'connecting' ? '🔄 后端: 连接中...' : '❌ 后端: 连接失败'
 
+	// —— 问题库 API ——
+	const fetchProblems = async (type: string = '') => {
+		try {
+			const q = type ? `?error_type=${encodeURIComponent(type)}` : ''
+			const r = await authedFetch(`${getApiBase()}/api/problems${q}`)
+			if (r.ok) { const d = await r.json(); setProblems(d.problems || []) }
+		} catch {}
+	}
+	const fetchProblemStats = async (types: string[] | null = null) => {
+		try {
+			const params = types && types.length ? `?types=${encodeURIComponent(types.join(','))}` : ''
+			const r = await authedFetch(`${getApiBase()}/api/problems/stats${params}`)
+			if (r.ok) { const d = await r.json(); setProblemStatsByType(d.by_type || {}) }
+		} catch {}
+	}
+	const openProblemAdd = () => { setProblemForm({ id: null, title: '', url: '', error_type: problemFilterType || '' }); setProblemModalVisible(true) }
+	const openProblemEdit = (p: any) => { setProblemForm({ id: p.id, title: p.title, url: p.url, error_type: p.error_type }); setProblemModalVisible(true) }
+	const submitProblem = async () => {
+		try {
+			const payload = { title: problemForm.title, url: problemForm.url, error_type: problemForm.error_type }
+			let r
+			if (problemForm.id) r = await authedFetch(`${getApiBase()}/api/problems/${problemForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			else r = await authedFetch(`${getApiBase()}/api/problems`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			if (r.ok) { setProblemModalVisible(false); await Promise.all([fetchProblems(problemFilterType), fetchProblemStats(null)]); showToast('问题已保存', 'success') } else showToast('保存失败', 'error')
+		} catch { showToast('保存失败', 'error') }
+	}
+	const deleteProblem = async (id: number) => { const ok = await askConfirm('确定删除该问题？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/problems/${id}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchProblems(problemFilterType), fetchProblemStats(null)]); showToast('已删除', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
+	const goToProblems = async (type: string) => { setCurrentPage('problems'); setProblemFilterType(type); await Promise.all([fetchProblems(type), fetchProblemStats([type])]) }
+
+	// 问题库页面
+	const ProblemsPage = () => (
+		<div style={{ padding: '2rem' }}>
+			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>📚 问题库</h2>
+			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
+				<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+					<input placeholder="按错误类型过滤，如 I/O error" value={problemFilterType} onChange={(e) => setProblemFilterType(e.target.value)} style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
+					<button className="btn btn-outline" onClick={() => fetchProblems(problemFilterType)}>查询</button>
+					<button className="btn btn-primary" onClick={openProblemAdd}>+ 新增问题</button>
+				</div>
+			</div>
+			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
+				<h4 style={{ marginTop: 0 }}>统计</h4>
+				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+					{Object.entries(problemStatsByType).map(([k,v]) => (
+						<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k) }} style={{ background: '#fff' }}>{k}（{v}）</button>
+					))}
+					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('') }}>全部</button>
+				</div>
+			</div>
+			<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
+				<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
+					<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
+				</div>
+				<div style={{ maxHeight: 480, overflow: 'auto' }}>
+					{problems.map((p) => (
+						<div key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
+							<div>{p.title}</div>
+							<div><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
+							<div>{p.error_type}</div>
+							<div style={{ display: 'flex', gap: 8 }}>
+								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
+								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
+							</div>
+						</div>
+					))}
+				</div>
+			</div>
+			<Modal visible={problemModalVisible} title={problemForm.id ? '编辑问题' : '新增问题'} onClose={() => setProblemModalVisible(false)} footer={[
+				<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
+				<button key="ok" className="btn btn-primary" disabled={!problemForm.title || !problemForm.url || !problemForm.error_type} onClick={submitProblem}>保存</button>
+			]}>
+				<div className="form-grid">
+					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => setProblemForm({ ...problemForm, title: e.target.value })} /></div>
+					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => setProblemForm({ ...problemForm, url: e.target.value })} /></div>
+					<div className="form-col"><div className="label">问题类型*</div><input className="ui-input" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })} placeholder="如：I/O error" /></div>
+				</div>
+			</Modal>
+		</div>
+	)
+
 	return (
 		<div style={{ minHeight: '100vh', background: 'radial-gradient(1200px 600px at -10% -10%, #c7d2fe 0%, transparent 60%), radial-gradient(1200px 600px at 110% -10%, #bbf7d0 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)' }}>
 			<Nav />
-			{currentUser ? (currentPage === 'dashboard' ? Dashboard() : currentPage === 'logs' ? LogManagement() : currentPage === 'rules' ? RuleManagement() : UserManagement()) : (
+			{currentUser ? (currentPage === 'dashboard' ? Dashboard() : currentPage === 'logs' ? LogManagement() : currentPage === 'rules' ? RuleManagement() : currentPage === 'problems' ? ProblemsPage() : UserManagement()) : (
 				<div style={{ padding: '2rem', color: '#6b7280' }}>请先登录以使用平台功能。</div>
 			)}
 
@@ -690,7 +783,9 @@ export default function Home() {
 				{detailData && (() => {
 					const groups: Record<string, any[]> = {}
 					for (const it of detailData.data.issues || []) {
-						const key = it.rule_name || '未命名规则'
+						const typeKey = String(it.matched_text || it.rule_name || '其他')
+						const zh = String(it.description || '')
+						const key = `${typeKey}||${zh}`
 						groups[key] = groups[key] || []
 						groups[key].push(it)
 					}
@@ -698,24 +793,31 @@ export default function Home() {
 					return (
 						<div style={{ maxHeight: '65vh', overflow: 'auto', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>
 							<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题，{entries.length} 个类型</div>
-							{entries.map(([rule, list], gi) => (
-								<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
-									<div onClick={() => setCollapsedGroups(v => ({ ...v, [rule]: !v[rule] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
-										<div style={{ fontWeight: 800, color: '#111827' }}>{rule}</div>
-										<div style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[rule] ? '点击展开' : '点击折叠'} · {list.length}</div>
-									</div>
-									{!collapsedGroups[rule] && (
-										<div className="stack-12" style={{ marginTop: 8 }}>
-											{list.map((it: any, idx: number) => (
-												<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
-													<div style={{ fontWeight: 600 }}><span style={{ color: '#ef4444', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.matched_text}</span> <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
-													<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.context}</pre>
+							{entries.map(([key, list], gi) => {
+								const [typeKey, zh] = key.split('||')
+								return (
+									<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+										<div onClick={() => setCollapsedGroups(v => ({ ...v, [key]: !v[key] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
+											<div style={{ fontWeight: 800, color: '#111827' }}>{typeKey} <span style={{ marginLeft: 8, color: '#ef4444', fontWeight: 700 }}>{zh}</span></div>
+											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+												<span style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[key] ? '点击展开' : '点击折叠'} · {list.length}</span>
+												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[typeKey] || 0}</span>
+												<button onClick={(e) => { e.stopPropagation(); goToProblems(typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
 											</div>
-											))}
 										</div>
-									)}
-								</div>
-							))}
+										{!collapsedGroups[key] && (
+											<div className="stack-12" style={{ marginTop: 8 }}>
+												{list.map((it: any, idx: number) => (
+													<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
+														<div style={{ fontWeight: 600 }}><span style={{ color: '#ef4444', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.matched_text}</span> <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
+														<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.context}</pre>
+												</div>
+												))}
+											</div>
+										)}
+									</div>
+								)
+							})}
 						</div>
 					)
 				})()}
@@ -765,5 +867,4 @@ function ProfileCenter({ currentUser, onLogout }: any) {
 				</div>
 			</Modal>
 		</>
-	)
-} 
+	) 

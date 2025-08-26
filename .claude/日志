@@ -1,49 +1,11 @@
-双击分析结果，接口返回数据如下 不会打开日志详情：
-切换 日志管理tab 才显示详情
-
-请求 URL
-http://172.17.20.117:8001/api/analysis/2
-请求方法
-GET
-状态代码
-200 OK
-远程地址
-172.17.20.117:8001
-引用站点策略
-strict-origin-when-cross-origin
-{
-    "file_id": 2,
-    "filename": "syslog",
-    "analysis_time": "2025-08-26T08:17:46.573170",
-    "issues": [
-        {
-            "rule_name": "File System Error",
-            "description": "文件系统错误",
-            "line_number": 42594,
-            "matched_text": "I/O error",
-            "context": "2025-06-24T23:04:18.683515+03:00 Tethys kernel: [131791.787264] md: super_written gets error=-5\n2025-06-24T23:04:18.683544+03:00 Tethys kernel: [131791.787284] md: super_written gets error=-5\n2025-06-24T23:04:18.899570+03:00 Tethys kernel: [131792.005406] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:19.051711+03:00 Tethys kernel: [131792.155200] md: super_written gets error=-5\n2025-06-24T23:04:19.051778+03:00 Tethys kernel: [131792.155234] md: super_written gets error=-5",
-            "severity": "medium"
-        },
-        {
-            "rule_name": "File System Error",
-            "description": "文件系统错误",
-            "line_number": 42597,
-            "matched_text": "I/O error",
-            "context": "2025-06-24T23:04:19.051711+03:00 Tethys kernel: [131792.155200] md: super_written gets error=-5\n2025-06-24T23:04:19.051778+03:00 Tethys kernel: [131792.155234] md: super_written gets error=-5\n2025-06-24T23:04:21.223530+03:00 Tethys kernel: [131794.328561] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:21.444504+03:00 Tethys systemd[1]: volume1.mount: Deactivated successfully.\n2025-06-24T23:04:21.447507+03:00 Tethys kernel: [131794.552114] Buffer I/O error on dev dm-0, logical block 0, async page read",
-            "severity": "medium"
-        },
-        {
-            "rule_name": "File System Error",
-            "description": "文件系统错误",
-            "line_number": 42599,
-            "matched_text": "I/O error",
-            "context": "2025-06-24T23:04:21.223530+03:00 Tethys kernel: [131794.328561] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:21.444504+03:00 Tethys systemd[1]: volume1.mount: Deactivated successfully.\n2025-06-24T23:04:21.447507+03:00 Tethys kernel: [131794.552114] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:21.586863+03:00 Tethys systemd[1]: home.mount: Deactivated successfully.\n2025-06-24T23:04:22.347551+03:00 Tethys kernel: [131795.453816] BTRFS error (device dm-0): bdev /dev/mapper/ug_2A03EC_1747964605_pool1-volume1 errs: wr 1, rd 0, flush 0, corrupt 0, gen 0",
-            "severity": "medium"
-        }
-    ],
-    "summary": {
-        "total_issues": 3,
-        "high_severity": 0,
-        "medium_severity": 3
-    }
-}
+新增一个模块，模块名称为：问题库
+功能：
+    1.用户可以手动录入问题和问题链接，每一个问题需要对应一个规则里面的错误类型
+    2.一个类型的错误可以录入多个问题，点击查看问题列表 可以查看该问题对应的错误类型 和该错误类型下的问题数量
+    3.上放可以新增一个统计，统计的规则是：
+        1.统计每个错误类型下有多少个问题
+        2.统计总的问题数量
+    4.录入问题字段：问题名称、问题链接、问题类型等
+日志管理模块功能优化：
+1、分析完成后，若匹配到规则类型的错误，则自动显示该错误类型下有多少个问题，点击进入问题列表，然后列表的问题连接可点击跳转对应的bug
+2、分析完成后的问题默认排在最顶部 方便找到 如果列表过多数据 支持滚动条

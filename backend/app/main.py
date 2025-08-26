@@ -36,6 +36,7 @@ app.add_middleware(
 # 内存存储（临时）
 uploaded_files: List[Dict[str, Any]] = []
 analysis_results: List[Dict[str, Any]] = []
+problems: List[Dict[str, Any]] = []  # 问题库：{id, title, url, error_type, created_at}
 
 # 简易用户模型与内存用户表
 class UserCreate(BaseModel):
@@ -101,6 +102,17 @@ for r in detection_rules:
     r["patterns"] = [r.pop("pattern")] if "pattern" in r else []
     r["operator"] = "OR"
     r["is_regex"] = True
+
+# —— 问题库模型 ——
+class ProblemCreate(BaseModel):
+    title: str
+    url: str
+    error_type: str  # 关联的错误类型（如 I/O error、OOM Killer 等）
+
+class ProblemUpdate(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+    error_type: Optional[str] = None
 
 # 简易令牌会话存储：token -> {user_id, expiry}
 sessions: Dict[str, Dict[str, Any]] = {}
@@ -459,6 +471,58 @@ async def delete_folder(folder_id: int, ctx: Dict[str, Any] = Depends(require_au
             r["folder_id"] = 1
     rule_folders = [f for f in rule_folders if f["id"] != folder_id]
     return {"message": "文件夹已删除，规则已迁移到默认文件夹"}
+
+# —— 问题库接口 ——
+@app.get("/api/problems")
+async def list_problems(error_type: Optional[str] = None, ctx: Dict[str, Any] = Depends(require_auth)):
+    items = problems
+    if error_type:
+        items = [p for p in items if p.get("error_type") == error_type]
+    return {"problems": items}
+
+@app.post("/api/problems")
+async def create_problem(payload: ProblemCreate, ctx: Dict[str, Any] = Depends(require_auth)):
+    new = {
+        "id": (max([p["id"] for p in problems]) + 1) if problems else 1,
+        "title": payload.title,
+        "url": payload.url,
+        "error_type": payload.error_type,
+        "created_at": datetime.now().isoformat()
+    }
+    problems.append(new)
+    return {"message": "已创建", "problem": new}
+
+@app.put("/api/problems/{pid}")
+async def update_problem(pid: int, payload: ProblemUpdate, ctx: Dict[str, Any] = Depends(require_auth)):
+    pr = next((p for p in problems if p["id"] == pid), None)
+    if not pr:
+        raise HTTPException(status_code=404, detail="问题不存在")
+    for k, v in payload.dict(exclude_unset=True).items():
+        pr[k] = v
+    return {"message": "已更新", "problem": pr}
+
+@app.delete("/api/problems/{pid}")
+async def delete_problem(pid: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    global problems
+    before = len(problems)
+    problems = [p for p in problems if p["id"] != pid]
+    if len(problems) == before:
+        raise HTTPException(status_code=404, detail="问题不存在")
+    return {"message": "已删除"}
+
+@app.get("/api/problems/stats")
+async def problem_stats(types: Optional[str] = None, ctx: Dict[str, Any] = Depends(require_auth)):
+    # types: 逗号分隔的错误类型；若为空则统计全部
+    wanted = None
+    if types:
+        wanted = set([t for t in types.split(',') if t])
+    by_type: Dict[str, int] = {}
+    for p in problems:
+        et = p.get("error_type") or ""
+        if wanted and et not in wanted:
+            continue
+        by_type[et] = by_type.get(et, 0) + 1
+    return {"total": sum(by_type.values()) if wanted else len(problems), "by_type": by_type}
 
 # 用户管理（演示：任何登录用户可访问）
 @app.get("/api/users")
