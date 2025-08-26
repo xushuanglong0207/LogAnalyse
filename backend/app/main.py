@@ -44,11 +44,13 @@ class UserCreate(BaseModel):
     email: Optional[str] = ""
     password: Optional[str] = ""  # 演示用，未加密
     role: Optional[str] = "普通用户"
+    position: Optional[str] = ""  # 职位
 
 class UserUpdate(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = None
     password: Optional[str] = None
+    position: Optional[str] = None
 
 class LoginPayload(BaseModel):
     username: str
@@ -60,7 +62,7 @@ class ChangePasswordPayload(BaseModel):
     new_password: str
 
 users: List[Dict[str, Any]] = [
-    {"id": 1, "username": "admin", "email": "", "role": "管理员", "password": "admin123"}
+    {"id": 1, "username": "admin", "email": "", "role": "管理员", "password": "admin123", "position": "管理员"}
 ]
 
 # 规则与文件夹模型
@@ -120,7 +122,7 @@ class ProblemUpdate(BaseModel):
 sessions: Dict[str, Dict[str, Any]] = {}
 
 def _public_user(u: Dict[str, Any]) -> Dict[str, Any]:
-    return {k: u[k] for k in ["id", "username", "email", "role"]}
+    return {k: u.get(k, "") for k in ["id", "username", "email", "role", "position"]}
 
 def create_session(user_id: int, remember: bool) -> Dict[str, Any]:
     token = uuid.uuid4().hex
@@ -547,7 +549,8 @@ async def create_user(payload: UserCreate, ctx: Dict[str, Any] = Depends(require
         "username": payload.username,
         "email": payload.email or "",
         "role": payload.role or "普通用户",
-        "password": payload.password or ""
+        "password": payload.password or "",
+        "position": payload.position or ""
     }
     users.append(new_user)
     return {"message": "用户创建成功", "user": _public_user(new_user)}
@@ -563,6 +566,8 @@ async def update_user(user_id: int, payload: UserUpdate, ctx: Dict[str, Any] = D
         user["role"] = payload.role
     if payload.password is not None and payload.password != "":
         user["password"] = payload.password
+    if payload.position is not None:
+        user["position"] = payload.position
     return {"message": "用户更新成功", "user": _public_user(user)}
 
 @app.delete("/api/users/{user_id}")

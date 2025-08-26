@@ -300,21 +300,25 @@ export default function Home() {
 	// 个人中心弹窗
 	const ProfileModal = () => (
 		<Modal visible={profileVisible} title="个人中心" onClose={() => setProfileVisible(false)} footer={[
-			<button key="logout" className="btn btn-danger" onClick={() => { localStorage.removeItem('token'); sessionStorage.removeItem('token'); window.location.href = '/login' }}>退出登录</button>,
-			<button key="ok" className="btn btn-primary" onClick={async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pwdForm) }); if (r.ok) { showToast('密码已更新，请重新登录', 'success'); window.location.href = '/login' } else showToast('更新失败', 'error') } catch { showToast('更新失败', 'error') } }}>修改密码</button>
+							<button key="logout" className="btn btn-danger" onClick={() => { localStorage.removeItem('token'); sessionStorage.removeItem('token'); window.location.href = '/login' }}>退出登录</button>,
+				<button key="ok" className="btn btn-primary" onClick={async () => { try { await authedFetch(`${getApiBase()}/api/users/${currentUser?.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: currentUser?.position||'' }) }); const r = await authedFetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pwdForm) }); if (r.ok) { showToast('资料已更新，请重新登录', 'success'); window.location.href = '/login' } else showToast('已保存职位，密码未修改', 'info') } catch { showToast('更新失败', 'error') } }}>保存资料</button>
 		]}>
 			<div className="stack-16">
-				<div style={{ color: '#374151' }}>当前用户：<b>{currentUser?.username}</b></div>
-				<div className="form-grid">
-					<div className="form-col">
-						<div className="label">原密码</div>
-						<input className="ui-input" type="password" value={pwdForm.old_password} onChange={(e) => setPwdForm({ ...pwdForm, old_password: e.target.value })} />
+									<div style={{ color: '#374151' }}>当前用户：<b>{currentUser?.username}</b></div>
+					<div className="form-grid">
+						<div className="form-col">
+							<div className="label">职位</div>
+							<input className="ui-input" value={currentUser?.position||''} onChange={(e) => setCurrentUser({ ...currentUser, position: e.target.value })} placeholder="如：运维工程师" />
+						</div>
+						<div className="form-col">
+							<div className="label">原密码</div>
+							<input className="ui-input" type="password" value={pwdForm.old_password} onChange={(e) => setPwdForm({ ...pwdForm, old_password: e.target.value })} />
+						</div>
+						<div className="form-col">
+							<div className="label">新密码</div>
+							<input className="ui-input" type="password" value={pwdForm.new_password} onChange={(e) => setPwdForm({ ...pwdForm, new_password: e.target.value })} />
+						</div>
 					</div>
-					<div className="form-col">
-						<div className="label">新密码</div>
-						<input className="ui-input" type="password" value={pwdForm.new_password} onChange={(e) => setPwdForm({ ...pwdForm, new_password: e.target.value })} />
-					</div>
-				</div>
 			</div>
 		</Modal>
 	)
@@ -464,6 +468,7 @@ export default function Home() {
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 						<input placeholder="搜索 (回车下一个，Shift+回车上一个)" value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); jumpMatch(e.shiftKey ? -1 : 1) } }} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }} />
 						<span style={{ color: '#6b7280', fontSize: 12, fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>匹配: {previewMatches}{previewMatches>0?`（第 ${currentMatchIndex+1} / ${previewMatches} 个）`:''}</span>
+						<button onClick={() => setPreviewSearch('')} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>清空</button>
 					</div>
 				</div>
 				<div ref={previewContainerRef} style={{ maxHeight: '65vh', overflow: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
