@@ -52,9 +52,10 @@ export default function LoginPage() {
 
 	return (
 		<div className="center-page">
-			<div className="ui-card" style={{ width: 'min(420px, 92vw)' }}>
-				<div className="modal-header">
-					<h1 className="modal-title">登录</h1>
+			<div className="ui-card" style={{ width: 'min(520px, 92vw)' }}>
+				<div className="modal-header" style={{ display: 'grid', gap: 4 }}>
+					<h1 className="modal-title" style={{ fontSize: 24, fontWeight: 900 }}>日志分析平台</h1>
+					<div style={{ color: '#6b7280', fontSize: 12 }}>V1.0.0 · 作者：Carl.Xu</div>
 				</div>
 				<div className="modal-body stack-16">
 					<div className="form-col">

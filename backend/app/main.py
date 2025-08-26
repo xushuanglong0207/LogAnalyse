@@ -38,6 +38,32 @@ uploaded_files: List[Dict[str, Any]] = []
 analysis_results: List[Dict[str, Any]] = []
 problems: List[Dict[str, Any]] = []  # 问题库：{id, title, url, error_type, created_at}
 
+# —— 持久化设置 ——
+DATA_DIR = os.environ.get("LOG_ANALYZER_DATA", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "database")))
+FILES_DIR = os.path.join(DATA_DIR, "uploads")
+INDEX_PATH = os.path.join(DATA_DIR, "uploads_index.json")
+
+os.makedirs(FILES_DIR, exist_ok=True)
+
+# 启动时加载索引
+try:
+    if os.path.exists(INDEX_PATH):
+        with open(INDEX_PATH, "r", encoding="utf-8") as f:
+            uploaded_files = json.load(f)
+    else:
+        uploaded_files = []
+except Exception:
+    uploaded_files = []
+
+
+def save_index():
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(INDEX_PATH, "w", encoding="utf-8") as f:
+            json.dump(uploaded_files, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 # 简易用户模型与内存用户表
 class UserCreate(BaseModel):
     username: str
@@ -203,19 +229,25 @@ async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
 @app.post("/api/logs/upload")
 async def upload_log_file(file: UploadFile = File(...), ctx: Dict[str, Any] = Depends(require_auth)):
     try:
-        # 放宽文件类型限制：接受所有类型，尽力按utf-8解析
+        # 放宽文件类型限制：接受所有类型
         content = await file.read()
         content_str = content.decode('utf-8', errors='ignore')
+        file_id = (max([f["id"] for f in uploaded_files]) + 1) if uploaded_files else 1
+        filename = file.filename
+        save_path = os.path.join(FILES_DIR, f"{file_id}_{filename}")
+        with open(save_path, "w", encoding="utf-8", errors="ignore") as fw:
+            fw.write(content_str)
         file_info = {
-            "id": len(uploaded_files) + 1,
-            "filename": file.filename,
+            "id": file_id,
+            "filename": filename,
             "size": len(content),
             "upload_time": datetime.now().isoformat(),
-            "content": content_str[:MAX_CONTENT_BYTES],
+            "path": save_path,
             "status": "uploaded"
         }
         uploaded_files.append(file_info)
-        return {"message": "文件上传成功", "file_id": file_info["id"], "filename": file.filename, "size": len(content)}
+        save_index()
+        return {"message": "文件上传成功", "file_id": file_info["id"], "filename": filename, "size": len(content)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
 
@@ -233,22 +265,34 @@ async def get_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)
     f = next((x for x in uploaded_files if x["id"] == file_id), None)
     if not f:
         raise HTTPException(status_code=404, detail="文件不存在")
+    content = ""
+    try:
+        with open(f.get("path"), "r", encoding="utf-8", errors="ignore") as fr:
+            content = fr.read(MAX_CONTENT_BYTES)
+    except Exception:
+        content = f.get("content", "")  # 向后兼容
     return {
         "id": f["id"],
         "filename": f["filename"],
         "size": f["size"],
         "upload_time": f["upload_time"],
-        "content": f.get("content", "")
+        "content": content
     }
 
 @app.delete("/api/logs/{file_id}")
 async def delete_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
     global uploaded_files, analysis_results
-    before = len(uploaded_files)
+    target = next((f for f in uploaded_files if f["id"] == file_id), None)
     uploaded_files = [f for f in uploaded_files if f["id"] != file_id]
     analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
-    if len(uploaded_files) == before:
+    if not target:
         raise HTTPException(status_code=404, detail="文件不存在")
+    try:
+        if target.get("path") and os.path.exists(target["path"]):
+            os.remove(target["path"])
+    except Exception:
+        pass
+    save_index()
     return {"message": "文件已删除"}
 
 class AnalyzeTextPayload(BaseModel):
@@ -326,7 +370,14 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
         file_info = next((f for f in uploaded_files if f["id"] == file_id), None)
         if not file_info:
             raise HTTPException(status_code=404, detail="文件不存在")
-        content = file_info.get("content", "")
+        # 从磁盘读取
+        content = ""
+        try:
+            with open(file_info.get("path"), "r", encoding="utf-8", errors="ignore") as fr:
+                content = fr.read(MAX_CONTENT_BYTES)
+        except Exception:
+            content = file_info.get("content", "")
+        # 以下保持原有分析逻辑
         issues = []
         lines = content.split('\n')
         for rule in detection_rules:
@@ -363,7 +414,7 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
                 "medium_severity": len([i for i in issues if i["severity"] == "medium"])
             }
         }
-        # 如果已存在同file_id分析，替换
+        # 替换旧结果
         global analysis_results
         analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
         analysis_results.append(result)
