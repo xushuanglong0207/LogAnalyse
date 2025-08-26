@@ -555,6 +555,10 @@ export default function Home() {
 		</div>
 	)
 
+	// 状态卡颜色/文案
+	const getStatusColor = () => backendStatus === 'connected' ? '#059669' : backendStatus === 'connecting' ? '#2563eb' : '#dc2626'
+	const getStatusText = () => backendStatus === 'connected' ? '✅ 后端: 运行正常' : backendStatus === 'connecting' ? '🔄 后端: 连接中...' : '❌ 后端: 连接失败'
+
 	return (
 		<div style={{ minHeight: '100vh', background: 'radial-gradient(1200px 600px at -10% -10%, #c7d2fe 0%, transparent 60%), radial-gradient(1200px 600px at 110% -10%, #bbf7d0 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)' }}>
 			<Nav />
