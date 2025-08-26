@@ -90,6 +90,10 @@ export default function Home() {
 	}
 	const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id))
 
+	// 确认弹窗状态
+	const [confirmState, setConfirmState] = useState<{ visible: boolean; text: string; resolve: null | ((v: boolean) => void) }>({ visible: false, text: '', resolve: null })
+	const openConfirm = (text: string) => new Promise<boolean>((resolve) => { setConfirmState({ visible: true, text, resolve }) })
+
 	// 预览弹窗
 	const [pasteText, setPasteText] = useState('')
 	const [previewVisible, setPreviewVisible] = useState(false)
