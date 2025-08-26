@@ -161,8 +161,99 @@ export default function Home() {
 	}, [])
 	useEffect(() => { if (apiBase && currentUser) fetchDetectionRules(searchRule, selectedFolderId) }, [searchRule, selectedFolderId, apiBase, currentUser])
 
-	// ——— 省略：上传/分析/规则/用户操作逻辑（保持原有功能） ———
-	// 这里为了简洁起见，不再重复粘贴全部业务函数。
+	// —— 交互与业务辅助 ——
+	const askConfirm = (text: string) => openConfirm(text)
+	const parsePatterns = (s: string) => (s || '').split(/\r?\n|,|;|、/).map(v => v.trim()).filter(Boolean)
+
+	// 预览高亮渲染
+	const renderHighlighted = (text: string, q: string) => {
+		if (!q) return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{text}</pre>)
+		try {
+			const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+			const html = text.replace(re, (m) => `<mark style="background:#fde68a">${m}</mark>`)
+			return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: html }} />)
+		} catch {
+			return (<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{text}</pre>)
+		}
+	}
+
+	// —— 日志：上传/分析/预览/删除 ——
+	const handleFileUpload = async (e: any) => {
+		try {
+			const files = Array.from(e.target.files || [])
+			for (const f of files as any[]) {
+				const fd = new FormData()
+				fd.append('file', f)
+				const r = await authedFetch(`${getApiBase()}/api/logs/upload`, { method: 'POST', body: fd })
+				if (!r.ok) throw new Error('上传失败')
+			}
+			await Promise.all([fetchUploadedFiles(), fetchDashboardStats()])
+			showToast('文件上传成功', 'success')
+		} catch {
+			showToast('文件上传失败', 'error')
+		} finally {
+			try { e.target.value = '' } catch {}
+		}
+	}
+	const handleAnalyzeText = async () => {
+		try {
+			if (!pasteText) return showToast('请先粘贴内容', 'info')
+			const r = await authedFetch(`${getApiBase()}/api/logs/analyze_text`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pasteText, filename: 'pasted.log' }) })
+			if (r.ok) {
+				const d = await r.json(); setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d]); await Promise.all([fetchUploadedFiles(), fetchDashboardStats()]); setPasteText(''); showToast('分析完成', 'success')
+			} else {
+				showToast('分析失败', 'error')
+			}
+		} catch { showToast('分析失败', 'error') }
+	}
+	const analyzeFile = async (fileId: number) => {
+		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' }); if (r.ok) { const d = await r.json(); setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d]); await fetchDashboardStats(); showToast('分析完成', 'success') } else showToast('分析失败', 'error') } catch { showToast('分析失败', 'error') }
+	}
+	const deleteFile = async (fileId: number) => {
+		const ok = await askConfirm('确定删除该日志文件？')
+		if (!ok) return
+		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchUploadedFiles(), fetchDashboardStats()]); setAnalysisResults(prev => prev.filter(x => x.file_id !== fileId)); showToast('删除成功', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') }
+	}
+	const openFilePreview = async (fileId: number, filename: string) => {
+		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`); if (r.ok) { const d = await r.json(); setPreviewTitle(`${d.filename}`); setPreviewContent(d.content || ''); setPreviewMode('shell'); setPreviewVisible(true) } } catch {}
+	}
+	const openAnalysisDetail = async (fileId: number, filename: string) => {
+		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); setDetailData({ title: `${filename}`, data: d }); setDetailVisible(true) } } catch { showToast('详情加载失败', 'error') }
+	}
+
+	// —— 规则：增删改查/拖拽 ——
+	const openRuleAdd = () => { setRuleForm({ id: null, name: '', description: '', enabled: true, patterns: '', operator: 'OR', is_regex: true, folder_id: ruleFolders[0]?.id || 1 }); setRuleModalMode('add'); setRuleModalVisible(true) }
+	const openRuleEdit = (rule: any) => { setRuleForm({ id: rule.id, name: rule.name, description: rule.description || '', enabled: !!rule.enabled, patterns: (rule.patterns || []).join('\n'), operator: rule.operator || 'OR', is_regex: !!rule.is_regex, folder_id: rule.folder_id || 1 }); setRuleModalMode('edit'); setRuleModalVisible(true) }
+	const submitRule = async () => {
+		try {
+			const payload = { name: ruleForm.name, description: ruleForm.description || '', enabled: !!ruleForm.enabled, patterns: parsePatterns(ruleForm.patterns), operator: (ruleForm.operator || 'OR'), is_regex: !!ruleForm.is_regex, folder_id: ruleForm.folder_id || 1 }
+			let r
+			if (ruleModalMode === 'add') r = await authedFetch(`${getApiBase()}/api/rules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			else r = await authedFetch(`${getApiBase()}/api/rules/${ruleForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			if (r.ok) { setRuleModalVisible(false); await fetchDetectionRules(searchRule, selectedFolderId); await fetchRuleFolders(); showToast('保存成功', 'success') } else showToast('保存失败', 'error')
+		} catch { showToast('保存失败', 'error') }
+	}
+	const deleteRule = async (ruleId: number) => { const ok = await askConfirm('确定删除该规则？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/rules/${ruleId}`, { method: 'DELETE' }); if (r.ok) { await fetchDetectionRules(searchRule, selectedFolderId); await fetchRuleFolders(); showToast('删除成功', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
+	const toggleRule = async (ruleId: number, enabled: boolean) => { try { const r = await authedFetch(`${getApiBase()}/api/rules/${ruleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !enabled }) }); if (r.ok) { await fetchDetectionRules(searchRule, selectedFolderId); showToast(!enabled ? '已启用' : '已禁用', 'success') } } catch {} }
+	const onDragStartRule = (id: number) => setDraggingRuleId(id)
+	const onDropToFolder = async (folderId: number) => { if (!draggingRuleId) return; try { const r = await authedFetch(`${getApiBase()}/api/rules/${draggingRuleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder_id: folderId }) }); if (r.ok) { await fetchDetectionRules(searchRule, selectedFolderId); await fetchRuleFolders(); setDraggingRuleId(null); showToast('已移动到文件夹', 'success') } } catch { setDraggingRuleId(null) } }
+
+	// —— 用户：增删改 ——
+	const openUserAdd = () => { setUserForm({ id: null, username: '', email: '', password: '', role: '普通用户' }); setUserModalMode('add'); setUserModalVisible(true) }
+	const openUserEdit = (user: any) => { setUserForm({ id: user.id, username: user.username, email: user.email || '', password: '', role: user.role || '普通用户' }); setUserModalMode('edit'); setUserModalVisible(true) }
+	const submitUser = async () => {
+		try {
+			if (userModalMode === 'add') {
+				const r = await authedFetch(`${getApiBase()}/api/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: userForm.username, email: userForm.email, role: userForm.role, password: userForm.password }) })
+				if (!r.ok) throw new Error('创建失败')
+			} else {
+				const r = await authedFetch(`${getApiBase()}/api/users/${userForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userForm.email, role: userForm.role, password: userForm.password }) })
+				if (!r.ok) throw new Error('更新失败')
+			}
+			setUserModalVisible(false); await fetchUsers(); showToast('已保存', 'success')
+		} catch { showToast('保存失败', 'error') }
+	}
+	const confirmDeleteUser = async (id: number) => { const ok = await askConfirm('确定删除该用户？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/users/${id}`, { method: 'DELETE' }); if (r.ok) { await fetchUsers(); showToast('已删除', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
 
 	// 顶部导航
 	const Nav = () => (
