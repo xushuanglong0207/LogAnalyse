@@ -51,12 +51,10 @@ export default function LoginPage() {
 	}
 
 	return (
-		<div className="center-page">
+		<div className="center-page" style={{ position: 'relative', paddingTop: 80, paddingBottom: 60 }}>
+			<h1 style={{ position: 'absolute', top: 20, left: 0, right: 0, textAlign: 'center', fontSize: 32, fontWeight: 900, color: '#111827' }}>日志分析平台</h1>
 			<div className="ui-card" style={{ width: 'min(520px, 92vw)' }}>
-				<div className="modal-header" style={{ display: 'grid', gap: 4 }}>
-					<h1 className="modal-title" style={{ fontSize: 24, fontWeight: 900 }}>日志分析平台</h1>
-					<div style={{ color: '#6b7280', fontSize: 12 }}>V1.0.0 · 作者：Carl.Xu</div>
-				</div>
+				<div className="modal-header"><h1 className="modal-title">登录</h1></div>
 				<div className="modal-body stack-16">
 					<div className="form-col">
 						<div className="label">用户名</div>
@@ -78,6 +76,7 @@ export default function LoginPage() {
 					<button disabled={loading} onClick={doLogin} className="btn btn-primary" style={{ minWidth: 120 }}>{loading ? '登录中...' : '登录'}</button>
 				</div>
 			</div>
+			<div style={{ position: 'absolute', bottom: 20, left: 0, right: 0, textAlign: 'center', color: '#6b7280', fontSize: 12 }}>版本：V1.0.0  作者：Carl.Xu</div>
 		</div>
 	)
 } 

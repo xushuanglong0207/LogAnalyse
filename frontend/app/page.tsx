@@ -725,11 +725,9 @@ export default function Home() {
 		<div style={{ padding: '2rem' }}>
 			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>📚 问题库</h2>
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
-				<div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 2fr auto auto', gap: 8, alignItems: 'center' }}>
-					<input placeholder="按错误类型过滤，如 I/O error" value={problemFilterType} onChange={(e) => setProblemFilterType(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					<input placeholder="按名称/链接模糊查询" value={problemFilterQuery} onChange={(e) => setProblemFilterQuery(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					<input placeholder="问题分类(选填)" value={problemFilterCategory} onChange={(e) => setProblemFilterCategory(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					<button className="btn btn-outline" onClick={() => fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory)}>查询</button>
+				<div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+					<input placeholder="搜索问题（名称/链接/类型/分类）" value={problemFilterQuery} onChange={(e) => setProblemFilterQuery(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
+					<button className="btn btn-outline" onClick={() => fetchProblems('', problemFilterQuery, '')}>查询</button>
 					<button className="btn" onClick={() => { setProblemFilterType(''); setProblemFilterQuery(''); setProblemFilterCategory(''); fetchProblems('', '', '') }}>清空</button>
 					<button className="btn btn-primary" onClick={openProblemAdd}>+ 新增问题</button>
 				</div>
