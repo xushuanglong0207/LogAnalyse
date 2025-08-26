@@ -749,8 +749,8 @@ export default function Home() {
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
 					<input placeholder="搜索问题（名称/链接/类型/分类）" value={problemFilterQuery} onChange={(e) => setProblemFilterQuery(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					<button className="btn btn-outline" onClick={() => { setHighlightProblemId(null); fetchProblems('', problemFilterQuery, '') }}>查询</button>
-					<button className="btn" onClick={() => { setHighlightProblemId(null); setProblemFilterType(''); setProblemFilterQuery(''); setProblemFilterCategory(''); fetchProblems('', '', '') }}>清空</button>
+					<button className="btn btn-outline" onClick={() => { setHighlightProblemId(null); fetchProblems('', problemFilterQuery, ''); fetchProblemStats(null) }}>查询</button>
+					<button className="btn" onClick={() => { setHighlightProblemId(null); setProblemFilterType(''); setProblemFilterQuery(''); setProblemFilterCategory(''); fetchProblems('', '', ''); fetchProblemStats(null) }}>清空</button>
 					<button className="btn btn-primary" onClick={openProblemAdd}>+ 新增问题</button>
 				</div>
 			</div>
@@ -761,7 +761,7 @@ export default function Home() {
 						<span style={{ color: '#6b7280' }}>暂无统计</span>
 					) : (
 						Object.entries(problemStatsByType).map(([k,v]) => (
-							<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory) }} style={{ background: '#fff' }}>{k}（{v}）</button>
+							<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory); fetchProblemStats([k]) }} style={{ background: '#fff' }}>{k}（{v}）</button>
 						))
 					)}
 					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
