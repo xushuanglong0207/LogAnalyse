@@ -719,7 +719,12 @@ export default function Home() {
 	const openProblemEdit = (p: any) => { setProblemForm({ id: p.id, title: p.title, url: p.url, error_type: p.error_type }); setProblemModalVisible(true) }
 	const submitProblem = async () => {
 		try {
-			const payload = { title: problemForm.title, url: sanitizeUrl(problemForm.url), error_type: problemForm.error_type }
+			// 统一清洗：名称去掉链接，链接只保留URL；若名称为空用URL生成
+			const cleanedUrl = sanitizeUrl(problemForm.url || '') || sanitizeUrl(problemForm.title || '')
+			let cleanedTitle = removeUrls(problemForm.title || '')
+			if (!cleanedTitle) cleanedTitle = cleanedUrl ? titleFromUrl(cleanedUrl) : '未命名问题'
+			const payload = { title: cleanedTitle, url: cleanedUrl, error_type: problemForm.error_type }
+			if (!payload.url) { showToast('请填写有效链接', 'error'); return }
 			let r
 			if (problemForm.id) r = await authedFetch(`${getApiBase()}/api/problems/${problemForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 			else r = await authedFetch(`${getApiBase()}/api/problems`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -799,8 +804,22 @@ export default function Home() {
 				<button key="ok" className="btn btn-primary" disabled={!problemForm.title || !problemForm.url || !problemForm.error_type} onClick={submitProblem}>保存</button>
 			]}>
 				<div className="form-grid">
-					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => setProblemForm({ ...problemForm, title: e.target.value })} /></div>
-					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => setProblemForm({ ...problemForm, url: e.target.value })} onBlur={(e)=> setProblemForm({ ...problemForm, url: sanitizeUrl(e.target.value) })} /></div>
+					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => {
+						const v = e.target.value
+						const detected = sanitizeUrl(v)
+						setProblemForm({ ...problemForm, title: removeUrls(v), url: detected || problemForm.url })
+					}} onBlur={(e)=> {
+						const v = e.target.value
+						const detected = sanitizeUrl(v)
+						setProblemForm({ ...problemForm, title: removeUrls(v), url: detected || problemForm.url })
+					}} /></div>
+					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => {
+						const v = e.target.value
+						setProblemForm({ ...problemForm, url: v })
+					}} onBlur={(e)=> {
+						const link = sanitizeUrl(e.target.value)
+						setProblemForm({ ...problemForm, url: link, title: (problemForm.title ? removeUrls(problemForm.title) : titleFromUrl(link)) })
+					}} /></div>
 					<div className="form-col"><div className="label">问题类型*</div><select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>{detectionRules.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description}）</option>))}</select></div>
 				</div>
 			</Modal>
