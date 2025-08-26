@@ -719,7 +719,7 @@ export default function Home() {
 	const openProblemEdit = (p: any) => { setProblemForm({ id: p.id, title: p.title, url: p.url, error_type: p.error_type }); setProblemModalVisible(true) }
 	const submitProblem = async () => {
 		try {
-			const payload = { title: problemForm.title, url: problemForm.url, error_type: problemForm.error_type }
+			const payload = { title: problemForm.title, url: sanitizeUrl(problemForm.url), error_type: problemForm.error_type }
 			let r
 			if (problemForm.id) r = await authedFetch(`${getApiBase()}/api/problems/${problemForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 			else r = await authedFetch(`${getApiBase()}/api/problems`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -800,7 +800,7 @@ export default function Home() {
 			]}>
 				<div className="form-grid">
 					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => setProblemForm({ ...problemForm, title: e.target.value })} /></div>
-					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => setProblemForm({ ...problemForm, url: e.target.value })} /></div>
+					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => setProblemForm({ ...problemForm, url: e.target.value })} onBlur={(e)=> setProblemForm({ ...problemForm, url: sanitizeUrl(e.target.value) })} /></div>
 					<div className="form-col"><div className="label">问题类型*</div><select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>{detectionRules.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description}）</option>))}</select></div>
 				</div>
 			</Modal>
@@ -856,7 +856,7 @@ export default function Home() {
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<span style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[key] ? '点击展开' : '点击折叠'} · {list.length}</span>
 												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[list?.[0]?.rule_name || typeKey] || 0}</span>
-												<button onClick={(e) => { e.stopPropagation(); goToProblems(list?.[0]?.rule_name || typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
+												<button onClick={(e) => { e.preventDefault(); e.stopPropagation(); clearSelection(); goToProblems(list?.[0]?.rule_name || typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
 											</div>
 										</div>
 										{!collapsedGroups[key] && (
