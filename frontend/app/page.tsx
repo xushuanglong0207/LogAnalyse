@@ -149,7 +149,7 @@ export default function Home() {
 	useEffect(() => { if (detailVisible) setCollapsedGroups({}) }, [detailVisible])
 	useEffect(() => {
 		if (!detailVisible || !detailData?.data?.issues) return
-		const types = Array.from(new Set((detailData.data.issues || []).map((it: any) => String(it.matched_text || it.rule_name || '其他'))))
+		const types = Array.from(new Set((detailData.data.issues || []).map((it: any) => String(it.rule_name || '其他'))))
 		fetchProblemStats(types)
 	}, [detailVisible, detailData])
 
@@ -191,7 +191,7 @@ export default function Home() {
 		const base = computeApiBase(); setApiBase(base)
 		;(async () => { const ok = await checkBackendStatus(base); if (ok) { await fetchMe(); await Promise.all([fetchDashboardStats(), fetchUploadedFiles(), fetchRuleFolders(), fetchDetectionRules('', selectedFolderId), fetchUsers(), fetchAnalysisResults()]) } })()
 	}, [])
-	useEffect(() => { if (apiBase && currentUser) fetchDetectionRules(searchRule, selectedFolderId) }, [searchRule, selectedFolderId, apiBase, currentUser])
+	useEffect(() => { if (apiBase && currentUser) { fetchDetectionRules(searchRule, selectedFolderId); if (currentPage === 'problems') { fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory); fetchProblemStats(null) } } }, [searchRule, selectedFolderId, apiBase, currentUser, currentPage])
 
 	// —— 交互与业务辅助 ——
 	const askConfirm = (text: string) => openConfirm(text)
@@ -798,6 +798,7 @@ export default function Home() {
 
 			{/* 个人中心 */}
 			<ProfileModal />
+			<FolderModal />
 
 			<Toasts toasts={toasts} remove={removeToast} />
 			<ConfirmModal visible={confirmState.visible} text={confirmState.text} onConfirm={() => { confirmState.resolve && confirmState.resolve(true); setConfirmState({ visible: false, text: '', resolve: null }) }} onCancel={() => { confirmState.resolve && confirmState.resolve(false); setConfirmState({ visible: false, text: '', resolve: null }) }} />
@@ -824,8 +825,8 @@ export default function Home() {
 											<div style={{ fontWeight: 800, color: '#111827' }}>{typeKey} <span style={{ marginLeft: 8, color: '#ef4444', fontWeight: 700 }}>{zh}</span></div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<span style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[key] ? '点击展开' : '点击折叠'} · {list.length}</span>
-												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[typeKey] || 0}</span>
-												<button onClick={(e) => { e.stopPropagation(); goToProblems(typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
+																			<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[detailData?.data?.issues?.[0]?.rule_name || typeKey] || problemStatsByType[typeKey] || 0}</span>
+							<button onClick={(e) => { e.stopPropagation(); goToProblems(detailData?.data?.issues?.[0]?.rule_name || typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
 											</div>
 										</div>
 										{!collapsedGroups[key] && (

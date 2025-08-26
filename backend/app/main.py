@@ -44,6 +44,7 @@ DATA_DIR = os.environ.get("LOG_ANALYZER_DATA", os.path.abspath(os.path.join(os.p
 FILES_DIR = os.path.join(DATA_DIR, "uploads")
 INDEX_PATH = os.path.join(DATA_DIR, "uploads_index.json")
 ANALYSIS_INDEX_PATH = os.path.join(DATA_DIR, "analysis_results.json")
+PROBLEMS_PATH = os.path.join(DATA_DIR, "problems.json")
 
 os.makedirs(FILES_DIR, exist_ok=True)
 
@@ -67,6 +68,16 @@ try:
 except Exception:
     analysis_results = []
 
+# 启动时加载问题库
+try:
+    if os.path.exists(PROBLEMS_PATH):
+        with open(PROBLEMS_PATH, "r", encoding="utf-8") as f:
+            problems = json.load(f)
+    else:
+        problems = []
+except Exception:
+    problems = []
+
 
 def save_index():
     try:
@@ -80,6 +91,13 @@ def save_analysis_index():
     try:
         with open(ANALYSIS_INDEX_PATH, "w", encoding="utf-8") as f:
             json.dump(analysis_results, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def save_problems():
+    try:
+        with open(PROBLEMS_PATH, "w", encoding="utf-8") as f:
+            json.dump(problems, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 
@@ -626,6 +644,7 @@ async def create_problem(payload: ProblemCreate, ctx: Dict[str, Any] = Depends(r
         "created_at": datetime.now().isoformat()
     }
     problems.append(new)
+    save_problems()
     return {"message": "已创建", "problem": new}
 
 @app.put("/api/problems/{pid}")
@@ -635,6 +654,7 @@ async def update_problem(pid: int, payload: ProblemUpdate, ctx: Dict[str, Any] =
         raise HTTPException(status_code=404, detail="问题不存在")
     for k, v in payload.dict(exclude_unset=True).items():
         pr[k] = v
+    save_problems()
     return {"message": "已更新", "problem": pr}
 
 @app.delete("/api/problems/{pid}")
@@ -644,6 +664,7 @@ async def delete_problem(pid: int, ctx: Dict[str, Any] = Depends(require_auth)):
     problems = [p for p in problems if p["id"] != pid]
     if len(problems) == before:
         raise HTTPException(status_code=404, detail="问题不存在")
+    save_problems()
     return {"message": "已删除"}
 
 @app.get("/api/problems/stats")
