@@ -93,6 +93,9 @@ export default function Home() {
 	const [problemFilterCategory, setProblemFilterCategory] = useState<string>('')
 	const [problemStatsByType, setProblemStatsByType] = useState<Record<string, number>>({})
 	const [highlightProblemId, setHighlightProblemId] = useState<number | null>(null)
+	const [statsExpanded, setStatsExpanded] = useState(false)
+	const [problemPage, setProblemPage] = useState(1)
+	const PROBLEM_PAGE_SIZE = 200
 
 	// Toast 通知状态
 	const [toasts, setToasts] = useState<any[]>([])
@@ -702,7 +705,7 @@ export default function Home() {
 		try {
 			const params = new URLSearchParams(); if (type) params.set('error_type', type); if (q) params.set('q', q); if (category) params.set('category', category)
 			const r = await authedFetch(`${getApiBase()}/api/problems?${params.toString()}`)
-			if (r.ok) { const d = await r.json(); setProblems(d.problems || []) }
+			if (r.ok) { const d = await r.json(); setProblems(d.problems || []); setProblemPage(1) }
 		} catch {}
 	}
 	const fetchProblemStats = async (types: string[] | null = null) => {
@@ -734,7 +737,7 @@ export default function Home() {
 			authedFetch(`${getApiBase()}/api/problems?${params.toString()}`),
 			authedFetch(`${getApiBase()}/api/problems/stats?types=${encodeURIComponent(type)}`)
 			])
-			if (r1.ok) { const d = await r1.json(); setProblems(d.problems || []); setHighlightProblemId((d.problems||[])[0]?.id || null) }
+			if (r1.ok) { const d = await r1.json(); const arr = d.problems || []; const firstId = arr[0]?.id || null; setProblems(arr); setHighlightProblemId(firstId); const idx = firstId ? arr.findIndex((x:any)=>x.id===firstId) : 0; setProblemPage(Math.max(1, Math.floor(idx/PROBLEM_PAGE_SIZE)+1)) }
 			if (r2.ok) { const d2 = await r2.json(); setProblemStatsByType(d2.by_type || {}) }
 		} catch {}
 	}
@@ -746,42 +749,51 @@ export default function Home() {
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
 					<input placeholder="搜索问题（名称/链接/类型/分类）" value={problemFilterQuery} onChange={(e) => setProblemFilterQuery(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					<button className="btn btn-outline" onClick={() => fetchProblems('', problemFilterQuery, '')}>查询</button>
-					<button className="btn" onClick={() => { setProblemFilterType(''); setProblemFilterQuery(''); setProblemFilterCategory(''); fetchProblems('', '', '') }}>清空</button>
+					<button className="btn btn-outline" onClick={() => { setHighlightProblemId(null); fetchProblems('', problemFilterQuery, '') }}>查询</button>
+					<button className="btn" onClick={() => { setHighlightProblemId(null); setProblemFilterType(''); setProblemFilterQuery(''); setProblemFilterCategory(''); fetchProblems('', '', '') }}>清空</button>
 					<button className="btn btn-primary" onClick={openProblemAdd}>+ 新增问题</button>
 				</div>
 			</div>
-							<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
-					<h4 style={{ marginTop: 0 }}>统计</h4>
-					<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-						{Object.entries(problemStatsByType).length === 0 ? (
-							<span style={{ color: '#6b7280' }}>暂无统计</span>
-						) : (
-							Object.entries(problemStatsByType).map(([k,v]) => (
-								<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory) }} style={{ background: '#fff' }}>{k}（{v}）</button>
-							))
-						)}
-						<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
-					</div>
+			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
+				<h4 style={{ marginTop: 0 }}>统计</h4>
+				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: statsExpanded ? 260 : 60, overflow: 'auto' }}>
+					{Object.entries(problemStatsByType).length === 0 ? (
+						<span style={{ color: '#6b7280' }}>暂无统计</span>
+					) : (
+						Object.entries(problemStatsByType).map(([k,v]) => (
+							<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory) }} style={{ background: '#fff' }}>{k}（{v}）</button>
+						))
+					)}
+					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
+					<button className="btn btn-outline" onClick={() => setStatsExpanded(v=>!v)}>{statsExpanded ? '收起' : '展开更多'}</button>
 				</div>
-							<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
-					<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
-						<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
-					</div>
-					<div style={{ maxHeight: 480, overflow: 'auto' }}>
-						{problems.map((p) => (
-							<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent') }}>
-								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>{p.title}</div>
-								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
-								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.error_type}>{p.error_type}</div>
-								<div style={{ display: 'flex', gap: 8 }}>
-									<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
-									<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
-								</div>
+			</div>
+			<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
+				<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
+					<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
+				</div>
+				<div style={{ maxHeight: 480, overflow: 'auto' }}>
+					{problems.slice((problemPage-1)*PROBLEM_PAGE_SIZE, problemPage*PROBLEM_PAGE_SIZE).map((p) => (
+						<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent') }}>
+							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>{p.title}</div>
+							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
+							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.error_type}>{p.error_type}</div>
+							<div style={{ display: 'flex', gap: 8 }}>
+								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
+								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
 							</div>
-						))}
-					</div>
+						</div>
+					))}
 				</div>
+				{/* 分页 */}
+				{problems.length > PROBLEM_PAGE_SIZE && (
+					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12 }}>
+						<button className="btn btn-outline" disabled={problemPage<=1} onClick={()=>setProblemPage(p=>Math.max(1,p-1))}>上一页</button>
+						<div style={{ color: '#6b7280' }}>第 {problemPage} / {Math.max(1, Math.ceil(problems.length/PROBLEM_PAGE_SIZE))} 页 · 每页 {PROBLEM_PAGE_SIZE}</div>
+						<button className="btn btn-outline" disabled={problemPage>=Math.ceil(problems.length/PROBLEM_PAGE_SIZE)} onClick={()=>setProblemPage(p=>Math.min(Math.ceil(problems.length/PROBLEM_PAGE_SIZE),p+1))}>下一页</button>
+					</div>
+				)}
+			</div>
 			<Modal visible={problemModalVisible} title={problemForm.id ? '编辑问题' : '新增问题'} onClose={() => setProblemModalVisible(false)} footer={[
 				<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
 				<button key="ok" className="btn btn-primary" disabled={!problemForm.title || !problemForm.url || !problemForm.error_type} onClick={submitProblem}>保存</button>
