@@ -1,4 +1,5 @@
 'use client'
+import './globals.css'
 import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 		<html lang="zh-CN">
 			<head>
 				<title>日志分析平台</title>
+				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<link rel="icon" href="/icon.svg" />
 			</head>
 			<body style={{ margin: 0 }}>{children}</body>
