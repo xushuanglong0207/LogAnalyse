@@ -43,6 +43,7 @@ problems: List[Dict[str, Any]] = []  # 问题库：{id, title, url, error_type, 
 DATA_DIR = os.environ.get("LOG_ANALYZER_DATA", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "database")))
 FILES_DIR = os.path.join(DATA_DIR, "uploads")
 INDEX_PATH = os.path.join(DATA_DIR, "uploads_index.json")
+ANALYSIS_INDEX_PATH = os.path.join(DATA_DIR, "analysis_results.json")
 
 os.makedirs(FILES_DIR, exist_ok=True)
 
@@ -56,8 +57,15 @@ try:
 except Exception:
     uploaded_files = []
 
-# 启动后立即执行一次过期清理
-purge_old_uploads()
+# 启动时加载分析结果索引
+try:
+    if os.path.exists(ANALYSIS_INDEX_PATH):
+        with open(ANALYSIS_INDEX_PATH, "r", encoding="utf-8") as f:
+            analysis_results = json.load(f)
+    else:
+        analysis_results = []
+except Exception:
+    analysis_results = []
 
 
 def save_index():
@@ -65,6 +73,43 @@ def save_index():
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(INDEX_PATH, "w", encoding="utf-8") as f:
             json.dump(uploaded_files, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def save_analysis_index():
+    try:
+        with open(ANALYSIS_INDEX_PATH, "w", encoding="utf-8") as f:
+            json.dump(analysis_results, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def purge_old_uploads():
+    """清理超过保留期的日志文件及分析结果"""
+    global uploaded_files, analysis_results
+    try:
+        cutoff = datetime.now() - timedelta(days=RETENTION_DAYS)
+        remain = []
+        removed_ids = set()
+        for f in uploaded_files:
+            try:
+                ts = datetime.fromisoformat(f.get("upload_time", ""))
+            except Exception:
+                ts = datetime.now()
+            if ts < cutoff:
+                removed_ids.add(f.get("id"))
+                p = f.get("path")
+                try:
+                    if p and os.path.exists(p):
+                        os.remove(p)
+                except Exception:
+                    pass
+            else:
+                remain.append(f)
+        if removed_ids:
+            uploaded_files = remain
+            analysis_results = [r for r in analysis_results if r.get("file_id") not in removed_ids]
+            save_index()
+            save_analysis_index()
     except Exception:
         pass
 
@@ -94,6 +139,11 @@ class ChangePasswordPayload(BaseModel):
 users: List[Dict[str, Any]] = [
     {"id": 1, "username": "admin", "email": "", "role": "管理员", "password": "admin123", "position": "管理员"}
 ]
+
+# 在应用启动时执行一次过期清理，避免导入阶段调用
+@app.on_event("startup")
+async def _startup_cleanup():
+    purge_old_uploads()
 
 # 规则与文件夹模型
 class RuleCreate(BaseModel):
@@ -222,9 +272,26 @@ async def change_password(payload: ChangePasswordPayload, ctx: Dict[str, Any] = 
 # 仪表板
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
+    # 读取最新索引，确保与磁盘同步
+    up_count = len(uploaded_files)
+    try:
+        if os.path.exists(INDEX_PATH):
+            with open(INDEX_PATH, "r", encoding="utf-8") as f:
+                up_count = len(json.load(f))
+    except Exception:
+        pass
+    detected = 0
+    try:
+        if os.path.exists(ANALYSIS_INDEX_PATH):
+            with open(ANALYSIS_INDEX_PATH, "r", encoding="utf-8") as f:
+                detected = sum(len(r.get("issues", [])) for r in json.load(f))
+        else:
+            detected = sum(len(r.get("issues", [])) for r in analysis_results)
+    except Exception:
+        detected = sum(len(r.get("issues", [])) for r in analysis_results)
     return {
-        "uploaded_files": len(uploaded_files),
-        "detected_issues": sum(len(result.get("issues", [])) for result in analysis_results),
+        "uploaded_files": up_count,
+        "detected_issues": detected,
         "detection_rules": len([rule for rule in detection_rules if rule["enabled"]]),
         "recent_activity": []
     }
@@ -299,6 +366,7 @@ async def delete_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_au
     except Exception:
         pass
     save_index()
+    save_analysis_index()
     return {"message": "文件已删除"}
 
 class AnalyzeTextPayload(BaseModel):
@@ -424,6 +492,7 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
         global analysis_results
         analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
         analysis_results.append(result)
+        save_analysis_index()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
