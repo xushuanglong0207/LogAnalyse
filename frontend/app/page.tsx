@@ -64,7 +64,10 @@ export default function Home() {
 		const token = getStoredToken()
 		const headers = { ...(options.headers || {}), Authorization: token ? `Bearer ${token}` : undefined }
 		const resp = await fetch(url, { ...options, headers })
-		if (resp.status === 401 && typeof window !== 'undefined') window.location.href = '/login'
+		if (resp.status === 401 && typeof window !== 'undefined') {
+			try { localStorage.removeItem('token'); sessionStorage.removeItem('token') } catch {}
+			window.location.href = '/login'
+		}
 		return resp
 	}
 

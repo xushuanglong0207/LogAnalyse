@@ -1,19 +1,24 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname()
 	const router = useRouter()
+	const isRedirecting = useRef(false)
 	useEffect(() => {
 		if (typeof window === 'undefined') return
+		if (isRedirecting.current) return
 		const token = localStorage.getItem('token') || sessionStorage.getItem('token')
 		if (!token && pathname !== '/login') {
+			isRedirecting.current = true
 			router.replace('/login')
-		}
-		if (token && pathname === '/login') {
+		} else if (token && pathname === '/login') {
+			isRedirecting.current = true
 			router.replace('/')
 		}
+		const t = setTimeout(() => { isRedirecting.current = false }, 600)
+		return () => clearTimeout(t)
 	}, [pathname, router])
 	return (
 		<html lang="zh-CN">
