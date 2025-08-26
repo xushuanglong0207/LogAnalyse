@@ -826,6 +826,18 @@ export default function Home() {
 		</div>
 	)
 
+	// —— 工具函数（问题库输入清洗/选择清除） ——
+	const sanitizeUrl = (s: string): string => {
+		try { const m = String(s || '').match(/https?:\/\/[^\s<>"']+/i); return m ? m[0] : '' } catch { return '' }
+	}
+	const removeUrls = (s: string): string => {
+		try { return String(s || '').replace(/https?:\/\/[^\s<>"']+/ig, '').trim() } catch { return s }
+	}
+	const titleFromUrl = (u: string): string => {
+		try { const url = new URL(u); const segs = url.pathname.split('/').filter(Boolean); const last = segs[segs.length - 1] || url.hostname; return decodeURIComponent(last) } catch { return u }
+	}
+	const clearSelection = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges() } catch {} }
+
 	return (
 		<div style={{ minHeight: '100vh', background: 'radial-gradient(1200px 600px at -10% -10%, #c7d2fe 0%, transparent 60%), radial-gradient(1200px 600px at 110% -10%, #bbf7d0 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)' }}>
 			<Nav />
