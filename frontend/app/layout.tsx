@@ -27,7 +27,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				<title>日志分析平台</title>
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<link rel="icon" type="image/svg+xml" href="/icon.svg" />
-				<link rel="shortcut icon" href="/favicon.ico" />
 				<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#3b82f6" />
 				<meta name="theme-color" content="#ffffff" />
 			</head>

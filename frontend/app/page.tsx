@@ -127,6 +127,8 @@ export default function Home() {
 	// 分析详情弹窗
 	const [detailVisible, setDetailVisible] = useState(false)
 	const [detailData, setDetailData] = useState<any>(null)
+	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+	useEffect(() => { if (detailVisible) setCollapsedGroups({}) }, [detailVisible])
 
 	// 用户/规则弹窗
 	const [userModalVisible, setUserModalVisible] = useState(false)
@@ -445,8 +447,8 @@ export default function Home() {
 						<button onClick={() => setPreviewMode('txt')} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb', background: previewMode === 'txt' ? '#111827' : '#fff', color: previewMode === 'txt' ? '#d1fae5' : '#111' }}>TXT</button>
 					</div>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-						<input placeholder="搜索 (回车下一个，Shift+回车上一个)" value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); jumpMatch(e.shiftKey ? -1 : 1) } }} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px' }} />
-						<span style={{ color: '#6b7280', fontSize: 12 }}>匹配: {previewMatches}{previewMatches>0?`（第 ${currentMatchIndex+1} / ${previewMatches} 个）`:''}</span>
+						<input placeholder="搜索 (回车下一个，Shift+回车上一个)" value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); jumpMatch(e.shiftKey ? -1 : 1) } }} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }} />
+						<span style={{ color: '#6b7280', fontSize: 12, fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>匹配: {previewMatches}{previewMatches>0?`（第 ${currentMatchIndex+1} / ${previewMatches} 个）`:''}</span>
 					</div>
 				</div>
 				<div ref={previewContainerRef} style={{ maxHeight: '65vh', overflow: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
@@ -685,18 +687,38 @@ export default function Home() {
 			<ConfirmModal visible={confirmState.visible} text={confirmState.text} onConfirm={() => { confirmState.resolve && confirmState.resolve(true); setConfirmState({ visible: false, text: '', resolve: null }) }} onCancel={() => { confirmState.resolve && confirmState.resolve(false); setConfirmState({ visible: false, text: '', resolve: null }) }} />
 			{/* 全局分析详情 Modal：支持从任何页面打开 */}
 			<Modal visible={detailVisible} title={detailData?.title || '分析详情'} onClose={() => setDetailVisible(false)}>
-				{detailData && (
-					<div style={{ maxHeight: '65vh', overflow: 'auto' }}>
-						<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题</div>
-						{detailData.data.issues.map((it: any, idx: number) => (
-							<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-								<div style={{ fontWeight: 600 }}>{it.rule_name} <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
-								<div style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>{it.matched_text}</div>
-								<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12 }}>{it.context}</pre>
-							</div>
-						))}
-					</div>
-				)}
+				{detailData && (() => {
+					const groups: Record<string, any[]> = {}
+					for (const it of detailData.data.issues || []) {
+						const key = it.rule_name || '未命名规则'
+						groups[key] = groups[key] || []
+						groups[key].push(it)
+					}
+					const entries = Object.entries(groups)
+					return (
+						<div style={{ maxHeight: '65vh', overflow: 'auto', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>
+							<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题，{entries.length} 个类型</div>
+							{entries.map(([rule, list], gi) => (
+								<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+									<div onClick={() => setCollapsedGroups(v => ({ ...v, [rule]: !v[rule] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
+										<div style={{ fontWeight: 800, color: '#111827' }}>{rule}</div>
+										<div style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[rule] ? '点击展开' : '点击折叠'} · {list.length}</div>
+									</div>
+									{!collapsedGroups[rule] && (
+										<div className="stack-12" style={{ marginTop: 8 }}>
+											{list.map((it: any, idx: number) => (
+												<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
+													<div style={{ fontWeight: 600 }}><span style={{ color: '#ef4444', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.matched_text}</span> <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
+													<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.context}</pre>
+											</div>
+											))}
+										</div>
+									)}
+								</div>
+							))}
+						</div>
+					)
+				})()}
 			</Modal>
 		</div>
 	)
