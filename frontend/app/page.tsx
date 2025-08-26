@@ -761,7 +761,7 @@ export default function Home() {
 						<span style={{ color: '#6b7280' }}>暂无统计</span>
 					) : (
 						Object.entries(problemStatsByType).map(([k,v]) => (
-							<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory); fetchProblemStats([k]) }} style={{ background: '#fff' }}>{k}（{v}）</button>
+							<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory); fetchProblemStats(null) }} style={{ background: '#fff' }}>{k}（{v}）</button>
 						))
 					)}
 					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
