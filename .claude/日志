@@ -1,0 +1,208 @@
+仪表盘双击打开，接口返回数据如下 而且等我切换日志管理 才会显示分析结果详情
+请求 URL
+http://172.17.20.117:8001/api/analysis/1
+请求方法
+GET
+状态代码
+200 OK
+远程地址
+172.17.20.117:8001
+引用站点策略
+strict-origin-when-cross-origin
+
+{
+    "file_id": 1,
+    "filename": "kern.log",
+    "analysis_time": "2025-08-26T06:58:48.370583",
+    "issues": [
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30341,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.565105+03:00 Tethys kernel: [1040492.918593] sd 4:0:0:0: [sda] Media removed, stopped polling\n2025-06-12T12:20:42.586461+03:00 Tethys kernel: [1040492.938241] sd 4:0:0:0: [sda] tag#26 device offline or changed\n2025-06-12T12:20:42.586507+03:00 Tethys kernel: [1040492.938268] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586513+03:00 Tethys kernel: [1040492.938286] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586516+03:00 Tethys kernel: [1040492.938345] sd 4:0:0:0: [sda] tag#27 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30342,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586461+03:00 Tethys kernel: [1040492.938241] sd 4:0:0:0: [sda] tag#26 device offline or changed\n2025-06-12T12:20:42.586507+03:00 Tethys kernel: [1040492.938268] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586513+03:00 Tethys kernel: [1040492.938286] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586516+03:00 Tethys kernel: [1040492.938345] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586520+03:00 Tethys kernel: [1040492.938356] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30344,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586513+03:00 Tethys kernel: [1040492.938286] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586516+03:00 Tethys kernel: [1040492.938345] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586520+03:00 Tethys kernel: [1040492.938356] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586523+03:00 Tethys kernel: [1040492.938369] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586527+03:00 Tethys kernel: [1040492.938410] sd 4:0:0:0: [sda] tag#24 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30345,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586516+03:00 Tethys kernel: [1040492.938345] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586520+03:00 Tethys kernel: [1040492.938356] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586523+03:00 Tethys kernel: [1040492.938369] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586527+03:00 Tethys kernel: [1040492.938410] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586530+03:00 Tethys kernel: [1040492.938419] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30347,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586523+03:00 Tethys kernel: [1040492.938369] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586527+03:00 Tethys kernel: [1040492.938410] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586530+03:00 Tethys kernel: [1040492.938419] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586540+03:00 Tethys kernel: [1040492.938430] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586544+03:00 Tethys kernel: [1040492.938465] sd 4:0:0:0: [sda] tag#25 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30348,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586527+03:00 Tethys kernel: [1040492.938410] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586530+03:00 Tethys kernel: [1040492.938419] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586540+03:00 Tethys kernel: [1040492.938430] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586544+03:00 Tethys kernel: [1040492.938465] sd 4:0:0:0: [sda] tag#25 device offline or changed\n2025-06-12T12:20:42.586548+03:00 Tethys kernel: [1040492.938473] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30350,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586540+03:00 Tethys kernel: [1040492.938430] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586544+03:00 Tethys kernel: [1040492.938465] sd 4:0:0:0: [sda] tag#25 device offline or changed\n2025-06-12T12:20:42.586548+03:00 Tethys kernel: [1040492.938473] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586551+03:00 Tethys kernel: [1040492.938484] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586555+03:00 Tethys kernel: [1040492.938500] ldm_validate_partition_table(): Disk read failed.",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30351,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586544+03:00 Tethys kernel: [1040492.938465] sd 4:0:0:0: [sda] tag#25 device offline or changed\n2025-06-12T12:20:42.586548+03:00 Tethys kernel: [1040492.938473] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586551+03:00 Tethys kernel: [1040492.938484] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586555+03:00 Tethys kernel: [1040492.938500] ldm_validate_partition_table(): Disk read failed.\n2025-06-12T12:20:42.586558+03:00 Tethys kernel: [1040492.938528] sd 4:0:0:0: [sda] tag#26 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30354,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586555+03:00 Tethys kernel: [1040492.938500] ldm_validate_partition_table(): Disk read failed.\n2025-06-12T12:20:42.586558+03:00 Tethys kernel: [1040492.938528] sd 4:0:0:0: [sda] tag#26 device offline or changed\n2025-06-12T12:20:42.586566+03:00 Tethys kernel: [1040492.938536] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586570+03:00 Tethys kernel: [1040492.938546] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586574+03:00 Tethys kernel: [1040492.938578] sd 4:0:0:0: [sda] tag#27 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30355,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586558+03:00 Tethys kernel: [1040492.938528] sd 4:0:0:0: [sda] tag#26 device offline or changed\n2025-06-12T12:20:42.586566+03:00 Tethys kernel: [1040492.938536] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586570+03:00 Tethys kernel: [1040492.938546] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586574+03:00 Tethys kernel: [1040492.938578] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586577+03:00 Tethys kernel: [1040492.938586] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30357,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586570+03:00 Tethys kernel: [1040492.938546] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586574+03:00 Tethys kernel: [1040492.938578] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586577+03:00 Tethys kernel: [1040492.938586] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586580+03:00 Tethys kernel: [1040492.938596] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586584+03:00 Tethys kernel: [1040492.938628] sd 4:0:0:0: [sda] tag#24 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30358,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586574+03:00 Tethys kernel: [1040492.938578] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586577+03:00 Tethys kernel: [1040492.938586] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586580+03:00 Tethys kernel: [1040492.938596] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586584+03:00 Tethys kernel: [1040492.938628] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586591+03:00 Tethys kernel: [1040492.938636] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30360,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586580+03:00 Tethys kernel: [1040492.938596] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586584+03:00 Tethys kernel: [1040492.938628] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586591+03:00 Tethys kernel: [1040492.938636] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586595+03:00 Tethys kernel: [1040492.938646] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586599+03:00 Tethys kernel: [1040492.938676] sd 4:0:0:0: [sda] tag#25 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30361,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586584+03:00 Tethys kernel: [1040492.938628] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586591+03:00 Tethys kernel: [1040492.938636] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586595+03:00 Tethys kernel: [1040492.938646] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586599+03:00 Tethys kernel: [1040492.938676] sd 4:0:0:0: [sda] tag#25 device offline or changed\n2025-06-12T12:20:42.586602+03:00 Tethys kernel: [1040492.938685] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30363,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586595+03:00 Tethys kernel: [1040492.938646] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586599+03:00 Tethys kernel: [1040492.938676] sd 4:0:0:0: [sda] tag#25 device offline or changed\n2025-06-12T12:20:42.586602+03:00 Tethys kernel: [1040492.938685] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586606+03:00 Tethys kernel: [1040492.938695] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586609+03:00 Tethys kernel: [1040492.938709] Dev sda: unable to read RDB block 0",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30364,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586599+03:00 Tethys kernel: [1040492.938676] sd 4:0:0:0: [sda] tag#25 device offline or changed\n2025-06-12T12:20:42.586602+03:00 Tethys kernel: [1040492.938685] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586606+03:00 Tethys kernel: [1040492.938695] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586609+03:00 Tethys kernel: [1040492.938709] Dev sda: unable to read RDB block 0\n2025-06-12T12:20:42.586613+03:00 Tethys kernel: [1040492.938735] sd 4:0:0:0: [sda] tag#26 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30367,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586609+03:00 Tethys kernel: [1040492.938709] Dev sda: unable to read RDB block 0\n2025-06-12T12:20:42.586613+03:00 Tethys kernel: [1040492.938735] sd 4:0:0:0: [sda] tag#26 device offline or changed\n2025-06-12T12:20:42.586621+03:00 Tethys kernel: [1040492.938742] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586625+03:00 Tethys kernel: [1040492.938752] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586628+03:00 Tethys kernel: [1040492.938782] sd 4:0:0:0: [sda] tag#27 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30368,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586613+03:00 Tethys kernel: [1040492.938735] sd 4:0:0:0: [sda] tag#26 device offline or changed\n2025-06-12T12:20:42.586621+03:00 Tethys kernel: [1040492.938742] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586625+03:00 Tethys kernel: [1040492.938752] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586628+03:00 Tethys kernel: [1040492.938782] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586632+03:00 Tethys kernel: [1040492.938790] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30370,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586625+03:00 Tethys kernel: [1040492.938752] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586628+03:00 Tethys kernel: [1040492.938782] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586632+03:00 Tethys kernel: [1040492.938790] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586635+03:00 Tethys kernel: [1040492.938800] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586638+03:00 Tethys kernel: [1040492.938847] sd 4:0:0:0: [sda] tag#24 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 30371,
+            "matched_text": "I/O error",
+            "context": "2025-06-12T12:20:42.586628+03:00 Tethys kernel: [1040492.938782] sd 4:0:0:0: [sda] tag#27 device offline or changed\n2025-06-12T12:20:42.586632+03:00 Tethys kernel: [1040492.938790] I/O error, dev sda, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2\n2025-06-12T12:20:42.586635+03:00 Tethys kernel: [1040492.938800] Buffer I/O error on dev sda, logical block 0, async page read\n2025-06-12T12:20:42.586638+03:00 Tethys kernel: [1040492.938847] sd 4:0:0:0: [sda] tag#24 device offline or changed\n2025-06-12T12:20:42.586646+03:00 Tethys kernel: [1040492.938882] sd 4:0:0:0: [sda] tag#25 device offline or changed",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 38095,
+            "matched_text": "I/O error",
+            "context": "2025-06-24T23:04:18.683515+03:00 Tethys kernel: [131791.787264] md: super_written gets error=-5\n2025-06-24T23:04:18.683544+03:00 Tethys kernel: [131791.787284] md: super_written gets error=-5\n2025-06-24T23:04:18.899570+03:00 Tethys kernel: [131792.005406] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:19.051711+03:00 Tethys kernel: [131792.155200] md: super_written gets error=-5\n2025-06-24T23:04:19.051778+03:00 Tethys kernel: [131792.155234] md: super_written gets error=-5",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 38098,
+            "matched_text": "I/O error",
+            "context": "2025-06-24T23:04:19.051711+03:00 Tethys kernel: [131792.155200] md: super_written gets error=-5\n2025-06-24T23:04:19.051778+03:00 Tethys kernel: [131792.155234] md: super_written gets error=-5\n2025-06-24T23:04:21.223530+03:00 Tethys kernel: [131794.328561] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:21.447507+03:00 Tethys kernel: [131794.552114] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:22.347551+03:00 Tethys kernel: [131795.453816] BTRFS error (device dm-0): bdev /dev/mapper/ug_2A03EC_1747964605_pool1-volume1 errs: wr 1, rd 0, flush 0, corrupt 0, gen 0",
+            "severity": "medium"
+        },
+        {
+            "rule_name": "File System Error",
+            "description": "文件系统错误",
+            "line_number": 38099,
+            "matched_text": "I/O error",
+            "context": "2025-06-24T23:04:19.051778+03:00 Tethys kernel: [131792.155234] md: super_written gets error=-5\n2025-06-24T23:04:21.223530+03:00 Tethys kernel: [131794.328561] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:21.447507+03:00 Tethys kernel: [131794.552114] Buffer I/O error on dev dm-0, logical block 0, async page read\n2025-06-24T23:04:22.347551+03:00 Tethys kernel: [131795.453816] BTRFS error (device dm-0): bdev /dev/mapper/ug_2A03EC_1747964605_pool1-volume1 errs: wr 1, rd 0, flush 0, corrupt 0, gen 0\n2025-06-24T23:04:22.347576+03:00 Tethys kernel: [131795.453828] BTRFS error (device dm-0): bdev /dev/mapper/ug_2A03EC_1747964605_pool1-volume1 errs: wr 2, rd 0, flush 0, corrupt 0, gen 0",
+            "severity": "medium"
+        }
+    ],
+    "summary": {
+        "total_issues": 23,
+        "high_severity": 0,
+        "medium_severity": 23
+    }
+}
