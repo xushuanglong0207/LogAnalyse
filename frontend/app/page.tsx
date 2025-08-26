@@ -89,6 +89,8 @@ export default function Home() {
 	const [problemModalVisible, setProblemModalVisible] = useState(false)
 	const [problemForm, setProblemForm] = useState<any>({ id: null, title: '', url: '', error_type: '' })
 	const [problemFilterType, setProblemFilterType] = useState<string>('')
+	const [problemFilterQuery, setProblemFilterQuery] = useState<string>('')
+	const [problemFilterCategory, setProblemFilterCategory] = useState<string>('')
 	const [problemStatsByType, setProblemStatsByType] = useState<Record<string, number>>({})
 
 	// Toast 通知状态
@@ -647,7 +649,7 @@ export default function Home() {
 				{currentUser && <div style={{ color: '#374151' }}>Hi，<span style={{ fontWeight: 700 }}>{currentUser.username}</span></div>}
 			</div>
 			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-				{[{ color: '#059669', value: dashboardStats.uploaded_files, label: '已上传文件' }, { color: '#dc2626', value: dashboardStats.detected_issues, label: '检测到问题' }, { color: '#2563eb', value: dashboardStats.detection_rules, label: '检测规则' }].map((c, i) => (
+				{[{ color: '#059669', value: dashboardStats.uploaded_files, label: '已上传文件' }, { color: '#dc2626', value: dashboardStats.detected_issues, label: '检测到错误' }, { color: '#2563eb', value: dashboardStats.detection_rules, label: '检测规则' }, { color: '#8b5cf6', value: Object.values(problemStatsByType).reduce((a,b)=>a+b,0), label: '问题总数' }].map((c, i) => (
 					<div key={i} style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem' }}>
 						<h3 style={{ color: c.color, fontSize: '2rem', margin: 0 }}>{c.value}</h3>
 						<p style={{ color: '#6b7280', margin: 0 }}>{c.label}</p>
@@ -674,10 +676,21 @@ export default function Home() {
 	const getStatusText = () => backendStatus === 'connected' ? '✅ 后端: 运行正常' : backendStatus === 'connecting' ? '🔄 后端: 连接中...' : '❌ 后端: 连接失败'
 
 	// —— 问题库 API ——
-	const fetchProblems = async (type: string = '') => {
+	useEffect(() => {
+		// 持久化筛选条件
 		try {
-			const q = type ? `?error_type=${encodeURIComponent(type)}` : ''
-			const r = await authedFetch(`${getApiBase()}/api/problems${q}`)
+			const s = localStorage.getItem('problem_filters')
+			if (s) { const v = JSON.parse(s); setProblemFilterType(v.type||''); setProblemFilterQuery(v.q||''); setProblemFilterCategory(v.category||'') }
+		} catch {}
+	}, [])
+	useEffect(() => {
+		try { localStorage.setItem('problem_filters', JSON.stringify({ type: problemFilterType, q: problemFilterQuery, category: problemFilterCategory })) } catch {}
+	}, [problemFilterType, problemFilterQuery, problemFilterCategory])
+
+	const fetchProblems = async (type: string = problemFilterType, q: string = problemFilterQuery, category: string = problemFilterCategory) => {
+		try {
+			const params = new URLSearchParams(); if (type) params.set('error_type', type); if (q) params.set('q', q); if (category) params.set('category', category)
+			const r = await authedFetch(`${getApiBase()}/api/problems?${params.toString()}`)
 			if (r.ok) { const d = await r.json(); setProblems(d.problems || []) }
 		} catch {}
 	}
@@ -688,7 +701,7 @@ export default function Home() {
 			if (r.ok) { const d = await r.json(); setProblemStatsByType(d.by_type || {}) }
 		} catch {}
 	}
-	const openProblemAdd = () => { setProblemForm({ id: null, title: '', url: '', error_type: problemFilterType || '' }); setProblemModalVisible(true) }
+	const openProblemAdd = () => { setProblemForm({ id: null, title: '', url: '', error_type: problemFilterType || '', category: '' }); setProblemModalVisible(true) }
 	const openProblemEdit = (p: any) => { setProblemForm({ id: p.id, title: p.title, url: p.url, error_type: p.error_type }); setProblemModalVisible(true) }
 	const submitProblem = async () => {
 		try {
@@ -696,20 +709,23 @@ export default function Home() {
 			let r
 			if (problemForm.id) r = await authedFetch(`${getApiBase()}/api/problems/${problemForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 			else r = await authedFetch(`${getApiBase()}/api/problems`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-			if (r.ok) { setProblemModalVisible(false); await Promise.all([fetchProblems(problemFilterType), fetchProblemStats(null)]); showToast('问题已保存', 'success') } else showToast('保存失败', 'error')
+			if (r.ok) { setProblemModalVisible(false); await Promise.all([fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory), fetchProblemStats(null)]); showToast('问题已保存', 'success') } else showToast('保存失败', 'error')
 		} catch { showToast('保存失败', 'error') }
 	}
-	const deleteProblem = async (id: number) => { const ok = await askConfirm('确定删除该问题？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/problems/${id}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchProblems(problemFilterType), fetchProblemStats(null)]); showToast('已删除', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
-	const goToProblems = async (type: string) => { setCurrentPage('problems'); setProblemFilterType(type); await Promise.all([fetchProblems(type), fetchProblemStats([type])]) }
+	const deleteProblem = async (id: number) => { const ok = await askConfirm('确定删除该问题？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/problems/${id}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory), fetchProblemStats(null)]); showToast('已删除', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
+	const goToProblems = async (type: string) => { setCurrentPage('problems'); setProblemFilterType(type); await Promise.all([fetchProblems(type, problemFilterQuery, problemFilterCategory), fetchProblemStats([type])]) }
 
 	// 问题库页面
 	const ProblemsPage = () => (
 		<div style={{ padding: '2rem' }}>
 			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>📚 问题库</h2>
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
-				<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-					<input placeholder="按错误类型过滤，如 I/O error" value={problemFilterType} onChange={(e) => setProblemFilterType(e.target.value)} style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					<button className="btn btn-outline" onClick={() => fetchProblems(problemFilterType)}>查询</button>
+				<div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 2fr auto auto', gap: 8, alignItems: 'center' }}>
+					<input placeholder="按错误类型过滤，如 I/O error" value={problemFilterType} onChange={(e) => setProblemFilterType(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
+					<input placeholder="按名称/链接模糊查询" value={problemFilterQuery} onChange={(e) => setProblemFilterQuery(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
+					<input placeholder="问题分类(选填)" value={problemFilterCategory} onChange={(e) => setProblemFilterCategory(e.target.value)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
+					<button className="btn btn-outline" onClick={() => fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory)}>查询</button>
+					<button className="btn" onClick={() => { setProblemFilterType(''); setProblemFilterQuery(''); setProblemFilterCategory(''); fetchProblems('', '', '') }}>清空</button>
 					<button className="btn btn-primary" onClick={openProblemAdd}>+ 新增问题</button>
 				</div>
 			</div>
@@ -717,29 +733,29 @@ export default function Home() {
 				<h4 style={{ marginTop: 0 }}>统计</h4>
 				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
 					{Object.entries(problemStatsByType).map(([k,v]) => (
-						<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k) }} style={{ background: '#fff' }}>{k}（{v}）</button>
+						<button key={k} className="btn" onClick={() => { setProblemFilterType(k); fetchProblems(k, problemFilterQuery, problemFilterCategory) }} style={{ background: '#fff' }}>{k}（{v}）</button>
 					))}
-					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('') }}>全部</button>
+					<button className="btn btn-outline" onClick={() => { setProblemFilterType(''); fetchProblems('', '', '') }}>全部</button>
 				</div>
 			</div>
-			<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
-				<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
-					<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
-				</div>
-				<div style={{ maxHeight: 480, overflow: 'auto' }}>
-					{problems.map((p) => (
-						<div key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
-							<div>{p.title}</div>
-							<div><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
-							<div>{p.error_type}</div>
-							<div style={{ display: 'flex', gap: 8 }}>
-								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
-								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
+							<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
+					<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
+						<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
+					</div>
+					<div style={{ maxHeight: 480, overflow: 'auto' }}>
+						{problems.map((p) => (
+							<div key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
+								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>{p.title}</div>
+								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
+								<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.error_type}>{p.error_type}</div>
+								<div style={{ display: 'flex', gap: 8 }}>
+									<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
+									<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
+								</div>
 							</div>
-						</div>
-					))}
+						))}
+					</div>
 				</div>
-			</div>
 			<Modal visible={problemModalVisible} title={problemForm.id ? '编辑问题' : '新增问题'} onClose={() => setProblemModalVisible(false)} footer={[
 				<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
 				<button key="ok" className="btn btn-primary" disabled={!problemForm.title || !problemForm.url || !problemForm.error_type} onClick={submitProblem}>保存</button>
@@ -747,7 +763,7 @@ export default function Home() {
 				<div className="form-grid">
 					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => setProblemForm({ ...problemForm, title: e.target.value })} /></div>
 					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => setProblemForm({ ...problemForm, url: e.target.value })} /></div>
-					<div className="form-col"><div className="label">问题类型*</div><input className="ui-input" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })} placeholder="如：I/O error" /></div>
+					<div className="form-col"><div className="label">问题类型*</div><select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>{detectionRules.map((r:any)=>(<option key={r.id} value={(r.patterns?.[0]||r.name)}>{r.name}（{r.description}）</option>))}</select></div>
 				</div>
 			</Modal>
 		</div>

@@ -108,11 +108,13 @@ class ProblemCreate(BaseModel):
     title: str
     url: str
     error_type: str  # 关联的错误类型（如 I/O error、OOM Killer 等）
+    category: Optional[str] = ""
 
 class ProblemUpdate(BaseModel):
     title: Optional[str] = None
     url: Optional[str] = None
     error_type: Optional[str] = None
+    category: Optional[str] = None
 
 # 简易令牌会话存储：token -> {user_id, expiry}
 sessions: Dict[str, Dict[str, Any]] = {}
@@ -474,10 +476,15 @@ async def delete_folder(folder_id: int, ctx: Dict[str, Any] = Depends(require_au
 
 # —— 问题库接口 ——
 @app.get("/api/problems")
-async def list_problems(error_type: Optional[str] = None, ctx: Dict[str, Any] = Depends(require_auth)):
+async def list_problems(error_type: Optional[str] = None, q: Optional[str] = None, category: Optional[str] = None, ctx: Dict[str, Any] = Depends(require_auth)):
     items = problems
     if error_type:
-        items = [p for p in items if p.get("error_type") == error_type]
+        items = [p for p in items if (p.get("error_type") or "") == error_type]
+    if category:
+        items = [p for p in items if (p.get("category") or "") == category]
+    if q:
+        ql = q.lower()
+        items = [p for p in items if ql in (p.get("title","" ).lower()) or ql in (p.get("url","" ).lower()) or ql in (p.get("error_type","" ).lower())]
     return {"problems": items}
 
 @app.post("/api/problems")
@@ -487,6 +494,7 @@ async def create_problem(payload: ProblemCreate, ctx: Dict[str, Any] = Depends(r
         "title": payload.title,
         "url": payload.url,
         "error_type": payload.error_type,
+        "category": payload.category or "",
         "created_at": datetime.now().isoformat()
     }
     problems.append(new)
@@ -522,7 +530,8 @@ async def problem_stats(types: Optional[str] = None, ctx: Dict[str, Any] = Depen
         if wanted and et not in wanted:
             continue
         by_type[et] = by_type.get(et, 0) + 1
-    return {"total": sum(by_type.values()) if wanted else len(problems), "by_type": by_type}
+    total = sum(by_type.values()) if wanted else len(problems)
+    return {"total": total, "type_count": len(by_type), "by_type": by_type}
 
 # 用户管理（演示：任何登录用户可访问）
 @app.get("/api/users")
