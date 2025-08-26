@@ -81,6 +81,15 @@ export default function Home() {
 	const [analysisResults, setAnalysisResults] = useState<any[]>([])
 	const [users, setUsers] = useState<any[]>([])
 
+	// Toast 通知状态
+	const [toasts, setToasts] = useState<any[]>([])
+	const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+		const id = Date.now()
+		setToasts(prev => [...prev, { id, message, type }])
+		setTimeout(() => removeToast(id), 5000)
+	}
+	const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id))
+
 	// 预览弹窗
 	const [pasteText, setPasteText] = useState('')
 	const [previewVisible, setPreviewVisible] = useState(false)
