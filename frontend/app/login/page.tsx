@@ -51,30 +51,31 @@ export default function LoginPage() {
 	}
 
 	return (
-		<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'radial-gradient(1400px 700px at -10% -10%, #c7d2fe 0%, transparent 60%), radial-gradient(1400px 700px at 120% -10%, #bbf7d0 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)' }}>
-			<div style={{ width: 'min(420px, 92vw)', background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 30px 80px rgba(2,6,23,0.15)', borderRadius: 16, padding: 24 }}>
-				<h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111827' }}>登录</h1>
-				<div style={{ height: 12 }} />
-				<div>
-					<div style={{ fontSize: 12, color: '#6b7280' }}>用户名</div>
-					<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="用户名 (默认 admin)" autoComplete="username" style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px' }} />
+		<div className="center-page">
+			<div className="ui-card" style={{ width: 'min(420px, 92vw)' }}>
+				<div className="modal-header">
+					<h1 className="modal-title">登录</h1>
 				</div>
-				<div style={{ height: 10 }} />
-				<div>
-					<div style={{ fontSize: 12, color: '#6b7280' }}>密码</div>
-					<div style={{ position: 'relative' }}>
-						<input type={showPwd ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="密码 (默认 admin123)" autoComplete="current-password" onKeyDown={(e) => { if (e.key === 'Enter') doLogin() }} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', paddingRight: 44 }} />
-						<button onClick={() => setShowPwd(v => !v)} aria-label="toggle password" style={{ position: 'absolute', right: 6, top: 6, borderRadius: 8, padding: '6px 10px', border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer' }}>{showPwd ? '隐藏' : '显示'}</button>
+				<div className="modal-body stack-16">
+					<div className="form-col">
+						<div className="label">用户名</div>
+						<input className="ui-input" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="用户名 (默认 admin)" autoComplete="username" />
 					</div>
+					<div className="form-col">
+						<div className="label">密码</div>
+						<div style={{ position: 'relative' }}>
+							<input className="ui-input" type={showPwd ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="密码 (默认 admin123)" autoComplete="current-password" onKeyDown={(e) => { if (e.key === 'Enter') doLogin() }} style={{ paddingRight: 44 }} />
+							<button className="btn btn-outline" onClick={() => setShowPwd(v => !v)} aria-label="toggle password" style={{ position: 'absolute', right: 6, top: 6, padding: '6px 10px' }}>{showPwd ? '隐藏' : '显示'}</button>
+						</div>
+					</div>
+					<label style={{ display: 'flex', alignItems: 'center', gap: 8, userSelect: 'none' }}>
+						<input type="checkbox" checked={form.remember} onChange={(e) => setForm({ ...form, remember: e.target.checked })} /> 保持登录
+					</label>
+					{error && <div style={{ color: '#b91c1c', fontSize: 12 }}>{error}</div>}
 				</div>
-				<div style={{ height: 8 }} />
-				<label style={{ display: 'flex', alignItems: 'center', gap: 8, userSelect: 'none' }}>
-					<input type="checkbox" checked={form.remember} onChange={(e) => setForm({ ...form, remember: e.target.checked })} /> 保持登录
-				</label>
-				<div style={{ height: 8 }} />
-				{error && <div style={{ color: '#b91c1c', fontSize: 12, marginBottom: 8 }}>{error}</div>}
-				<button disabled={loading} onClick={doLogin} style={{ width: '100%', background: '#2563eb', color: '#fff', padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700 }}>{loading ? '登录中...' : '登录'}</button>
-				<div style={{ color: '#9ca3af', fontSize: 12, marginTop: 8 }}>默认管理员：admin / admin123</div>
+				<div className="modal-footer">
+					<button disabled={loading} onClick={doLogin} className="btn btn-primary" style={{ minWidth: 120 }}>{loading ? '登录中...' : '登录'}</button>
+				</div>
 			</div>
 		</div>
 	)
