@@ -114,17 +114,19 @@ export default function Home() {
 	const jumpMatch = (delta: number) => {
 		const cont = previewContainerRef.current
 		if (!cont) return
-		const marks = cont.querySelectorAll('mark')
-		if (!marks || marks.length === 0) return
-		let next = currentMatchIndex + delta
-		if (next < 0) next = marks.length - 1
-		if (next >= marks.length) next = 0
+		const marks = Array.from(cont.querySelectorAll('mark'))
+		if (marks.length === 0) return
+		const next = (currentMatchIndex + delta + marks.length) % marks.length
 		setCurrentMatchIndex(next)
 		marks.forEach(m => m.removeAttribute('data-active'))
 		const target = marks[next] as HTMLElement
 		target.setAttribute('data-active', '1')
 		target.scrollIntoView({ block: 'center' })
 	}
+
+	// 分析详情弹窗
+	const [detailVisible, setDetailVisible] = useState(false)
+	const [detailData, setDetailData] = useState<any>(null)
 
 	// 用户/规则弹窗
 	const [userModalVisible, setUserModalVisible] = useState(false)
