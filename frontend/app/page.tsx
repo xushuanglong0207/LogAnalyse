@@ -156,10 +156,11 @@ export default function Home() {
 	const fetchRuleFolders = async () => { try { const r = await authedFetch(`${getApiBase()}/api/rule-folders`); if (r.ok) { const d = await r.json(); setRuleFolders(d.folders || []); if (d.folders && d.folders.length && selectedFolderId === null) setSelectedFolderId(d.folders[0].id) } } catch {} }
 	const fetchUsers = async () => { try { const r = await authedFetch(`${getApiBase()}/api/users`); if (r.ok) { const d = await r.json(); setUsers(d.users || []) } } catch {} }
 	const fetchMe = async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/me`); if (r.ok) { const d = await r.json(); setCurrentUser(d.user) } } catch {} }
+	const fetchAnalysisResults = async () => { try { const r = await authedFetch(`${getApiBase()}/api/analysis/results`); if (r.ok) { const d = await r.json(); setAnalysisResults(d.results || []) } } catch {} }
 
 	useEffect(() => {
 		const base = computeApiBase(); setApiBase(base)
-		;(async () => { const ok = await checkBackendStatus(base); if (ok) { await fetchMe(); await Promise.all([fetchDashboardStats(), fetchUploadedFiles(), fetchRuleFolders(), fetchDetectionRules('', selectedFolderId), fetchUsers()]) } })()
+		;(async () => { const ok = await checkBackendStatus(base); if (ok) { await fetchMe(); await Promise.all([fetchDashboardStats(), fetchUploadedFiles(), fetchRuleFolders(), fetchDetectionRules('', selectedFolderId), fetchUsers(), fetchAnalysisResults()]) } })()
 	}, [])
 	useEffect(() => { if (apiBase && currentUser) fetchDetectionRules(searchRule, selectedFolderId) }, [searchRule, selectedFolderId, apiBase, currentUser])
 
@@ -279,7 +280,7 @@ export default function Home() {
 	const ProfileModal = () => (
 		<Modal visible={profileVisible} title="个人中心" onClose={() => setProfileVisible(false)} footer={[
 			<button key="logout" className="btn btn-danger" onClick={() => { localStorage.removeItem('token'); sessionStorage.removeItem('token'); window.location.href = '/login' }}>退出登录</button>,
-			<button key="ok" className="btn btn-primary" onClick={async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pwdForm) }); if (r.ok) { alert('密码已更新，请重新登录'); window.location.href = '/login' } else alert('更新失败') } catch { alert('更新失败') } }}>修改密码</button>
+			<button key="ok" className="btn btn-primary" onClick={async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pwdForm) }); if (r.ok) { showToast('密码已更新，请重新登录', 'success'); window.location.href = '/login' } else showToast('更新失败', 'error') } catch { showToast('更新失败', 'error') } }}>修改密码</button>
 		]}>
 			<div className="stack-16">
 				<div style={{ color: '#374151' }}>当前用户：<b>{currentUser?.username}</b></div>
@@ -441,7 +442,7 @@ export default function Home() {
 					</div>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 						<input placeholder="搜索 (回车下一个，Shift+回车上一个)" value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); jumpMatch(e.shiftKey ? -1 : 1) } }} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px' }} />
-						<span style={{ color: '#6b7280', fontSize: 12 }}>匹配: {previewMatches}</span>
+						<span style={{ color: '#6b7280', fontSize: 12 }}>匹配: {previewMatches}{previewMatches>0?`（第 ${currentMatchIndex+1} / ${previewMatches} 个）`:''}</span>
 					</div>
 				</div>
 				<div ref={previewContainerRef} style={{ maxHeight: '65vh', overflow: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
@@ -527,7 +528,7 @@ export default function Home() {
 
 			<Modal visible={ruleModalVisible} title={ruleModalMode === 'add' ? '新建规则' : '编辑规则'} onClose={() => setRuleModalVisible(false)} footer={[
 				<button key="cancel" onClick={() => setRuleModalVisible(false)} style={{ background: '#fff', border: '1px solid #e5e7eb', padding: '8px 14px', borderRadius: 8, cursor: 'pointer' }}>取消</button>,
-				<button key="ok" onClick={submitRule} style={{ background: '#2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>保存</button>
+				<button key="ok" disabled={!ruleForm.name || !ruleForm.operator || !ruleForm.patterns} onClick={submitRule} style={{ background: !ruleForm.name || !ruleForm.operator || !ruleForm.patterns ? '#9ca3af' : '#2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: !ruleForm.name || !ruleForm.operator || !ruleForm.patterns ? 'not-allowed' : 'pointer' }}>保存</button>
 			]}>
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 					<div>
@@ -605,7 +606,7 @@ export default function Home() {
 
 			<Modal visible={userModalVisible} title={userModalMode === 'add' ? '添加用户' : '编辑用户'} onClose={() => setUserModalVisible(false)} footer={[
 				<button key="cancel" onClick={() => setUserModalVisible(false)} style={{ background: '#fff', border: '1px solid #e5e7eb', padding: '8px 14px', borderRadius: 8, cursor: 'pointer' }}>取消</button>,
-				<button key="ok" onClick={submitUser} style={{ background: '#2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>提交</button>
+				<button key="ok" disabled={!userForm.username || (userModalMode==='add' && !userForm.password)} onClick={submitUser} style={{ background: !userForm.username || (userModalMode==='add' && !userForm.password) ? '#9ca3af' : '#2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: !userForm.username || (userModalMode==='add' && !userForm.password) ? 'not-allowed' : 'pointer' }}>提交</button>
 			]}>
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 					<div>
@@ -689,8 +690,6 @@ export default function Home() {
 
 			{/* 个人中心 */}
 			<ProfileModal />
-			<UserModal />
-			<RuleModal />
 			<FolderModal />
 
 			<Toasts toasts={toasts} remove={removeToast} />
@@ -716,8 +715,8 @@ function ProfileCenter({ currentUser, onLogout }: any) {
 	const submit = async () => {
 		try {
 			const r = await fetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }, body: JSON.stringify(form) })
-			if (r.ok) { setVisible(false); alert('密码已更新，请重新登录'); onLogout() } else { alert('更新失败') }
-		} catch { alert('更新失败') }
+			if (r.ok) { setVisible(false); showToast('密码已更新，请重新登录', 'success'); onLogout() } else { showToast('更新失败', 'error') }
+		} catch { showToast('更新失败', 'error') }
 	}
 	if (!currentUser) return null
 	return (
