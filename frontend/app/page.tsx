@@ -867,4 +867,6 @@ function ProfileCenter({ currentUser, onLogout }: any) {
 				</div>
 			</Modal>
 		</>
-	) 
+	)
+}
+  
