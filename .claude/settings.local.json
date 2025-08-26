@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo apt update)",
+      "Bash(sudo:*)",
+      "Bash(apt:*)",
+      "Read(/D:\\etc/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
