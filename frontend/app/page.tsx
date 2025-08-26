@@ -820,7 +820,19 @@ export default function Home() {
 						const link = sanitizeUrl(e.target.value)
 						setProblemForm({ ...problemForm, url: link, title: (problemForm.title ? removeUrls(problemForm.title) : titleFromUrl(link)) })
 					}} /></div>
-					<div className="form-col"><div className="label">问题类型*</div><select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>{detectionRules.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description}）</option>))}</select></div>
+					<div className="form-col" style={{ position: 'relative' }}>
+						<div className="label">问题类型*</div>
+						<input className="ui-input" placeholder="搜索规则名称/描述..." onChange={(e)=> setProblemFilterQuery(e.target.value)} value={problemFilterQuery} style={{ marginBottom: 6 }} />
+						<select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>
+							{detectionRules
+								.filter((r:any)=>{
+									const q = (problemFilterQuery||'').toLowerCase()
+									if (!q) return true
+									return r.name.toLowerCase().includes(q) || (r.description||'').toLowerCase().includes(q)
+								})
+								.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description}）</option>))}
+						</select>
+					</div>
 				</div>
 			</Modal>
 		</div>
