@@ -60,12 +60,13 @@ export default function DashboardPage() {
 	const [detailData, setDetailData] = useState<any>(null)
 	const [detailLoading, setDetailLoading] = useState(false)
 
-	// 简化标题：仅显示规则名称和描述
+	// 简化标题：仅显示规则名称和描述（不显示具体的匹配内容）
 	const getDetailTitle = useMemo(() => {
 		if (!detailData || !Array.isArray(detailData.issues) || detailData.issues.length === 0) return '分析详情'
 		const pick = detailData.issues.find((i: any) => i?.severity === 'high') || detailData.issues[0]
 		const name = String(pick?.rule_name || '问题')
 		const desc = String(pick?.description || '')
+		// 只显示规则名称和描述，不显示具体匹配的内容
 		return desc ? `${name}: ${desc}` : name
 	}, [detailData])
 	
@@ -260,7 +261,7 @@ export default function DashboardPage() {
 						</div>
 					</div>
 
-					<div className="overflow-auto" style={{ maxHeight: '70vh', minHeight: '50vh', height: 'auto' }}>
+					<div className="overflow-auto" style={{ maxHeight: '80vh', minHeight: '60vh', height: 'auto' }}>
 						{latestResults.length > 0 ? (
 							<div className="divide-y divide-gray-100">
 								{latestResults.map((result, index) => (

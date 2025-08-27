@@ -399,12 +399,13 @@ export default function Home() {
 	}
 	const openAnalysisDetail = async (fileId: number, filename: string) => {
 		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); 
-			// 简化标题：仅显示规则名称和描述
-			let title = filename;
+			// 简化标题：仅显示规则名称和描述（不显示具体的匹配内容）
+			let title = '分析详情';
 			if (d.issues && d.issues.length > 0) {
 				const pick = d.issues.find((i: any) => i?.severity === 'high') || d.issues[0];
 				const name = String(pick?.rule_name || '问题');
 				const desc = String(pick?.description || '');
+				// 只显示规则名称和描述，不显示具体匹配的内容
 				title = desc ? `${name}: ${desc}` : name;
 			}
 			setDetailData({ title, data: d }); setDetailVisible(true); setCurrentPage('dashboard'); setViewHighlightId(fileId); setTimeout(()=>setViewHighlightId(null), 10000); setTimeout(()=>{ try { const el = document.querySelector(`[data-analysis-id="${fileId}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {} }, 100) } } catch { showToast('详情加载失败', 'error') }
@@ -851,7 +852,7 @@ OOM | "Out of memory"
 				))}
 			</div>
 
-			<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem', maxHeight: '60vh', minHeight: '40vh', overflow: 'auto' }}>
+			<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem', maxHeight: '75vh', minHeight: '50vh', overflow: 'auto' }}>
 				<h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>最近分析结果（双击查看详情）</h3>
 				{analysisResults.length > 0 ? (
 					analysisResults.slice(-20).reverse().map((result, index) => (
