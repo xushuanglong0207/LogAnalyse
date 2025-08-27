@@ -167,10 +167,6 @@ export default function Home() {
 	const [folderModalVisible, setFolderModalVisible] = useState(false)
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
 
-	// 个人中心
-	const [profileVisible, setProfileVisible] = useState(false)
-	const [pwdForm, setPwdForm] = useState({ old_password: '', new_password: '' })
-
 	// 状态卡
 	const [cardExpanded, setCardExpanded] = useState(true)
 	useEffect(() => {
@@ -306,35 +302,9 @@ export default function Home() {
 				].map(nav => (
 					<button key={nav.id} onClick={() => setCurrentPage(nav.id)} className="btn" style={{ background: currentPage === nav.id ? 'linear-gradient(135deg, var(--brand), var(--brand2))' : '#fff', color: currentPage === nav.id ? '#fff' : '#374151' }}>{nav.label}</button>
 				))}
-				<button onClick={() => setProfileVisible(true)} className="btn btn-outline">个人中心</button>
+				<button onClick={() => window.location.href = '/profile'} className="btn btn-outline">个人中心</button>
 			</div>
 		</nav>
-	)
-
-	// 个人中心弹窗
-	const ProfileModal = () => (
-		<Modal visible={profileVisible} title="个人中心" onClose={() => setProfileVisible(false)} footer={[
-							<button key="logout" className="btn btn-danger" onClick={() => { localStorage.removeItem('token'); sessionStorage.removeItem('token'); window.location.href = '/login' }}>退出登录</button>,
-				<button key="ok" className="btn btn-primary" onClick={async () => { try { await authedFetch(`${getApiBase()}/api/users/${currentUser?.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: currentUser?.position||'' }) }); const r = await authedFetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pwdForm) }); if (r.ok) { showToast('资料已更新，请重新登录', 'success'); window.location.href = '/login' } else showToast('已保存职位，密码未修改', 'info') } catch { showToast('更新失败', 'error') } }}>保存资料</button>
-		]}>
-			<div className="stack-16">
-									<div style={{ color: '#374151' }}>当前用户：<b>{currentUser?.username}</b></div>
-					<div className="form-grid">
-						<div className="form-col">
-							<div className="label">职位</div>
-							<input className="ui-input" value={currentUser?.position||''} onChange={(e) => setCurrentUser({ ...currentUser, position: e.target.value })} placeholder="如：运维工程师" />
-						</div>
-						<div className="form-col">
-							<div className="label">原密码</div>
-							<input className="ui-input" type="password" value={pwdForm.old_password} onChange={(e) => setPwdForm({ ...pwdForm, old_password: e.target.value })} />
-						</div>
-						<div className="form-col">
-							<div className="label">新密码</div>
-							<input className="ui-input" type="password" value={pwdForm.new_password} onChange={(e) => setPwdForm({ ...pwdForm, new_password: e.target.value })} />
-						</div>
-					</div>
-			</div>
-		</Modal>
 	)
 
 	// 示例：用户编辑弹窗（美化）
@@ -869,8 +839,7 @@ export default function Home() {
 			{/* 登录弹窗已弃用：统一跳转 /login */}
 			{false && <Modal visible={false} title="登录" onClose={() => {}} footer={[]} />}
 
-			{/* 个人中心 */}
-			<ProfileModal />
+			{/* 个人中心已移至独立页面 /profile */}
 			<FolderModal />
 
 			<Toasts toasts={toasts} remove={removeToast} />
@@ -920,50 +889,6 @@ export default function Home() {
 				})()}
 			</Modal>
 		</div>
-	)
-}
-
-function ProfileCenter({ currentUser, onLogout }: any) {
-	const [visible, setVisible] = useState(false)
-	const [form, setForm] = useState({ old_password: '', new_password: '' })
-	const getApiBase = () => (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8001` : '')
-	const getStoredToken = () => (typeof window !== 'undefined' ? (localStorage.getItem('token') || sessionStorage.getItem('token') || '') : '')
-	const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
-		const event = new CustomEvent('toast', { detail: { msg, type } })
-		window.dispatchEvent(event as any)
-	}
-	useEffect(() => {
-		const handler = (e: any) => {}
-		window.addEventListener('toast', handler as any)
-		return () => window.removeEventListener('toast', handler as any)
-	}, [])
-	const submit = async () => {
-		try {
-			const r = await fetch(`${getApiBase()}/api/auth/change_password`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getStoredToken()}` }, body: JSON.stringify(form) })
-			if (r.ok) { setVisible(false); showToast('密码已更新，请重新登录', 'success'); onLogout() } else { showToast('更新失败', 'error') }
-		} catch { showToast('更新失败', 'error') }
-	}
-	if (!currentUser) return null
-	return (
-		<>
-			<button onClick={() => setVisible(true)} style={{ display: 'none' }} id="open-profile-modal" />
-			<Modal visible={visible} title="个人中心" onClose={() => setVisible(false)} footer={[
-				<button key="logout" onClick={onLogout} style={{ background: '#ef4444', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>退出登录</button>,
-				<button key="ok" onClick={submit} style={{ background: '#2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>修改密码</button>
-			]}>
-				<div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, minWidth: 360 }}>
-					<div style={{ color: '#374151' }}>当前用户：<b>{currentUser.username}</b></div>
-					<div>
-						<div style={{ fontSize: 12, color: '#6b7280' }}>原密码</div>
-						<input type="password" value={form.old_password} onChange={(e) => setForm({ ...form, old_password: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					</div>
-					<div>
-						<div style={{ fontSize: 12, color: '#6b7280' }}>新密码</div>
-						<input type="password" value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-					</div>
-				</div>
-			</Modal>
-		</>
 	)
 }
  
