@@ -167,6 +167,18 @@ export default function Home() {
 	const [folderModalVisible, setFolderModalVisible] = useState(false)
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
 
+	// 数据缓存状态
+	const [dataCache, setDataCache] = useState({
+		dashboardStats: null,
+		uploadedFiles: null,
+		ruleFolders: null,
+		detectionRules: null,
+		users: null,
+		analysisResults: null,
+		problems: null,
+		problemStats: null
+	})
+
 	// 状态卡
 	const [cardExpanded, setCardExpanded] = useState(true)
 	useEffect(() => {
@@ -179,8 +191,29 @@ export default function Home() {
 		if (!urlBase) return false
 		try { const response = await fetch(`${urlBase}/health`); if (response.ok) { setBackendStatus('connected'); return true } else { setBackendStatus('failed'); return false } } catch { setBackendStatus('failed'); return false }
 	}
-	const fetchDashboardStats = async () => { try { const r = await authedFetch(`${getApiBase()}/api/dashboard/stats`); if (r.ok) setDashboardStats(await r.json()) } catch {} }
-	const fetchUploadedFiles = async () => { try { const r = await authedFetch(`${getApiBase()}/api/logs`); if (r.ok) { const d = await r.json(); setUploadedFiles(d.files || []) } } catch {} }
+	const fetchDashboardStats = async (useCache = true) => { 
+		if (useCache && dataCache.dashboardStats) return
+		try { 
+			const r = await authedFetch(`${getApiBase()}/api/dashboard/stats`)
+			if (r.ok) {
+				const data = await r.json()
+				setDashboardStats(data)
+				setDataCache(prev => ({ ...prev, dashboardStats: data }))
+			}
+		} catch {} 
+	}
+	const fetchUploadedFiles = async (useCache = true) => { 
+		if (useCache && dataCache.uploadedFiles) return
+		try { 
+			const r = await authedFetch(`${getApiBase()}/api/logs`)
+			if (r.ok) { 
+				const d = await r.json()
+				const files = d.files || []
+				setUploadedFiles(files)
+				setDataCache(prev => ({ ...prev, uploadedFiles: files }))
+			} 
+		} catch {} 
+	}
 	const fetchDetectionRules = async (q = '', folderId: number | null = null) => { try { const params = new URLSearchParams(); if (q) params.set('query', q); if (folderId !== null) params.set('folder_id', String(folderId)); const r = await authedFetch(`${getApiBase()}/api/rules?${params.toString()}`); if (r.ok) { const d = await r.json(); setDetectionRules(d.rules || []) } } catch {} }
 	const fetchRuleFolders = async () => { try { const r = await authedFetch(`${getApiBase()}/api/rule-folders`); if (r.ok) { const d = await r.json(); setRuleFolders(d.folders || []); if (d.folders && d.folders.length && selectedFolderId === null) setSelectedFolderId(d.folders[0].id) } } catch {} }
 	const fetchUsers = async () => { try { const r = await authedFetch(`${getApiBase()}/api/users`); if (r.ok) { const d = await r.json(); setUsers(d.users || []) } } catch {} }
@@ -189,9 +222,56 @@ export default function Home() {
 
 	useEffect(() => {
 		const base = computeApiBase(); setApiBase(base)
-		;(async () => { const ok = await checkBackendStatus(base); if (ok) { await fetchMe(); await Promise.all([fetchDashboardStats(), fetchUploadedFiles(), fetchRuleFolders(), fetchDetectionRules('', selectedFolderId), fetchUsers(), fetchAnalysisResults()]) } })()
+		;(async () => { 
+			const ok = await checkBackendStatus(base)
+			if (ok) { 
+				await fetchMe()
+				// 只加载基础数据，其他数据按需加载
+				await Promise.all([
+					fetchRuleFolders()
+				])
+			} 
+		})()
 	}, [])
-	useEffect(() => { if (apiBase && currentUser) { fetchDetectionRules(searchRule, selectedFolderId); if (currentPage === 'problems') { fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory); fetchProblemStats(null) } } }, [searchRule, selectedFolderId, apiBase, currentUser, currentPage])
+
+	// 按需加载数据的 useEffect
+	useEffect(() => { 
+		if (apiBase && currentUser) { 
+			// 根据当前页面按需加载数据
+			switch (currentPage) {
+				case 'dashboard':
+					fetchDashboardStats()
+					fetchAnalysisResults()
+					break
+				case 'logs':
+					fetchUploadedFiles()
+					break
+				case 'rules':
+					fetchDetectionRules(searchRule, selectedFolderId)
+					break
+				case 'problems':
+					fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory)
+					fetchProblemStats(null)
+					break
+				case 'users':
+					fetchUsers()
+					break
+			}
+		} 
+	}, [apiBase, currentUser, currentPage])
+
+	// 搜索相关的 useEffect（添加防抖动）
+	useEffect(() => {
+		if (!apiBase || !currentUser) return
+		
+		const timeoutId = setTimeout(() => {
+			if (currentPage === 'rules') {
+				fetchDetectionRules(searchRule, selectedFolderId)
+			}
+		}, 300) // 300ms 防抖动
+
+		return () => clearTimeout(timeoutId)
+	}, [searchRule, selectedFolderId, apiBase, currentUser, currentPage])
 
 	// —— 交互与业务辅助 ——
 	const askConfirm = (text: string) => openConfirm(text)
@@ -220,7 +300,13 @@ export default function Home() {
 				const r = await authedFetch(`${getApiBase()}/api/logs/upload`, { method: 'POST', body: fd })
 				if (!r.ok) throw new Error('上传失败')
 			}
-			await Promise.all([fetchUploadedFiles(), fetchDashboardStats()])
+			// 只刷新需要的数据
+			if (currentPage === 'logs') {
+				await fetchUploadedFiles(false) // 强制刷新
+			}
+			if (currentPage === 'dashboard') {
+				await fetchDashboardStats(false) // 强制刷新
+			}
 			showToast('文件上传成功', 'success')
 		} catch {
 			showToast('文件上传失败', 'error')
@@ -437,9 +523,34 @@ export default function Home() {
 			<div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 24 }}>
 				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16 }}>
 					<h3 style={{ fontWeight: 600, marginBottom: 12 }}>上传日志文件（支持任意扩展名）</h3>
-					<div style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 24, textAlign: 'center' }}>
+					<div 
+						style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 24, textAlign: 'center', transition: 'all 0.3s ease' }}
+						onDragOver={(e) => {
+							e.preventDefault()
+							e.currentTarget.style.borderColor = '#3b82f6'
+							e.currentTarget.style.backgroundColor = '#eff6ff'
+						}}
+						onDragLeave={(e) => {
+							e.preventDefault()
+							e.currentTarget.style.borderColor = '#d1d5db'
+							e.currentTarget.style.backgroundColor = 'transparent'
+						}}
+						onDrop={(e) => {
+							e.preventDefault()
+							e.currentTarget.style.borderColor = '#d1d5db'
+							e.currentTarget.style.backgroundColor = 'transparent'
+							const files = Array.from(e.dataTransfer.files)
+							if (files.length > 0) {
+								handleFileUpload({ target: { files } })
+							}
+						}}
+					>
 						<input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="fileUpload" />
-						<label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}>📎 点击选择文件或拖拽到此处</label>
+						<label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600, display: 'block' }}>
+							<div style={{ fontSize: '2rem', marginBottom: 8 }}>📎</div>
+							点击选择文件或拖拽到此处
+							<div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>支持多文件同时上传</div>
+						</label>
 					</div>
 				</div>
 				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16 }}>
@@ -613,8 +724,14 @@ export default function Home() {
 						<div key={user.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
 							<div>{user.username}</div><div>{user.email}</div><div>{user.role}</div>
 							<div style={{ display: 'flex', gap: 8 }}>
-								<button onClick={() => openUserEdit(user)} style={{ background: '#10b981', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>编辑</button>
-								<button onClick={() => confirmDeleteUser(user.id)} style={{ background: '#ef4444', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>删除</button>
+								{user.username !== 'admin' ? (
+									<>
+										<button onClick={() => openUserEdit(user)} style={{ background: '#10b981', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>编辑</button>
+										<button onClick={() => confirmDeleteUser(user.id)} style={{ background: '#ef4444', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>删除</button>
+									</>
+								) : (
+									<span style={{ color: '#9ca3af', fontSize: '12px', padding: '6px 10px' }}>系统管理员</span>
+								)}
 							</div>
 						</div>
 					))}
@@ -636,10 +753,17 @@ export default function Home() {
 					</div>
 					<div>
 						<div style={{ fontSize: 12, color: '#6b7280' }}>角色*</div>
-						<select value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
-							<option value="管理员">管理员</option>
-							<option value="普通用户">普通用户</option>
-						</select>
+						{userForm.username === 'admin' && userModalMode === 'edit' ? (
+							<div style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', background: '#f9fafb', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+								<span>管理员</span>
+								<span style={{ fontSize: '10px', background: '#fef3c7', color: '#92400e', padding: '2px 6px', borderRadius: 4 }}>不可修改</span>
+							</div>
+						) : (
+							<select value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
+								<option value="管理员">管理员</option>
+								<option value="普通用户">普通用户</option>
+							</select>
+						)}
 					</div>
 					{userModalMode === 'add' && (
 						<div>
@@ -771,15 +895,15 @@ export default function Home() {
 				</div>
 			</div>
 			<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
-				<div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
-					<div>问题名称</div><div>链接</div><div>错误类型</div><div>操作</div>
+				<div style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
+					<div style={{ fontSize: '14px' }}>问题名称</div><div style={{ fontSize: '14px' }}>链接</div><div style={{ fontSize: '14px' }}>错误类型</div><div style={{ fontSize: '14px' }}>操作</div>
 				</div>
 				<div style={{ maxHeight: 480, overflow: 'auto' }}>
 					{problems.slice((problemPage-1)*PROBLEM_PAGE_SIZE, problemPage*PROBLEM_PAGE_SIZE).map((p) => (
-						<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 2fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent') }}>
-							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>{p.title}</div>
-							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{p.url}</a></div>
-							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.error_type}>{p.error_type}</div>
+						<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent') }}>
+							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '500' }} title={p.title}>{p.title}</div>
+							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }} onMouseEnter={(e) => e.target.style.textDecoration = 'underline'} onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>{p.url}</a></div>
+							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: '#6b7280' }} title={p.error_type}>{p.error_type}</div>
 							<div style={{ display: 'flex', gap: 8 }}>
 								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
 								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
