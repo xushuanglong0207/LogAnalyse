@@ -7,9 +7,13 @@
       "Read(/D:\\etc/**)",
       "Bash(pkill:*)",
       "Bash(lsof:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "D:\\d"
+    ]
   }
 }
