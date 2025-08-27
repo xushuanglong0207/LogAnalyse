@@ -1,11 +1,1046 @@
-新增一个模块，模块名称为：问题库
-功能：
-    1.用户可以手动录入问题和问题链接，每一个问题需要对应一个规则里面的错误类型
-    2.一个类型的错误可以录入多个问题，点击查看问题列表 可以查看该问题对应的错误类型 和该错误类型下的问题数量
-    3.上放可以新增一个统计，统计的规则是：
-        1.统计每个错误类型下有多少个问题
-        2.统计总的问题数量
-    4.录入问题字段：问题名称、问题链接、问题类型等
-日志管理模块功能优化：
-1、分析完成后，若匹配到规则类型的错误，则自动显示该错误类型下有多少个问题，点击进入问题列表，然后列表的问题连接可点击跳转对应的bug
-2、分析完成后的问题默认排在最顶部 方便找到 如果列表过多数据 支持滚动条
+root@DXP8800PRO-120B:/volume7/log-analysev2# docker ps
+CONTAINER ID   IMAGE            COMMAND                  CREATED        STATUS         PORTS                                       NAMES
+71f014b7e3df   node:20-alpine   "docker-entrypoint.s…"   43 hours ago   Up 3 minutes   0.0.0.0:3001->3000/tcp, :::3001->3000/tcp   log-analysev2-frontend-1
+774c21fee919   postgres:16      "docker-entrypoint.s…"   43 hours ago   Up 3 minutes   0.0.0.0:5433->5432/tcp, :::5433->5432/tcp   log-analysev2-postgres-1
+f90db3ed3549   redis:7-alpine   "docker-entrypoint.s…"   43 hours ago   Up 3 minutes   0.0.0.0:6380->6379/tcp, :::6380->6379/tcp   log-analysev2-redis-1
+root@DXP8800PRO-120B:/volume7/log-analysev2# docker inspect 71f014b7e3df 71f014b7e3df 774c21fee919
+[
+    {
+        "Id": "71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e",
+        "Created": "2025-08-25T11:21:12.382327447Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "sh",
+            "-c",
+            "\n  echo '🔄 配置前端环境...' &&\n  npm config set legacy-peer-deps true &&\n  echo 'legacy-peer-deps=true' > .npmrc &&\n  echo '🔄 安装前端依赖...' &&\n  npm install --legacy-peer-deps --silent &&\n  echo '✅ 前端依赖安装完成' &&\n  echo '🚀 启动前端服务...' &&\n  npm run dev\n"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 51795,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2025-08-27T06:33:09.643194133Z",
+            "FinishedAt": "2025-08-27T06:25:32.297777866Z"
+        },
+        "Image": "sha256:7cdef5a331927fafa250be6166052d8599bf5eb7b014342538c2cc79b70a081f",
+        "ResolvConfPath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/resolv.conf",
+        "HostnamePath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/hostname",
+        "HostsPath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/hosts",
+        "LogPath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e-json.log",
+        "Name": "/log-analysev2-frontend-1",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/volume7/log-analysev2/frontend:/app:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "log-analysev2_default",
+            "PortBindings": {
+                "3000/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "3001"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8-init/diff:/volume1/@docker/overlay2/84ac2316cf1528fbc39c84df11aa180c4bbdb995b3acada6f578735f64630d86/diff:/volume1/@docker/overlay2/3c94cc0758ed98455182b4d84d8d0c91d5c262bbc2435f0bce4e1ab559d9321b/diff:/volume1/@docker/overlay2/07d77e59d36ad84974d3d7acb89f2aecd6c9de92a3c453bb296a40be0fd32a3e/diff:/volume1/@docker/overlay2/89ea5ac20e0e1a54199d92ac763a29280c1ce0dd036b1310cef4fb418b608160/diff",
+                "MergedDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8/merged",
+                "UpperDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8/diff",
+                "WorkDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/volume7/log-analysev2/frontend",
+                "Destination": "/app",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "71f014b7e3df",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "3000/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "NEXT_PUBLIC_API_URL=http://localhost:8001",
+                "NODE_ENV=development",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=20.19.4",
+                "YARN_VERSION=1.22.22"
+            ],
+            "Cmd": [
+                "sh",
+                "-c",
+                "\n  echo '🔄 配置前端环境...' &&\n  npm config set legacy-peer-deps true &&\n  echo 'legacy-peer-deps=true' > .npmrc &&\n  echo '🔄 安装前端依赖...' &&\n  npm install --legacy-peer-deps --silent &&\n  echo '✅ 前端依赖安装完成' &&\n  echo '🚀 启动前端服务...' &&\n  npm run dev\n"
+            ],
+            "Image": "node:20-alpine",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "c0f60ac0d618b2bdd56f47b5fa7ac037074b6aa6fdbb40f4383eec6f8d44ea20",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "backend:service_started:false",
+                "com.docker.compose.image": "sha256:7cdef5a331927fafa250be6166052d8599bf5eb7b014342538c2cc79b70a081f",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "log-analysev2",
+                "com.docker.compose.project.config_files": "/volume7/log-analysev2/docker-compose.minimal.yml",
+                "com.docker.compose.project.working_dir": "/volume7/log-analysev2",
+                "com.docker.compose.service": "frontend",
+                "com.docker.compose.version": "2.26.1"
+            }
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "2e1d0427fbd77981dfc87b165a0f0e60e99c248ffb9b34e3121f02e94e460c3a",
+            "SandboxKey": "/var/run/docker/netns/2e1d0427fbd7",
+            "Ports": {
+                "3000/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "3001"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "3001"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "log-analysev2_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "log-analysev2-frontend-1",
+                        "frontend"
+                    ],
+                    "MacAddress": "02:42:ac:13:00:04",
+                    "NetworkID": "8c38d0ad4678451f4606c0eee2c813c240c6708bbcc3d8fb375731d702c1bf67",
+                    "EndpointID": "330078cf6b927de0026eb7fb2a2edadd06842948be8cc809ee75de01d0ce10c8",
+                    "Gateway": "172.19.0.1",
+                    "IPAddress": "172.19.0.4",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "log-analysev2-frontend-1",
+                        "frontend",
+                        "71f014b7e3df"
+                    ]
+                }
+            }
+        }
+    },
+    {
+        "Id": "71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e",
+        "Created": "2025-08-25T11:21:12.382327447Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "sh",
+            "-c",
+            "\n  echo '🔄 配置前端环境...' &&\n  npm config set legacy-peer-deps true &&\n  echo 'legacy-peer-deps=true' > .npmrc &&\n  echo '🔄 安装前端依赖...' &&\n  npm install --legacy-peer-deps --silent &&\n  echo '✅ 前端依赖安装完成' &&\n  echo '🚀 启动前端服务...' &&\n  npm run dev\n"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 51795,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2025-08-27T06:33:09.643194133Z",
+            "FinishedAt": "2025-08-27T06:25:32.297777866Z"
+        },
+        "Image": "sha256:7cdef5a331927fafa250be6166052d8599bf5eb7b014342538c2cc79b70a081f",
+        "ResolvConfPath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/resolv.conf",
+        "HostnamePath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/hostname",
+        "HostsPath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/hosts",
+        "LogPath": "/volume1/@docker/containers/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e/71f014b7e3dfbac9373685f6486ef0c11056fb1c2755a47b42cf7aec19c6d91e-json.log",
+        "Name": "/log-analysev2-frontend-1",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/volume7/log-analysev2/frontend:/app:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "log-analysev2_default",
+            "PortBindings": {
+                "3000/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "3001"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8-init/diff:/volume1/@docker/overlay2/84ac2316cf1528fbc39c84df11aa180c4bbdb995b3acada6f578735f64630d86/diff:/volume1/@docker/overlay2/3c94cc0758ed98455182b4d84d8d0c91d5c262bbc2435f0bce4e1ab559d9321b/diff:/volume1/@docker/overlay2/07d77e59d36ad84974d3d7acb89f2aecd6c9de92a3c453bb296a40be0fd32a3e/diff:/volume1/@docker/overlay2/89ea5ac20e0e1a54199d92ac763a29280c1ce0dd036b1310cef4fb418b608160/diff",
+                "MergedDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8/merged",
+                "UpperDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8/diff",
+                "WorkDir": "/volume1/@docker/overlay2/e91ef4861f559d7488f7598b0d89c6e8bc98e25fe9e68ec65fb538fa43c30eb8/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/volume7/log-analysev2/frontend",
+                "Destination": "/app",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "71f014b7e3df",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "3000/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "NEXT_PUBLIC_API_URL=http://localhost:8001",
+                "NODE_ENV=development",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=20.19.4",
+                "YARN_VERSION=1.22.22"
+            ],
+            "Cmd": [
+                "sh",
+                "-c",
+                "\n  echo '🔄 配置前端环境...' &&\n  npm config set legacy-peer-deps true &&\n  echo 'legacy-peer-deps=true' > .npmrc &&\n  echo '🔄 安装前端依赖...' &&\n  npm install --legacy-peer-deps --silent &&\n  echo '✅ 前端依赖安装完成' &&\n  echo '🚀 启动前端服务...' &&\n  npm run dev\n"
+            ],
+            "Image": "node:20-alpine",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "c0f60ac0d618b2bdd56f47b5fa7ac037074b6aa6fdbb40f4383eec6f8d44ea20",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "backend:service_started:false",
+                "com.docker.compose.image": "sha256:7cdef5a331927fafa250be6166052d8599bf5eb7b014342538c2cc79b70a081f",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "log-analysev2",
+                "com.docker.compose.project.config_files": "/volume7/log-analysev2/docker-compose.minimal.yml",
+                "com.docker.compose.project.working_dir": "/volume7/log-analysev2",
+                "com.docker.compose.service": "frontend",
+                "com.docker.compose.version": "2.26.1"
+            }
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "2e1d0427fbd77981dfc87b165a0f0e60e99c248ffb9b34e3121f02e94e460c3a",
+            "SandboxKey": "/var/run/docker/netns/2e1d0427fbd7",
+            "Ports": {
+                "3000/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "3001"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "3001"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "log-analysev2_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "log-analysev2-frontend-1",
+                        "frontend"
+                    ],
+                    "MacAddress": "02:42:ac:13:00:04",
+                    "NetworkID": "8c38d0ad4678451f4606c0eee2c813c240c6708bbcc3d8fb375731d702c1bf67",
+                    "EndpointID": "330078cf6b927de0026eb7fb2a2edadd06842948be8cc809ee75de01d0ce10c8",
+                    "Gateway": "172.19.0.1",
+                    "IPAddress": "172.19.0.4",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "log-analysev2-frontend-1",
+                        "frontend",
+                        "71f014b7e3df"
+                    ]
+                }
+            }
+        }
+    },
+    {
+        "Id": "774c21fee9199104eea67456dd569d3eb3cac688b1f350054b2d6346494034c3",
+        "Created": "2025-08-25T11:21:12.342221209Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "postgres"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 51662,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2025-08-27T06:33:08.107602175Z",
+            "FinishedAt": "2025-08-27T06:25:21.538127295Z"
+        },
+        "Image": "sha256:4b802c5161ddfa2ae4beac272c4e24aa5e162a20451c8489cbb952a88507732f",
+        "ResolvConfPath": "/volume1/@docker/containers/774c21fee9199104eea67456dd569d3eb3cac688b1f350054b2d6346494034c3/resolv.conf",
+        "HostnamePath": "/volume1/@docker/containers/774c21fee9199104eea67456dd569d3eb3cac688b1f350054b2d6346494034c3/hostname",
+        "HostsPath": "/volume1/@docker/containers/774c21fee9199104eea67456dd569d3eb3cac688b1f350054b2d6346494034c3/hosts",
+        "LogPath": "/volume1/@docker/containers/774c21fee9199104eea67456dd569d3eb3cac688b1f350054b2d6346494034c3/774c21fee9199104eea67456dd569d3eb3cac688b1f350054b2d6346494034c3-json.log",
+        "Name": "/log-analysev2-postgres-1",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "log-analysev2_default",
+            "PortBindings": {
+                "5432/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "5433"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "volume",
+                    "Source": "log-analysev2_postgres_data",
+                    "Target": "/var/lib/postgresql/data",
+                    "VolumeOptions": {}
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/volume1/@docker/overlay2/fc4b111e2edabd57b78cc641bee66121de60cfddc542b4c97901269d4b9a9c12-init/diff:/volume1/@docker/overlay2/a887d6c6a5cf6aa4e0e9c54ad68204d5a6311bf2e798dc2ce4ff6f010de83711/diff:/volume1/@docker/overlay2/ca504d06117c392015cf171fa62c4894c1928269c4decd865ab442cd5bbe657c/diff:/volume1/@docker/overlay2/90007dc8bfbe8c7d29073b2d8540777d68219e6434b7bf389f7e7e0c91fa58c3/diff:/volume1/@docker/overlay2/f2d1c70fa41ae26fe18c9a4d3fbedc32287f49445bde2638e3103dc1471a6a20/diff:/volume1/@docker/overlay2/0479beccf166516264224a559303ebffffe19857dba4ceaab28ddcbfdabdbdc3/diff:/volume1/@docker/overlay2/2067f978f83aaebd05a62fb69e39d04e7379c29a21b93d34932993b94ae87b0f/diff:/volume1/@docker/overlay2/e86a2e7945280099f3658a83dc24a6d4a0bce4620a5e8c2184268a97895531a3/diff:/volume1/@docker/overlay2/3ff90e1fd5fa07dba109de50aa921fef2e20373197979c9eca46123aceae9216/diff:/volume1/@docker/overlay2/2e4379aabb29a21610363d63b9bef0c7c6fec5fdba2ef1a79eba1e250ef04695/diff:/volume1/@docker/overlay2/00f7a469222583972ecc77d025f95c1e0bf4a2364a358cf037754523b0aa143e/diff:/volume1/@docker/overlay2/d13df43a450524f269e05973aeac06f497473c996a14b71e6a84288a22dff4a0/diff:/volume1/@docker/overlay2/4dd0cedfebe157173075a771e4e15709d2e35788ac0125363d7452bd2dde45c3/diff:/volume1/@docker/overlay2/8f39539421825b2f36e8ca66694ed6389b224e35dd3ccecf10990de036ff758b/diff:/volume1/@docker/overlay2/5ad4615ff55c87154829a3533f089c8654a61c312d765cf77a61dea6cf229d66/diff",
+                "MergedDir": "/volume1/@docker/overlay2/fc4b111e2edabd57b78cc641bee66121de60cfddc542b4c97901269d4b9a9c12/merged",
+                "UpperDir": "/volume1/@docker/overlay2/fc4b111e2edabd57b78cc641bee66121de60cfddc542b4c97901269d4b9a9c12/diff",
+                "WorkDir": "/volume1/@docker/overlay2/fc4b111e2edabd57b78cc641bee66121de60cfddc542b4c97901269d4b9a9c12/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "log-analysev2_postgres_data",
+                "Source": "/volume1/@docker/volumes/log-analysev2_postgres_data/_data",
+                "Destination": "/var/lib/postgresql/data",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "774c21fee919",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "5432/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "POSTGRES_DB=loganalyzer",
+                "POSTGRES_USER=admin",
+                "POSTGRES_PASSWORD=password123",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/16/bin",
+                "GOSU_VERSION=1.17",
+                "LANG=en_US.utf8",
+                "PG_MAJOR=16",
+                "PG_VERSION=16.10-1.pgdg13+1",
+                "PGDATA=/var/lib/postgresql/data"
+            ],
+            "Cmd": [
+                "postgres"
+            ],
+            "Image": "postgres:16",
+            "Volumes": {
+                "/var/lib/postgresql/data": {}
+            },
+            "WorkingDir": "",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "d9736192869b9ac290441f20eaf8f76d0296f34c6f5923c020963a0767f75f04",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:4b802c5161ddfa2ae4beac272c4e24aa5e162a20451c8489cbb952a88507732f",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "log-analysev2",
+                "com.docker.compose.project.config_files": "/volume7/log-analysev2/docker-compose.minimal.yml",
+                "com.docker.compose.project.working_dir": "/volume7/log-analysev2",
+                "com.docker.compose.service": "postgres",
+                "com.docker.compose.version": "2.26.1"
+            },
+            "StopSignal": "SIGINT"
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "ba4b0ba80106728c97970583d1f3ed9752447f59679f864f54ce1c5c65846eea",
+            "SandboxKey": "/var/run/docker/netns/ba4b0ba80106",
+            "Ports": {
+                "5432/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "5433"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "5433"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "log-analysev2_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "log-analysev2-postgres-1",
+                        "postgres"
+                    ],
+                    "MacAddress": "02:42:ac:13:00:03",
+                    "NetworkID": "8c38d0ad4678451f4606c0eee2c813c240c6708bbcc3d8fb375731d702c1bf67",
+                    "EndpointID": "ef958d51fdae9b92a3c9b6508463ca9a92cef76ad6384ee58a234c6f26e77da7",
+                    "Gateway": "172.19.0.1",
+                    "IPAddress": "172.19.0.3",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "log-analysev2-postgres-1",
+                        "postgres",
+                        "774c21fee919"
+                    ]
+                }
+            }
+        }
+    }
+]
+
+root@DXP8800PRO-120B:/volume7/log-analysev2# docker inspect f4dfce137f3e
+[
+    {
+        "Id": "f4dfce137f3e79b98ddaff4a147a6a73887380b9e14619adb42fd55f6e5999a4",
+        "Created": "2025-08-25T11:21:12.366058858Z",
+        "Path": "bash",
+        "Args": [
+            "-c",
+            "\n  echo '🔄 安装后端依赖...' &&\n  apt-get update -qq &&\n  apt-get install -qq -y gcc g++ curl &&\n  pip install --quiet --no-cache-dir fastapi uvicorn sqlalchemy psycopg2-binary redis python-jose passlib python-multipart pydantic python-dotenv aiofiles &&\n  echo '✅ 后端依赖安装完成' &&\n  echo '🚀 启动后端服务...' &&\n  uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload\n"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 137,
+            "Error": "driver failed programming external connectivity on endpoint log-analysev2-backend-1 (84c4f5d18efb8664edf8bc9d469faa1765635b8d06da1847d102dfb89b0555c0): Error starting userland proxy: listen tcp4 0.0.0.0:8001: bind: address already in use",
+            "StartedAt": "2025-08-27T02:50:05.928376017Z",
+            "FinishedAt": "2025-08-27T06:25:32.929943716Z"
+        },
+        "Image": "sha256:2ba2e944f9cd164e42cf5e50da9ddeff526b43886a47738a75ab424624cdc427",
+        "ResolvConfPath": "/volume1/@docker/containers/f4dfce137f3e79b98ddaff4a147a6a73887380b9e14619adb42fd55f6e5999a4/resolv.conf",
+        "HostnamePath": "/volume1/@docker/containers/f4dfce137f3e79b98ddaff4a147a6a73887380b9e14619adb42fd55f6e5999a4/hostname",
+        "HostsPath": "/volume1/@docker/containers/f4dfce137f3e79b98ddaff4a147a6a73887380b9e14619adb42fd55f6e5999a4/hosts",
+        "LogPath": "/volume1/@docker/containers/f4dfce137f3e79b98ddaff4a147a6a73887380b9e14619adb42fd55f6e5999a4/f4dfce137f3e79b98ddaff4a147a6a73887380b9e14619adb42fd55f6e5999a4-json.log",
+        "Name": "/log-analysev2-backend-1",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/volume7/log-analysev2/backend:/app:rw",
+                "/volume7/log-analysev2/uploads:/app/uploads:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "log-analysev2_default",
+            "PortBindings": {
+                "8000/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "8001"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/volume1/@docker/overlay2/9c0ebfdaa8d0b93ce1c4ba8c75d7629491ae5a74f19e28002c641d3738412464-init/diff:/volume1/@docker/overlay2/7c6ad7cbf91e4825d0a7e1939fa53d87e754f024bd0ef85dfbb9643c4730fe36/diff:/volume1/@docker/overlay2/f7a3a8cbb377173ddda729d9d0e7a61ca25d31cf424a16397ebdd60d803deff4/diff:/volume1/@docker/overlay2/ac29e95c62710891943716114883256f8e93708559121aa1ea597191b8176d37/diff:/volume1/@docker/overlay2/5ad4615ff55c87154829a3533f089c8654a61c312d765cf77a61dea6cf229d66/diff",
+                "MergedDir": "/volume1/@docker/overlay2/9c0ebfdaa8d0b93ce1c4ba8c75d7629491ae5a74f19e28002c641d3738412464/merged",
+                "UpperDir": "/volume1/@docker/overlay2/9c0ebfdaa8d0b93ce1c4ba8c75d7629491ae5a74f19e28002c641d3738412464/diff",
+                "WorkDir": "/volume1/@docker/overlay2/9c0ebfdaa8d0b93ce1c4ba8c75d7629491ae5a74f19e28002c641d3738412464/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/volume7/log-analysev2/backend",
+                "Destination": "/app",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/volume7/log-analysev2/uploads",
+                "Destination": "/app/uploads",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "f4dfce137f3e",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "8000/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "DEBUG=true",
+                "DATABASE_URL=postgresql://admin:password123@postgres:5432/loganalyzer",
+                "REDIS_URL=redis://redis:6379",
+                "SECRET_KEY=log-analyzer-secret-key-2024",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D",
+                "PYTHON_VERSION=3.11.13",
+                "PYTHON_SHA256=8fb5f9fbc7609fa822cb31549884575db7fd9657cbffb89510b5d7975963a83a"
+            ],
+            "Cmd": [
+                "bash",
+                "-c",
+                "\n  echo '🔄 安装后端依赖...' &&\n  apt-get update -qq &&\n  apt-get install -qq -y gcc g++ curl &&\n  pip install --quiet --no-cache-dir fastapi uvicorn sqlalchemy psycopg2-binary redis python-jose passlib python-multipart pydantic python-dotenv aiofiles &&\n  echo '✅ 后端依赖安装完成' &&\n  echo '🚀 启动后端服务...' &&\n  uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload\n"
+            ],
+            "Image": "python:3.11-slim",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "f31b5e5bfc1096552615a1a419cb75326cb9147c25d1845a1627f5146b69636b",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "postgres:service_started:false,redis:service_started:false",
+                "com.docker.compose.image": "sha256:2ba2e944f9cd164e42cf5e50da9ddeff526b43886a47738a75ab424624cdc427",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "log-analysev2",
+                "com.docker.compose.project.config_files": "/volume7/log-analysev2/docker-compose.minimal.yml",
+                "com.docker.compose.project.working_dir": "/volume7/log-analysev2",
+                "com.docker.compose.service": "backend",
+                "com.docker.compose.version": "2.26.1"
+            }
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "fe60ac2626cecaf976a80d970de0e847857a4f9dbae24dd28e36888d4db45b66",
+            "SandboxKey": "/var/run/docker/netns/fe60ac2626ce",
+            "Ports": {},
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "log-analysev2_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "log-analysev2-backend-1",
+                        "backend"
+                    ],
+                    "MacAddress": "",
+                    "NetworkID": "8c38d0ad4678451f4606c0eee2c813c240c6708bbcc3d8fb375731d702c1bf67",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "log-analysev2-backend-1",
+                        "backend",
+                        "f4dfce137f3e"
+                    ]
+                }
+            }
+        }
+    }
+]

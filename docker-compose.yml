@@ -1,94 +1,100 @@
+version: "3.9"
+
 services:
-  # PostgreSQL 数据库
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: loganalyzer
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
     ports:
-      - "5432:5432"
+      - "5433:5432"                 # 宿主用 5433，避免占用 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - app-network
-    restart: unless-stopped
+    networks: [app]
 
-  # Redis 缓存
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server","--appendonly","yes"]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - app-network
-    restart: unless-stopped
+    networks: [app]
 
-  # 后端 API 服务
   backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    image: python:3.11-slim
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./backend:/app:rw
+      - ./database:/app/database:rw     # 持久化根目录（包括 uploads 与 *.json）
+    environment:
+      PYTHONUNBUFFERED: "1"
+      LOG_ANALYZER_DATA: /app/database  # 明确数据根目录（app/main.py 会使用）
+      MAX_CONTENT_BYTES: "20971520"     # 20MB，可调
+      ANALYSIS_WORKERS: "4"             # 后台分析并发线程
+      DATABASE_URL: postgresql://admin:password123@postgres:5432/loganalyzer
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: your-secret-key-here
+      DEBUG: "true"
+    command: >
+      bash -lc "
+        apt-get update -qq &&
+        apt-get install -y -qq curl gcc g++ &&
+        pip install --quiet --no-cache-dir
+          fastapi uvicorn pydantic python-multipart aiofiles
+          python-jose passlib
+          sqlalchemy psycopg2-binary
+          redis &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
     ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://admin:password123@postgres:5432/loganalyzer
-      - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=your-secret-key-here
-      - DEBUG=true
+      - "8001:8000"                  # 统一宿主 8001
     depends_on:
       - postgres
       - redis
-    volumes:
-      - ./uploads:/app/uploads
-    networks:
-      - app-network
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL","curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks: [app]
 
-  # Celery 异步任务处理
-  celery:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A app.celery worker --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql://admin:password123@postgres:5432/loganalyzer
-      - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=your-secret-key-here
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - ./uploads:/app/uploads
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  # 前端应用
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app:rw
+    environment:
+      # 浏览器要访问宿主机 8001；如果你用域名/反代，可换成 https://你的域名
+      NEXT_PUBLIC_API_URL: http://localhost:8001
+    command: >
+      sh -lc "
+        npm config set legacy-peer-deps true &&
+        npm install --legacy-peer-deps --silent &&
+        npm run dev
+      "
     ports:
       - "3000:3000"
-    environment:
-      # 前端会自动检测后端IP地址
-      - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
-      - backend
-    networks:
-      - app-network
-    restart: unless-stopped
+      backend:
+        condition: service_started
+    networks: [app]
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  app-network:
+  app:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16 
