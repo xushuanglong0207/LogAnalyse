@@ -390,9 +390,10 @@ class RuleCreate(BaseModel):
     description: Optional[str] = ""
     enabled: bool = True
     patterns: List[str] = []  # 正则或关键字列表
-    operator: str = "OR"      # AND / OR / NOT
-    is_regex: bool = True
+    operator: Optional[str] = "OR"      # 兼容旧逻辑
+    is_regex: Optional[bool] = True
     folder_id: Optional[int] = 1
+    dsl: Optional[str] = None            # 新增：DSL 表达式
 
 class RuleUpdate(BaseModel):
     name: Optional[str] = None
@@ -402,6 +403,7 @@ class RuleUpdate(BaseModel):
     operator: Optional[str] = None
     is_regex: Optional[bool] = None
     folder_id: Optional[int] = None
+    dsl: Optional[str] = None
 
 rule_folders: List[Dict[str, Any]] = [
     {"id": 1, "name": "默认"}
@@ -822,9 +824,10 @@ async def create_rule(payload: RuleCreate, ctx: Dict[str, Any] = Depends(require
         "description": payload.description or "",
         "enabled": payload.enabled,
         "patterns": payload.patterns or [],
-        "operator": (payload.operator or "OR").upper(),
-        "is_regex": bool(payload.is_regex),
+        "operator": (payload.operator or "OR").upper() if payload.operator is not None else "OR",
+        "is_regex": bool(payload.is_regex) if payload.is_regex is not None else True,
         "folder_id": payload.folder_id or 1,
+        "dsl": (payload.dsl or "").strip(),
     }
     detection_rules.append(rule)
     return {"message": "规则创建成功", "rule": rule}
