@@ -10,6 +10,7 @@ from pydantic import BaseModel
 import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+import bisect
 
 # 暂时注释掉数据库相关导入，等依赖安装好后再启用
 # from .api.v1 import rules as rules_router
@@ -180,83 +181,93 @@ def _eval_ast(ast: _Ast, text_lower: str) -> bool:
 
 # —— 规则匹配逻辑 ——
 
-def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Any]:
+# 预处理内容：拆分行、小写缓存、换行位置索引
+def _precompute_content(content: str):
+    lines = content.split('\n')
+    lines_lower = [ln.lower() for ln in lines]
+    content_lower = content.lower()
+    # 记录每个换行符在内容中的偏移，用于快速行号定位
+    newline_positions = []
+    off = 0
+    for ln in lines[:-1]:  # 最后一行之后没有换行符
+        off += len(ln)
+        newline_positions.append(off)
+        off += 1  # '\n'
+    return {"lines": lines, "lines_lower": lines_lower, "content_lower": content_lower, "newline_positions": newline_positions}
+
+def _line_number_from_pos(pos: int, newline_positions: list[int]) -> int:
+    # 基于二分查找快速定位行号（1-based）
+    return bisect.bisect_right(newline_positions, max(0, pos)) + 1
+
+DSL_CACHE: Dict[str, Any] = {}
+
+def _compile_dsl(rule_id: Any, expr: str):
+    key = f"{rule_id}:{expr}"
+    c = DSL_CACHE.get(key)
+    if c:
+        return c
+    tokens = _tokenize(expr)
+    rpn = _to_rpn(tokens)
+    ast = _rpn_to_ast(rpn)
+    phrases = [t[1] for t in tokens if isinstance(t, tuple) and t[0] == 'PHRASE']
+    c = {"tokens": tokens, "rpn": rpn, "ast": ast, "phrases": phrases}
+    DSL_CACHE[key] = c
+    return c
+
+def evaluate_rule_matches(content: str, rule: Dict[str, Any], pre: Optional[Dict[str, Any]] = None) -> List[Any]:
     """根据规则返回匹配列表。支持 DSL(| & ! () 和引号短语)；
     若未检测到DSL符号，则回退到旧的 OR/AND/NOT/正则 行为。
     结果以“近似行级”返回，避免逐字匹配。
     """
+    prectx = pre or _precompute_content(content)
+    lines = prectx["lines"]
+    lines_lower = prectx["lines_lower"]
+    content_lower = prectx["content_lower"]
     # 预判 DSL
     expr = ''
-    print(f"  DSL检查开始 - 规则: {rule.get('name', 'unknown')}")
-    print(f"  rule.get('dsl'): {repr(rule.get('dsl'))}")
-    print(f"  isinstance(rule.get('dsl'), str): {isinstance(rule.get('dsl'), str)}")
     
     if isinstance(rule.get('dsl'), str) and rule['dsl'].strip():
         expr = rule['dsl'].strip()
-        print(f"  DSL字段检查通过，expr设置为: {repr(expr)}")
     else:
-        print(f"  DSL字段检查失败，尝试patterns兼容性检查")
         # 兼容：如果 patterns 是单行表达式且包含 DSL 运算符，则当作 DSL
         pats = rule.get('patterns')
-        print(f"  patterns: {pats}")
         if isinstance(pats, list) and len(pats)==1 and isinstance(pats[0], str):
             cand = pats[0].strip()
-            print(f"  检查patterns候选: {repr(cand)}")
             if any(ch in cand for ch in ['&','|','!','！','(',')','"']):
                 expr = cand
-                print(f"  patterns兼容性检查通过，expr设置为: {repr(expr)}")
-            else:
-                print(f"  patterns不包含DSL运算符")
-        else:
-            print(f"  patterns格式不符合DSL兼容要求")
-    
-    print(f"  最终expr值: {repr(expr)}")
-    print(f"  expr布尔值: {bool(expr)}")
     
     if expr:
-        print(f"  开始DSL处理，表达式: {expr}")  # 调试信息
-        tokens = _tokenize(expr)
-        print(f"  词法分析结果: {tokens}")  # 调试信息
-        rpn = _to_rpn(tokens)
-        print(f"  RPN: {rpn}")  # 调试信息
-        ast = _rpn_to_ast(rpn)
-        print(f"  AST: {ast}")  # 调试信息
+        compiled = _compile_dsl(rule.get('id','0'), expr)
+        tokens = compiled["tokens"]
+        ast = compiled["ast"]
         # 按行评估
-        lines = content.split('\n')
         matches = []
         offset = 0
         matched_lines = 0
-        for idx, line in enumerate(lines):
-            line_lower = line.lower()
-            print(f"  检查第{idx+1}行: {line[:50]}...")  # 调试信息
+        for idx, line_lower in enumerate(lines_lower):
             if _eval_ast(ast, line_lower):
                 matched_lines += 1
-                print(f"    ✓ 第{idx+1}行匹配成功!")  # 调试信息
-                # 找到一个代表性的命中位置：取任意短语首次出现
+                # 代表性的命中位置：取任意短语首次出现
                 pos = 0
                 found = False
-                # 粗略从 tokens 提取短语
-                for t in tokens:
-                    if isinstance(t, tuple) and t[0]=='PHRASE':
-                        p = t[1].lower()
-                        k = line_lower.find(p)
-                        if k >= 0:
-                            pos = k
-                            found = True
-                            break
+                for p in compiled["phrases"]:
+                    pl = p.lower()
+                    k = line_lower.find(pl)
+                    if k >= 0:
+                        pos = k
+                        found = True
+                        break
                 start_index = offset + (pos if found else 0)
-                end_index = start_index + (len(tokens[0][1]) if found and isinstance(tokens[0], tuple) else max(1, len(line)))
+                end_index = start_index + (len(compiled["phrases"][0]) if (found and compiled["phrases"]) else max(1, len(lines[idx])))
                 # 构造一个与正则匹配对象类似的轻量对象
                 class M:
                     def __init__(self, s, e, g):
                         self._s=s; self._e=e; self._g=g
                     def start(self): return self._s
                     def end(self): return self._e
-                    def group(self): return self._g
-                matches.append(M(start_index, end_index, line.strip()))
-            offset += len(line) + 1
-        
-        print(f"  DSL匹配完成，共匹配 {matched_lines} 行，返回 {len(matches)} 个匹配对象")  # 调试信息
+                    def group(self): return lines[idx].strip()
+                matches.append(M(start_index, end_index, lines[idx].strip()))
+            offset += len(lines[idx]) + 1
         return matches
 
     # —— 旧逻辑回退（保留向后兼容） ——
@@ -268,23 +279,22 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Any]:
         if is_regex:
             return list(re.finditer(pat, content, re.IGNORECASE))
         else:
-            matches = []
-            start = 0
-            pat_l = pat.lower()
-            cont_l = content.lower()
-            while True:
-                idx = cont_l.find(pat_l, start)
-                if idx == -1:
-                    break
-                class M:
-                    def __init__(self, s, e):
-                        self._s = s; self._e = e
-                    def start(self): return self._s
-                    def end(self): return self._e
-                    def group(self): return content[self._s:self._e]
-                matches.append(M(idx, idx + len(pat)))
-                start = idx + len(pat)
-            return matches
+            # 使用不区分大小写的单个模式搜索
+            return list(re.finditer(re.escape(pat), content, re.IGNORECASE))
+
+    # 性能优化：OR 情况尽可能合并为一次正则扫描
+    if operator == "OR" and patterns:
+        try:
+            if is_regex:
+                union = "(?:" + ")|(?:".join(patterns) + ")"
+                reg = re.compile(union, re.IGNORECASE)
+            else:
+                union = "|".join(re.escape(p) for p in patterns)
+                reg = re.compile(union, re.IGNORECASE)
+            flat = list(reg.finditer(content))
+            return flat
+        except Exception:
+            pass
 
     all_lists = [find_matches(p) for p in patterns]
 
@@ -966,13 +976,12 @@ def _perform_analysis(file_id: int):
     
     # 分析
     issues = []
-    lines = content.split('\n')
+    pre = _precompute_content(content)
+    lines = pre["lines"]
     print(f"开始分析文件 {file_id}，规则数量: {len(detection_rules)}")
     
     for rule in detection_rules:
-        print(f"检查规则: {rule['name']}, enabled: {rule.get('enabled', True)}, dsl: {rule.get('dsl', 'N/A')}")
-        matches = evaluate_rule_matches(content, rule)
-        print(f"  规则 {rule['name']} 匹配数量: {len(matches)}")
+        matches = evaluate_rule_matches(content, rule, pre)
         
         if not matches:
             continue
@@ -990,7 +999,7 @@ def _perform_analysis(file_id: int):
                     context = '\n'.join(lines[:5])
                     matched_text = ""
                 else:
-                    line_number = content[:m.start()].count('\n') + 1
+                    line_number = _line_number_from_pos(m.start(), pre["newline_positions"]) 
                     context_start = max(0, line_number - 2)
                     context_end = min(len(lines), line_number + 1)
                     context = '\n'.join(lines[context_start:context_end])
@@ -1026,7 +1035,7 @@ def _perform_analysis(file_id: int):
                 context = '\n'.join(lines[:5])
                 matched_text = ""
             else:
-                line_number = content[:m.start()].count('\n') + 1
+                line_number = _line_number_from_pos(m.start(), pre["newline_positions"]) 
                 context_start = max(0, line_number - 3)
                 context_end = min(len(lines), line_number + 2)
                 context = '\n'.join(lines[context_start:context_end])
