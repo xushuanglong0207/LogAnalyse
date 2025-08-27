@@ -953,6 +953,7 @@ OOM | "Out of memory"
 	}
 	const deleteProblem = async (id: number) => { const ok = await askConfirm('确定删除该问题？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/problems/${id}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory), fetchProblemStats(null)]); showToast('已删除', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
 	const goToProblems = async (type: string) => {
+		clearSelection() // 清除文本选择，防止页面跳转时文本被全选
 		setDetailVisible(false)
 		setCurrentPage('problems')
 		setProblemFilterType(type)
@@ -1108,22 +1109,30 @@ OOM | "Out of memory"
 						groups[key].push(it)
 					}
 					const entries = Object.entries(groups)
+					
+					// 获取规则描述的辅助函数
+					const getRuleDescription = (ruleName: string) => {
+						const rule = allDetectionRules.find((r: any) => r.name === ruleName)
+						return rule?.description || ''
+					}
 					return (
 						<div style={{ maxHeight: '65vh', overflow: 'auto', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>
 							<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题，{entries.length} 个类型</div>
 							{entries.map(([typeKey, list], gi) => {
 								const page = pageByGroup[typeKey] || 1
 								const shown = (list as any[]).slice(0, page * PAGE_SIZE_PER_GROUP)
+								const ruleDescription = getRuleDescription(typeKey)
 								return (
 									<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
 										<div onClick={() => setCollapsedGroups(v => ({ ...v, [typeKey]: !v[typeKey] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<div style={{ fontWeight: 800, color: '#111827' }}>{typeKey}</div>
+												{ruleDescription && <div style={{ color: '#6b7280', fontSize: 12, fontStyle: 'italic' }}>- {ruleDescription}</div>}
 												<span style={{ color: '#6b7280', fontSize: 12 }}>({Array.isArray(list)?list.length:0} 条)</span>
 											</div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[typeKey] || 0}</span>
-												<button onClick={(e) => { e.stopPropagation(); goToProblems(typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
+												<button onClick={(e) => { e.stopPropagation(); clearSelection(); goToProblems(typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
 											</div>
 										</div>
 										{!collapsedGroups[typeKey] && (
@@ -1131,10 +1140,9 @@ OOM | "Out of memory"
 												{shown.map((it: any, ii: number) => (
 													<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
 														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-															<div style={{ fontWeight: 600 }}>{it.rule_name || typeKey}</div>
 															<div style={{ color: '#6b7280', fontSize: 12 }}>行 {it.line_number || '-'}</div>
 														</div>
-														<pre style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{it.context || it.matched_text || ''}</pre>
+														<pre style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', color: '#dc2626' }}>{it.context || it.matched_text || ''}</pre>
 													</div>
 												))}
 												{shown.length < (list as any[]).length && (
