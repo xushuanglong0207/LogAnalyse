@@ -894,7 +894,51 @@ def _perform_analysis(file_id: int):
         
         if not matches:
             continue
-        for m in matches:
+            
+        # 对于DSL规则或有多个匹配的情况，合并为一个问题
+        if rule.get('dsl') or len(matches) > 1:
+            # 收集所有匹配的信息
+            match_details = []
+            all_contexts = []
+            line_numbers = []
+            
+            for m in matches:
+                if m is None:
+                    line_number = 1
+                    context = '\n'.join(lines[:5])
+                    matched_text = ""
+                else:
+                    line_number = content[:m.start()].count('\n') + 1
+                    context_start = max(0, line_number - 2)
+                    context_end = min(len(lines), line_number + 1)
+                    context = '\n'.join(lines[context_start:context_end])
+                    matched_text = m.group()
+                
+                match_details.append({
+                    "line": line_number,
+                    "text": matched_text,
+                    "context": context
+                })
+                line_numbers.append(line_number)
+                all_contexts.append(f"行 {line_number}: {matched_text}")
+            
+            # 创建合并的问题条目
+            combined_context = '\n\n'.join([f"匹配 {i+1} (行 {detail['line']}):\n{detail['context']}" 
+                                          for i, detail in enumerate(match_details)])
+            combined_matched_text = f"共 {len(matches)} 个匹配: " + "; ".join([detail['text'] for detail in match_details if detail['text']])
+            
+            issues.append({
+                "rule_name": rule["name"],
+                "description": rule.get("description", ""),
+                "line_number": min(line_numbers) if line_numbers else 1,
+                "matched_text": combined_matched_text,
+                "context": combined_context,
+                "match_count": len(matches),
+                "severity": "high" if ("panic" in rule["name"].lower() or "oom" in rule["name"].lower()) else "medium"
+            })
+        else:
+            # 单个匹配的传统处理方式
+            m = matches[0]
             if m is None:
                 line_number = 1
                 context = '\n'.join(lines[:5])

@@ -35,6 +35,11 @@ export default function DashboardPage() {
 		recent_activity: [] 
 	})
 	const [analysisResults, setAnalysisResults] = useState<any[]>([])
+	
+	// 详情模态框相关状态
+	const [detailVisible, setDetailVisible] = useState(false)
+	const [detailData, setDetailData] = useState<any>(null)
+	const [detailLoading, setDetailLoading] = useState(false)
 
 	const getStoredToken = () => (typeof window === 'undefined' ? '' : (localStorage.getItem('token') || sessionStorage.getItem('token') || ''))
 	
@@ -84,14 +89,19 @@ export default function DashboardPage() {
 
 	const openAnalysisDetail = async (fileId: number, filename: string) => {
 		try { 
+			setDetailLoading(true)
+			setDetailVisible(true)
+			setDetailData(null)
+			
 			const r = await authedFetch(`${apiBase}/api/analysis/${fileId}`)
 			if (r.ok) { 
 				const d = await r.json()
-				// 这里可以打开详情模态框或跳转到详情页面
-				console.log('分析详情:', d)
+				setDetailData(d)
 			} 
 		} catch (err) {
 			console.error('详情加载失败')
+		} finally {
+			setDetailLoading(false)
 		}
 	}
 
@@ -233,7 +243,10 @@ export default function DashboardPage() {
 									>
 										<div className="flex items-center justify-between">
 											<div className="flex-1">
-												<h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+												<h3 
+													className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 truncate"
+													title={result.filename} // 鼠标悬停显示完整文件名
+												>
 													{result.filename}
 												</h3>
 												<p className="text-gray-600 text-sm mt-1">
@@ -268,6 +281,115 @@ export default function DashboardPage() {
 					</div>
 				</div>
 			</div>
+
+			{/* Analysis Detail Modal */}
+			{detailVisible && (
+				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+					<div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[80vh] flex flex-col">
+						<div className="p-6 border-b border-gray-100 flex items-center justify-between">
+							<div className="flex items-center space-x-3">
+								<div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+									<Activity className="w-4 h-4 text-white" />
+								</div>
+								<div>
+									<h3 
+										className="text-lg font-bold text-gray-900 truncate max-w-md"
+										title={detailData?.filename}
+									>
+										{detailData?.filename || '分析详情'}
+									</h3>
+									{detailData?.summary && (
+										<p className="text-sm text-gray-600">
+											共发现 {detailData.summary.total_issues} 个问题
+											{detailData.summary.high_severity > 0 && 
+												<span className="ml-2 text-red-600">• {detailData.summary.high_severity} 个高风险</span>
+											}
+										</p>
+									)}
+								</div>
+							</div>
+							<button
+								onClick={() => setDetailVisible(false)}
+								className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-600 transition-colors duration-200"
+							>
+								×
+							</button>
+						</div>
+						
+						<div className="flex-1 overflow-auto p-6">
+							{detailLoading ? (
+								<div className="text-center py-12">
+									<div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+									<p className="text-gray-600">加载详情中...</p>
+								</div>
+							) : detailData?.issues?.length > 0 ? (
+								<div className="space-y-6">
+									{detailData.issues.map((issue: any, index: number) => (
+										<div key={index} className="bg-gray-50 rounded-xl p-4 border-l-4 border-red-400">
+											<div className="flex items-start justify-between mb-3">
+												<div className="flex-1">
+													<h4 
+														className="font-semibold text-gray-900 truncate max-w-md"
+														title={issue.rule_name}
+													>
+														{issue.rule_name}
+													</h4>
+													{issue.description && (
+														<p className="text-sm text-gray-600 mt-1">{issue.description}</p>
+													)}
+												</div>
+												<div className="ml-4 flex items-center space-x-2">
+													<span className={`px-2 py-1 text-xs font-medium rounded-full ${
+														issue.severity === 'high' 
+															? 'bg-red-100 text-red-600'
+															: 'bg-yellow-100 text-yellow-600'
+													}`}>
+														{issue.severity === 'high' ? '高风险' : '中风险'}
+													</span>
+													{issue.match_count && (
+														<span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full">
+															{issue.match_count} 个匹配
+														</span>
+													)}
+												</div>
+											</div>
+											
+											{issue.matched_text && (
+												<div className="mb-3">
+													<h5 className="text-sm font-medium text-gray-700 mb-1">匹配内容:</h5>
+													<code 
+														className="block bg-white px-3 py-2 rounded-lg text-sm text-gray-800 border break-all max-w-full"
+														title={issue.matched_text}
+													>
+														{issue.matched_text}
+													</code>
+												</div>
+											)}
+											
+											{issue.context && (
+												<div>
+													<h5 className="text-sm font-medium text-gray-700 mb-1">上下文 (行 {issue.line_number}):</h5>
+													<pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
+														{issue.context}
+													</pre>
+												</div>
+											)}
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="text-center py-12">
+									<div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+										<Shield className="w-8 h-8 text-green-600" />
+									</div>
+									<p className="text-gray-600 font-medium">未发现问题</p>
+									<p className="text-gray-400 text-sm mt-1">日志文件状态正常</p>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }
