@@ -518,7 +518,7 @@ export default function Home() {
 	const RuleModal = () => (
 		<Modal visible={ruleModalVisible} title={ruleModalMode === 'add' ? '新建规则' : '编辑规则'} onClose={() => setRuleModalVisible(false)} footer={[
 			<button key="cancel" className="btn btn-outline" onClick={() => setRuleModalVisible(false)}>取消</button>,
-			<button key="ok" className="btn btn-primary" onClick={() => {/* 提交规则表单 */}}>保存</button>
+			<button key="ok" className="btn btn-primary" disabled={!ruleForm.name || !(((ruleForm.dsl||'').trim()) || ((ruleForm.patterns||'').trim()))} onClick={submitRule}>保存</button>
 		]}>
 			<div className="form-grid">
 				<div className="form-col">
@@ -713,7 +713,7 @@ OOM | "Out of memory"
 
 			<Modal visible={ruleModalVisible} title={ruleModalMode === 'add' ? '新建规则' : '编辑规则'} onClose={() => setRuleModalVisible(false)} footer={[
 				<button key="cancel" onClick={() => setRuleModalVisible(false)} style={{ background: '#fff', border: '1px solid #e5e7eb', padding: '8px 14px', borderRadius: 8, cursor: 'pointer' }}>取消</button>,
-				<button key="ok" disabled={!ruleForm.name || !ruleForm.operator || !ruleForm.patterns} onClick={submitRule} style={{ background: !ruleForm.name || !ruleForm.operator || !ruleForm.patterns ? '#9ca3af' : '#2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: !ruleForm.name || !ruleForm.operator || !ruleForm.patterns ? 'not-allowed' : 'pointer' }}>保存</button>
+				<button key="ok" disabled={!ruleForm.name || !(((ruleForm.dsl||'').trim()) || ((ruleForm.patterns||'').trim()))} onClick={submitRule}>保存</button>
 			]}>
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 					<div>
