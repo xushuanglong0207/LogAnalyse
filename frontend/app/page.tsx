@@ -375,7 +375,7 @@ export default function Home() {
 			setTextAnalysisProgress({ progress: 0, message: '开始分析粘贴内容...' })
 			
 			const textSizeKB = new Blob([pasteText]).size / 1024
-			const estimatedTime = Math.max(1, Math.min(10, Math.ceil(textSizeKB / 100))) // 每100KB约1秒
+			const estimatedTime = Math.max(0.5, Math.min(6, Math.ceil(textSizeKB / 200))) // 每200KB约1秒，最少0.5秒，最多6秒
 			showToast(`开始分析文本内容，预计耗时 ${estimatedTime} 秒`, 'info')
 			
 			// 开始分析请求
@@ -385,10 +385,10 @@ export default function Home() {
 				body: JSON.stringify({ text: pasteText, filename: 'pasted.log' }) 
 			})
 			
-			// 进度模拟器
+			// 进度模拟器 - 优化性能
 			let currentProgress = 0
 			const progressInterval = setInterval(() => {
-				currentProgress += Math.random() * 20 + 10 // 每次增加10-30%
+				currentProgress += Math.random() * 25 + 15 // 每次增加15-40%，加快进度
 				if (currentProgress > 85) currentProgress = 85 // 最多到85%，等待实际完成
 				
 				const progressMessages = [
@@ -403,7 +403,7 @@ export default function Home() {
 					progress: currentProgress, 
 					message: progressMessages[Math.min(messageIndex, progressMessages.length - 1)]
 				})
-			}, estimatedTime * 1000 / 8) // 将预估时间分成8个进度更新
+			}, Math.max(600, estimatedTime * 1000 / 5)) // 最少600ms更新一次，提升性能
 			
 			const r = await analysisPromise
 			clearInterval(progressInterval)
@@ -428,7 +428,7 @@ export default function Home() {
 					setCurrentPage('dashboard')
 					setHighlightAnalysisId(d.file_id)
 					setTimeout(() => setHighlightAnalysisId(null), 5000)
-				}, 600)
+				}, 400) // 400ms延迟，加快跳转
 			} else {
 				setAnalyzingText(false)
 				setTextAnalysisProgress({ progress: 0, message: '' })
@@ -442,10 +442,10 @@ export default function Home() {
 	}
 	const analyzeFile = async (fileId: number) => {
 		try { 
-			// 获取文件信息估算处理时间
+			// 获取文件信息估算处理时间 - 优化算法，提升速度
 			const fileInfo = uploadedFiles.find(f => f.id === fileId)
 			const fileSizeKB = fileInfo?.size ? fileInfo.size / 1024 : 0
-			const estimatedTime = Math.max(2, Math.min(30, Math.ceil(fileSizeKB / 200))) // 每200KB约1秒，最少2秒，最多30秒
+			const estimatedTime = Math.max(1, Math.min(15, Math.ceil(fileSizeKB / 500))) // 每500KB约1秒，加快处理速度，最多15秒
 			
 			// 标记文件为分析中状态
 			setAnalyzingFiles(prev => new Set(prev.add(fileId)))
@@ -460,11 +460,11 @@ export default function Home() {
 			// 开始分析请求
 			const analysisPromise = authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' })
 			
-			// 进度模拟器
+			// 进度模拟器 - 优化性能，减少更新频率
 			let currentProgress = 0
 			const progressInterval = setInterval(() => {
-				currentProgress += Math.random() * 15 + 5 // 每次增加5-20%
-				if (currentProgress > 90) currentProgress = 90 // 最多到90%，等待实际完成
+				currentProgress += Math.random() * 20 + 10 // 每次增加10-30%，加快进度
+				if (currentProgress > 85) currentProgress = 85 // 最多到85%，等待实际完成
 				
 				const progressMessages = [
 					'正在读取文件内容...',
@@ -482,7 +482,7 @@ export default function Home() {
 						message: progressMessages[Math.min(messageIndex, progressMessages.length - 1)]
 					}
 				}))
-			}, estimatedTime * 1000 / 10) // 将预估时间分成10个进度更新
+			}, Math.max(800, estimatedTime * 1000 / 6)) // 最少800ms更新一次，减少频率提升性能
 			
 			// 等待分析完成
 			const r = await analysisPromise
@@ -533,7 +533,7 @@ export default function Home() {
 							if (el) el.scrollIntoView({ block: 'center' })
 						} catch {}
 					}, 100)
-				}, 800) // 800ms延迟让用户看到完成状态
+				}, 500) // 500ms延迟，加快跳转速度
 				
 			} else {
 				// 分析失败
@@ -1441,8 +1441,8 @@ OOM | "Out of memory"
 									<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
 										<div onClick={() => setCollapsedGroups(v => ({ ...v, [typeKey]: !v[typeKey] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-												<div style={{ fontWeight: 800, color: '#111827' }}>{typeKey}</div>
-												{ruleDescription && <div style={{ color: '#6b7280', fontSize: 12, fontStyle: 'italic' }}>- {ruleDescription}</div>}
+												<div style={{ fontWeight: 800, color: '#dc2626' }}>{typeKey}</div>
+												{ruleDescription && <div style={{ color: '#dc2626', fontSize: 12, fontStyle: 'italic', fontWeight: 600 }}>- {ruleDescription}</div>}
 												<span style={{ color: '#6b7280', fontSize: 12 }}>({Array.isArray(list)?list.length:0} 条)</span>
 											</div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1454,10 +1454,12 @@ OOM | "Out of memory"
 											<div>
 												{shown.map((it: any, ii: number) => (
 													<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
-														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-															<div style={{ color: '#6b7280', fontSize: 12 }}>行 {it.line_number || '-'}</div>
+														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+															<div style={{ color: '#6b7280', fontSize: 12 }}>
+																行 {it.line_number ? (typeof it.line_number === 'string' ? parseInt(it.line_number) || '-' : it.line_number) : '-'}
+															</div>
 														</div>
-														<pre style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', color: '#dc2626' }}>{it.context || it.matched_text || ''}</pre>
+														<pre style={{ margin: '0', whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: '1.4' }}>{it.context || it.matched_text || ''}</pre>
 													</div>
 												))}
 												{shown.length < (list as any[]).length && (
