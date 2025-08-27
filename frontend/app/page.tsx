@@ -105,6 +105,7 @@ export default function Home() {
 	const [problemPage, setProblemPage] = useState(1)
 	const [problemTypeQuery, setProblemTypeQuery] = useState('')
 	const PROBLEM_PAGE_SIZE = 200
+	const [problemSort, setProblemSort] = useState<{ key: 'error_type' | ''; order: 'asc' | 'desc' }>({ key: '', order: 'asc' })
 
 	// 规范化字符串用于搜索（去除非字母数字与中文，统一小写）
 	const normalizeForSearch = (s: string) => String(s || '')
@@ -1298,22 +1299,41 @@ OOM | "Out of memory"
 				</div>
 			</div>
 			<div className="ui-card" style={{ padding: 0, overflow: 'hidden' }}>
-				<div style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
-					<div style={{ fontSize: '14px' }}>问题名称</div><div style={{ fontSize: '14px' }}>链接</div><div style={{ fontSize: '14px' }}>错误类型</div><div style={{ fontSize: '14px' }}>操作</div>
+				<div style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', background: '#f9fafb', padding: 12, fontWeight: 600, alignItems: 'center' }}>
+					<div style={{ fontSize: '14px' }}>问题名称</div>
+					<div style={{ fontSize: '14px' }}>链接</div>
+					<div style={{ fontSize: '14px', cursor: 'pointer', userSelect: 'none' }} onClick={() => setProblemSort(s => ({ key: 'error_type', order: s.key==='error_type' && s.order==='asc' ? 'desc' : 'asc' }))}>
+						错误类型 {problemSort.key==='error_type' ? (problemSort.order==='asc' ? '↑' : '↓') : ''}
+					</div>
+					<div style={{ fontSize: '14px' }}>操作</div>
 				</div>
-				<div style={{ maxHeight: 480, overflow: 'auto' }}>
-					{problems.slice((problemPage-1)*PROBLEM_PAGE_SIZE, problemPage*PROBLEM_PAGE_SIZE).map((p) => (
-						<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent') }}>
-							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '500' }} title={p.title}>{p.title}</div>
-							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }} onMouseEnter={(e) => e.target.style.textDecoration = 'underline'} onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>{p.url}</a></div>
-							<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: '#6b7280' }} title={p.error_type}>{p.error_type}</div>
-							<div style={{ display: 'flex', gap: 8 }}>
-								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
-								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
-							</div>
+				{(() => {
+					// 排序后再分页
+					let list = [...problems]
+					if (problemSort.key === 'error_type') {
+						list.sort((a:any,b:any)=>{
+							const aa = String(a.error_type||'')
+							const bb = String(b.error_type||'')
+							return problemSort.order==='asc' ? aa.localeCompare(bb) : bb.localeCompare(aa)
+						})
+					}
+					const pageItems = list.slice((problemPage-1)*PROBLEM_PAGE_SIZE, problemPage*PROBLEM_PAGE_SIZE)
+					return (
+						<div style={{ maxHeight: 480, overflow: 'auto' }}>
+							{pageItems.map((p) => (
+								<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent'), alignItems: 'center' }}>
+									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '500', paddingTop: 2 }} title={p.title}>{p.title}</div>
+									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', paddingTop: 2 }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }} onMouseEnter={(e) => (e.target as HTMLElement).style.textDecoration = 'underline'} onMouseLeave={(e) => (e.target as HTMLElement).style.textDecoration = 'none'}>{p.url}</a></div>
+									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: '#6b7280', paddingTop: 2 }} title={p.error_type}>{p.error_type}</div>
+									<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+										<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
+										<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
+									</div>
+								</div>
+							))}
 						</div>
-					))}
-				</div>
+					)
+				})()}
 				{/* 分页 */}
 				{problems.length > PROBLEM_PAGE_SIZE && (
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12 }}>
@@ -1323,44 +1343,6 @@ OOM | "Out of memory"
 					</div>
 				)}
 			</div>
-			<Modal visible={problemModalVisible} title={problemForm.id ? '编辑问题' : '新增问题'} onClose={() => setProblemModalVisible(false)} footer={[
-				<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
-				<button key="ok" className="btn btn-primary" onClick={submitProblem}>保存</button>
-			]}>
-				<div className="form-grid">
-					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => {
-						const v = e.target.value
-						const detected = sanitizeUrl(v)
-						setProblemForm({ ...problemForm, title: removeUrls(v), url: detected || problemForm.url })
-					}} onBlur={(e)=> {
-						const v = e.target.value
-						const detected = sanitizeUrl(v)
-						setProblemForm({ ...problemForm, title: removeUrls(v), url: detected || problemForm.url })
-					}} /></div>
-					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => {
-						const v = e.target.value
-						setProblemForm({ ...problemForm, url: v })
-					}} onBlur={(e)=> {
-						const link = sanitizeUrl(e.target.value)
-						setProblemForm({ ...problemForm, url: link, title: (problemForm.title ? removeUrls(problemForm.title) : titleFromUrl(link)) })
-					}} /></div>
-					<div className="form-col" style={{ position: 'relative' }}>
-						<div className="label">问题类型*</div>
-						<input className="ui-input" placeholder="搜索名称/描述..." value={problemTypeQuery} onChange={(e)=> setProblemTypeQuery(e.target.value)} style={{ marginBottom: 6 }} />
-						<select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>
-							<option value="">请选择问题类型</option>
-							{(allDetectionRules.length ? allDetectionRules : detectionRules)
-								.filter((r:any)=>{
-									const q = normalizeForSearch(problemTypeQuery)
-									if (!q) return true
-									const text = normalizeForSearch(`${r.name||''} ${(r.description||'')} ${(r.patterns||[]).join(' ')}`)
-									return text.includes(q)
-								})
-								.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description || '无描述'}）</option>))}
-						</select>
-					</div>
-				</div>
-			</Modal>
 		</div>
 	)
 
