@@ -159,13 +159,23 @@ def _eval_ast(ast: _Ast, text_lower: str) -> bool:
         phrase = (ast.value or '').lower()
         if phrase == '':
             return False
-        return phrase in text_lower
+        result = phrase in text_lower
+        print(f"    检查短语 '{phrase}' 在文本中: {result}")  # 调试信息
+        return result
     if ast.op == 'NOT':
         return not _eval_ast(ast.left, text_lower)
     if ast.op == 'AND':
-        return _eval_ast(ast.left, text_lower) and _eval_ast(ast.right, text_lower)
+        left_result = _eval_ast(ast.left, text_lower)
+        right_result = _eval_ast(ast.right, text_lower)
+        final_result = left_result and right_result
+        print(f"    AND操作: {left_result} & {right_result} = {final_result}")  # 调试信息
+        return final_result
     if ast.op == 'OR':
-        return _eval_ast(ast.left, text_lower) or _eval_ast(ast.right, text_lower)
+        left_result = _eval_ast(ast.left, text_lower)
+        right_result = _eval_ast(ast.right, text_lower)
+        final_result = left_result or right_result
+        print(f"    OR操作: {left_result} | {right_result} = {final_result}")  # 调试信息
+        return final_result
     return False
 
 # —— 规则匹配逻辑 ——
@@ -187,16 +197,24 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Any]:
             if any(ch in cand for ch in ['&','|','!','！','(',')','"']):
                 expr = cand
     if expr:
+        print(f"  开始DSL处理，表达式: {expr}")  # 调试信息
         tokens = _tokenize(expr)
+        print(f"  词法分析结果: {tokens}")  # 调试信息
         rpn = _to_rpn(tokens)
+        print(f"  RPN: {rpn}")  # 调试信息
         ast = _rpn_to_ast(rpn)
+        print(f"  AST: {ast}")  # 调试信息
         # 按行评估
         lines = content.split('\n')
         matches = []
         offset = 0
+        matched_lines = 0
         for idx, line in enumerate(lines):
             line_lower = line.lower()
+            print(f"  检查第{idx+1}行: {line[:50]}...")  # 调试信息
             if _eval_ast(ast, line_lower):
+                matched_lines += 1
+                print(f"    ✓ 第{idx+1}行匹配成功!")  # 调试信息
                 # 找到一个代表性的命中位置：取任意短语首次出现
                 pos = 0
                 found = False
@@ -220,6 +238,8 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Any]:
                     def group(self): return self._g
                 matches.append(M(start_index, end_index, line.strip()))
             offset += len(line) + 1
+        
+        print(f"  DSL匹配完成，共匹配 {matched_lines} 行，返回 {len(matches)} 个匹配对象")  # 调试信息
         return matches
 
     # —— 旧逻辑回退（保留向后兼容） ——
