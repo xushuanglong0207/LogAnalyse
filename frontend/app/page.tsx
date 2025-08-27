@@ -212,18 +212,15 @@ export default function Home() {
 			if (typeof window === 'undefined') return false
 			const protocol = window.location.protocol
 			const host = window.location.hostname
-			const preferred = base || getApiBase() || `${protocol}//${host}:8001`
-			const candidates = [preferred, `${protocol}//${host}:8000`]
-			for (const urlBase of candidates) {
-				const controller = new AbortController()
-				const timer = setTimeout(() => controller.abort(), 5000)
-				try {
-					const r = await fetch(`${urlBase}/health`, { signal: controller.signal })
-					clearTimeout(timer)
-					if (r.ok) { setApiBase(urlBase); setBackendStatus('connected'); return true }
-				} catch {
-					clearTimeout(timer)
-				}
+			const urlBase = base || `${protocol}//${host}:8001`
+			const controller = new AbortController()
+			const timer = setTimeout(() => controller.abort(), 5000)
+			try {
+				const r = await fetch(`${urlBase}/health`, { signal: controller.signal })
+				clearTimeout(timer)
+				if (r.ok) { setApiBase(urlBase); setBackendStatus('connected'); return true }
+			} catch {
+				clearTimeout(timer)
 			}
 			setBackendStatus('failed');
 			return false
