@@ -101,6 +101,23 @@ export default function Home() {
 	const [problemTypeQuery, setProblemTypeQuery] = useState('')
 	const PROBLEM_PAGE_SIZE = 200
 
+	// 规范化字符串用于搜索（去除非字母数字与中文，统一小写）
+	const normalizeForSearch = (s: string) => String(s || '')
+		.toLowerCase()
+		.replace(/[^a-z0-9\u4e00-\u9fa5]/g, '')
+
+	// 确保已加载全量规则列表（不受文件夹/搜索过滤）
+	const ensureAllRulesLoaded = async () => {
+		if (allDetectionRules && allDetectionRules.length > 0) return
+		try {
+			const r = await authedFetch(`${getApiBase()}/api/rules`)
+			if (r.ok) {
+				const d = await r.json()
+				setAllDetectionRules(d.rules || [])
+			}
+		} catch {}
+	}
+
 	// Toast 通知状态
 	const [toasts, setToasts] = useState<any[]>([])
 	const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -256,6 +273,7 @@ export default function Home() {
 				case 'problems':
 					fetchProblems(problemFilterType, problemFilterQuery, problemFilterCategory)
 					fetchProblemStats(null)
+					ensureAllRulesLoaded()
 					break
 				case 'users':
 					fetchUsers()
@@ -856,7 +874,7 @@ export default function Home() {
 			if (r.ok) { const d = await r.json(); setProblemStatsByType(d.by_type || {}) }
 		} catch {}
 	}
-	const openProblemAdd = () => {
+	const openProblemAdd = async () => {
 		// 推断一个合理的默认错误类型
 		let defaultType = ''
 		try {
@@ -869,6 +887,8 @@ export default function Home() {
 			}
 			if (!defaultType && (detectionRules||[]).length) defaultType = detectionRules[0].name
 		} catch {}
+		await ensureAllRulesLoaded()
+		setProblemTypeQuery('')
 		setProblemForm({ id: null, title: '', url: '', error_type: defaultType, category: '' })
 		setProblemModalVisible(true)
 	}
@@ -984,9 +1004,10 @@ export default function Home() {
 							<option value="">请选择问题类型</option>
 							{(allDetectionRules.length ? allDetectionRules : detectionRules)
 								.filter((r:any)=>{
-									const q = (problemTypeQuery||'').toLowerCase()
+									const q = normalizeForSearch(problemTypeQuery)
 									if (!q) return true
-									return (r.name||'').toLowerCase().includes(q) || (r.description||'').toLowerCase().includes(q)
+									const text = normalizeForSearch(`${r.name||''} ${(r.description||'')} ${(r.patterns||[]).join(' ')}`)
+									return text.includes(q)
 								})
 								.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description || '无描述'}）</option>))}
 						</select>
