@@ -260,7 +260,7 @@ export default function DashboardPage() {
 						</div>
 					</div>
 
-					<div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+					<div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 160px)', minHeight: '60vh' }}>
 						{latestResults.length > 0 ? (
 							<div className="divide-y divide-gray-100">
 								{latestResults.map((result, index) => (
