@@ -11,7 +11,8 @@
       "Bash(chmod:*)",
       "Bash(ss:*)",
       "Bash(./docker-start.sh:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],

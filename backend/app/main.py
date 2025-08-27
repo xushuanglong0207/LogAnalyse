@@ -11,6 +11,9 @@ import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
+# 导入新的规则管理API
+from .api.v1 import rules as rules_router
+
 # 可存储内容的最大字节数（默认20MB，可通过环境变量覆盖）
 MAX_CONTENT_BYTES = int(os.environ.get("MAX_CONTENT_BYTES", str(20 * 1024 * 1024)))
 
@@ -34,6 +37,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 注册API路由
+app.include_router(rules_router.router, prefix="/api/v1", tags=["规则管理"])
 
 # 内存存储（临时）
 uploaded_files: List[Dict[str, Any]] = []

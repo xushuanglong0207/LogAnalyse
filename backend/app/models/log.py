@@ -23,6 +23,7 @@ class ParseRuleType(PyEnum):
     REGEX = "regex"
     KEYWORD = "keyword"
     JSON_PATH = "json_path"
+    DSL = "dsl"
 
 
 class LogFile(Base):

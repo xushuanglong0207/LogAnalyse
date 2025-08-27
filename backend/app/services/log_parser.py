@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from ..models.log import LogEntry, LogFile, ParseRule, LogLevel, LogType
 from ..models.user import User
+from .dsl_parser import DSLRuleEngine
 
 
 class LogParserService:
@@ -156,13 +157,22 @@ class LogParserService:
         ).order_by(ParseRule.priority.desc()).all()
         
         for rule in custom_rules:
+            # 编译DSL规则
+            compiled_rule = None
+            if rule.rule_type.value == "dsl":
+                compiled_rule = DSLRuleEngine.compile_rule(rule.pattern)
+                if not compiled_rule["compiled"]:
+                    print(f"DSL规则编译失败: {rule.name} - {compiled_rule['error']}")
+                    continue
+            
             rules.append({
                 "name": rule.name,
                 "pattern": rule.pattern,
                 "problem_type": rule.problem_type,
                 "problem_description": rule.problem_description,
                 "priority": rule.priority,
-                "rule_type": rule.rule_type.value
+                "rule_type": rule.rule_type.value,
+                "compiled_dsl": compiled_rule if rule.rule_type.value == "dsl" else None
             })
         
         return sorted(rules, key=lambda x: x["priority"], reverse=True)
@@ -293,6 +303,12 @@ class LogParserService:
                 return bool(re.search(pattern, content, re.IGNORECASE))
             elif rule_type == "keyword":
                 return pattern.lower() in content.lower()
+            elif rule_type == "dsl":
+                # 使用DSL规则引擎
+                compiled_rule = rule.get("compiled_dsl")
+                if compiled_rule and compiled_rule["compiled"]:
+                    return DSLRuleEngine.match_rule(compiled_rule, content)
+                return False
             elif rule_type == "json_path":
                 # 对于JSON格式的日志
                 try:
