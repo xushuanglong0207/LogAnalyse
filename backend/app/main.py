@@ -272,6 +272,7 @@ FILES_DIR = os.path.join(DATA_DIR, "uploads")
 INDEX_PATH = os.path.join(DATA_DIR, "uploads_index.json")
 ANALYSIS_INDEX_PATH = os.path.join(DATA_DIR, "analysis_results.json")
 PROBLEMS_PATH = os.path.join(DATA_DIR, "problems.json")
+RULES_PATH = os.path.join(DATA_DIR, "detection_rules.json")  # 新增规则持久化路径
 
 os.makedirs(FILES_DIR, exist_ok=True)
 
@@ -327,6 +328,29 @@ def save_problems():
             json.dump(problems, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+
+def save_rules():
+    """保存检测规则到文件"""
+    try:
+        with open(RULES_PATH, "w", encoding="utf-8") as f:
+            json.dump(detection_rules, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def load_rules():
+    """从文件加载检测规则"""
+    global detection_rules
+    try:
+        if os.path.exists(RULES_PATH):
+            with open(RULES_PATH, "r", encoding="utf-8") as f:
+                loaded_rules = json.load(f)
+                # 合并内置规则和用户规则，避免重复
+                builtin_ids = {r["id"] for r in detection_rules}
+                for rule in loaded_rules:
+                    if rule["id"] not in builtin_ids:
+                        detection_rules.append(rule)
+    except Exception as e:
+        print(f"加载规则失败: {e}")
 
 def purge_old_uploads():
     """清理超过保留期的日志文件及分析结果"""
@@ -389,6 +413,7 @@ users: List[Dict[str, Any]] = [
 @app.on_event("startup")
 async def _startup_cleanup():
     purge_old_uploads()
+    load_rules()  # 启动时加载保存的规则
 
 # 规则与文件夹模型
 class RuleCreate(BaseModel):
@@ -762,11 +787,17 @@ def _perform_analysis(file_id: int):
             content = ''.join(chunks)
     except Exception:
         content = file_info.get("content", "")
+    
     # 分析
     issues = []
     lines = content.split('\n')
+    print(f"开始分析文件 {file_id}，规则数量: {len(detection_rules)}")
+    
     for rule in detection_rules:
+        print(f"检查规则: {rule['name']}, enabled: {rule.get('enabled', True)}, dsl: {rule.get('dsl', 'N/A')}")
         matches = evaluate_rule_matches(content, rule)
+        print(f"  规则 {rule['name']} 匹配数量: {len(matches)}")
+        
         if not matches:
             continue
         for m in matches:
@@ -788,6 +819,9 @@ def _perform_analysis(file_id: int):
                 "context": context,
                 "severity": "high" if ("panic" in rule["name"].lower() or "oom" in rule["name"].lower()) else "medium"
             })
+    
+    print(f"分析完成，总问题数: {len(issues)}")
+    
     result = {
         "file_id": file_id,
         "filename": file_info["filename"],
@@ -865,6 +899,7 @@ async def create_rule(payload: RuleCreate, ctx: Dict[str, Any] = Depends(require
         "dsl": (payload.dsl or "").strip(),
     }
     detection_rules.append(rule)
+    save_rules()  # 保存规则
     return {"message": "规则创建成功", "rule": rule}
 
 @app.put("/api/rules/{rule_id}")
@@ -877,6 +912,7 @@ async def update_detection_rule(rule_id: int, payload: RuleUpdate, ctx: Dict[str
             rule[k] = v.upper()
         else:
             rule[k] = v
+    save_rules()  # 保存规则
     return {"message": "规则更新成功", "rule": rule}
 
 @app.delete("/api/rules/{rule_id}")
@@ -886,6 +922,7 @@ async def delete_rule(rule_id: int, ctx: Dict[str, Any] = Depends(require_auth))
     detection_rules = [r for r in detection_rules if r["id"] != rule_id]
     if len(detection_rules) == before:
         raise HTTPException(status_code=404, detail="规则不存在")
+    save_rules()  # 保存规则
     return {"message": "规则已删除"}
 
 @app.get("/api/rule-folders")
