@@ -229,7 +229,7 @@ export default function Home() {
 			const r = await authedFetch(`${getApiBase()}/api/logs`)
 			if (r.ok) { 
 				const d = await r.json()
-				const files = d.files || []
+				const files = (d.files || []).sort((a:any,b:any)=> new Date(b.upload_time).getTime() - new Date(a.upload_time).getTime())
 				setUploadedFiles(files)
 				setDataCache(prev => ({ ...prev, uploadedFiles: files }))
 			} 
@@ -320,7 +320,7 @@ export default function Home() {
 				const fd = new FormData()
 				fd.append('file', f)
 				const r = await authedFetch(`${getApiBase()}/api/logs/upload`, { method: 'POST', body: fd })
-				if (!r.ok) throw new Error('上传失败')
+				if (!r.ok) { const msg = await r.text(); throw new Error(msg||'上传失败') }
 			}
 			// 只刷新需要的数据
 			if (currentPage === 'logs') {
@@ -331,7 +331,7 @@ export default function Home() {
 			}
 			showToast('文件上传成功', 'success')
 		} catch {
-			showToast('文件上传失败', 'error')
+			showToast('文件上传失败，可能超过服务器限制或网络异常', 'error')
 		} finally {
 			try { e.target.value = '' } catch {}
 		}

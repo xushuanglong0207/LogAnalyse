@@ -10,8 +10,8 @@ from pydantic import BaseModel
 import re
 import uuid
 
-# 可存储内容的最大字节数（5MB）
-MAX_CONTENT_BYTES = 5 * 1024 * 1024
+# 可存储内容的最大字节数（默认20MB，可通过环境变量覆盖）
+MAX_CONTENT_BYTES = int(os.environ.get("MAX_CONTENT_BYTES", str(20 * 1024 * 1024)))
 
 # 会话有效期
 DEFAULT_TTL_HOURS = 24
@@ -339,6 +339,8 @@ async def upload_log_file(file: UploadFile = File(...), ctx: Dict[str, Any] = De
     try:
         # 放宽文件类型限制：接受所有类型
         content = await file.read()
+        if len(content) > MAX_CONTENT_BYTES:
+            raise HTTPException(status_code=400, detail=f"文件过大，最大支持 {int(MAX_CONTENT_BYTES/1024/1024)}MB")
         content_str = content.decode('utf-8', errors='ignore')
         file_id = (max([f["id"] for f in uploaded_files]) + 1) if uploaded_files else 1
         filename = file.filename
@@ -414,7 +416,7 @@ class AnalyzeTextPayload(BaseModel):
 async def analyze_text(payload: AnalyzeTextPayload, ctx: Dict[str, Any] = Depends(require_auth)):
     text_bytes = len(payload.text.encode("utf-8"))
     if text_bytes > MAX_CONTENT_BYTES:
-        raise HTTPException(status_code=400, detail="文本内容超过5MB限制")
+        raise HTTPException(status_code=400, detail=f"文本内容超过限制，最大 {int(MAX_CONTENT_BYTES/1024/1024)}MB")
     # 临时存储为一条文件记录（不写入磁盘）
     file_info = {
         "id": len(uploaded_files) + 1,
@@ -485,7 +487,16 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
         content = ""
         try:
             with open(file_info.get("path"), "r", encoding="utf-8", errors="ignore") as fr:
-                content = fr.read(MAX_CONTENT_BYTES)
+                # 分块读取，控制峰值内存
+                chunks = []
+                read = 0
+                while read < MAX_CONTENT_BYTES:
+                    part = fr.read(min(1024 * 1024, MAX_CONTENT_BYTES - read))
+                    if not part:
+                        break
+                    chunks.append(part)
+                    read += len(part)
+                content = ''.join(chunks)
         except Exception:
             content = file_info.get("content", "")
         # 以下保持原有分析逻辑
