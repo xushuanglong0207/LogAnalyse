@@ -516,6 +516,108 @@ def require_auth(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="用户不存在")
     return {"token": token, "user": user}
 
+@app.get("/api/debug-rule")
+async def debug_dsl_rule(ctx: Dict[str, Any] = Depends(require_auth)):
+    """调试DSL规则匹配"""
+    
+    # 测试日志内容（从您的截图中提取）
+    test_content = """aq_ring_rx_clean+0x175/0x560 [atlantic]
+aq_ring_rx_clean+0x14d/0x560 [atlantic]
+aq_ring_update_queue_state+0xd0/0x60 [atlantic]"""
+    
+    # 查找您的万兽网卡规则
+    your_rule = None
+    for rule in detection_rules:
+        if "万兽" in rule.get("name", "") or "atlantic" in rule.get("dsl", ""):
+            your_rule = rule
+            break
+    
+    if not your_rule:
+        return {"error": "未找到万兽网卡规则", "all_rules": [{"id": r["id"], "name": r["name"], "dsl": r.get("dsl")} for r in detection_rules]}
+    
+    # 测试DSL规则
+    debug_info = {
+        "rule_info": {
+            "id": your_rule["id"],
+            "name": your_rule["name"],
+            "dsl": your_rule.get("dsl"),
+            "enabled": your_rule.get("enabled"),
+            "patterns": your_rule.get("patterns")
+        },
+        "test_content": test_content,
+        "content_contains_aq_ring": "aq_ring_rx_clean" in test_content.lower(),
+        "content_contains_atlantic": "atlantic" in test_content.lower()
+    }
+    
+    # 使用evaluate_rule_matches测试
+    try:
+        matches = evaluate_rule_matches(test_content, your_rule)
+        debug_info["matches_found"] = len(matches)
+        debug_info["matches_details"] = []
+        for i, match in enumerate(matches[:3]):
+            if hasattr(match, 'group'):
+                debug_info["matches_details"].append({
+                    "index": i,
+                    "text": match.group(),
+                    "start": match.start(),
+                    "end": match.end()
+                })
+            else:
+                debug_info["matches_details"].append({
+                    "index": i,
+                    "match": str(match)
+                })
+    except Exception as e:
+        debug_info["error"] = str(e)
+        debug_info["matches_found"] = 0
+    
+    # 手动测试DSL逻辑
+    try:
+        # 预判 DSL
+        expr = ''
+        if isinstance(your_rule.get('dsl'), str) and your_rule['dsl'].strip():
+            expr = your_rule['dsl'].strip()
+            debug_info["dsl_expression_found"] = expr
+        else:
+            # 兼容：如果 patterns 是单行表达式且包含 DSL 运算符
+            pats = your_rule.get('patterns')
+            if isinstance(pats, list) and len(pats)==1 and isinstance(pats[0], str):
+                cand = pats[0].strip()
+                if any(ch in cand for ch in ['&','|','!','！','(',')','"']):
+                    expr = cand
+                    debug_info["dsl_from_patterns"] = expr
+        
+        if expr:
+            debug_info["parsing_dsl"] = True
+            tokens = _tokenize(expr)
+            debug_info["tokens"] = [str(t) for t in tokens]
+            
+            rpn = _to_rpn(tokens)
+            debug_info["rpn"] = [str(r) for r in rpn]
+            
+            ast = _rpn_to_ast(rpn)
+            debug_info["ast_created"] = str(ast) if ast else "None"
+            
+            # 按行测试
+            lines = test_content.split('\n')
+            line_results = []
+            for idx, line in enumerate(lines):
+                line_lower = line.lower()
+                line_match = _eval_ast(ast, line_lower)
+                line_results.append({
+                    "line_num": idx + 1,
+                    "line_content": line,
+                    "matched": line_match
+                })
+            debug_info["line_by_line_results"] = line_results
+        else:
+            debug_info["no_dsl_expression"] = True
+            
+    except Exception as e:
+        debug_info["dsl_parse_error"] = str(e)
+    
+    return debug_info
+
 @app.get("/api/test-dsl")
 async def test_dsl_rule(rule: str, text: str, ctx: Dict[str, Any] = Depends(require_auth)):
     """测试DSL规则功能"""
