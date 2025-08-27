@@ -375,8 +375,12 @@ export default function Home() {
 			const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' })
 			if (r.ok) { 
 				const d = await r.json()
+				// 更新分析结果
 				setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
+				// 强制刷新仪表盘统计数据
 				await fetchDashboardStats(false)
+				// 切换到仪表盘页面时需要重新加载分析结果
+				await fetchAnalysisResults()
 				showToast('分析完成', 'success')
 				// 跳转到仪表板并高亮该条
 				setCurrentPage('dashboard')
@@ -392,7 +396,18 @@ export default function Home() {
 	const deleteFile = async (fileId: number) => {
 		const ok = await askConfirm('确定删除该日志文件？')
 		if (!ok) return
-		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`, { method: 'DELETE' }); if (r.ok) { await Promise.all([fetchUploadedFiles(), fetchDashboardStats()]); setAnalysisResults(prev => prev.filter(x => x.file_id !== fileId)); showToast('删除成功', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') }
+		try { 
+			const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`, { method: 'DELETE' })
+			if (r.ok) { 
+				// 强制刷新文件列表和统计数据
+				await Promise.all([fetchUploadedFiles(false), fetchDashboardStats(false)])
+				// 同时更新分析结果列表
+				setAnalysisResults(prev => prev.filter(x => x.file_id !== fileId))
+				showToast('删除成功', 'success') 
+			} else showToast('删除失败', 'error') 
+		} catch { 
+			showToast('删除失败', 'error') 
+		}
 	}
 	const openFilePreview = async (fileId: number, filename: string) => {
 		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`); if (r.ok) { const d = await r.json(); setPreviewTitle(`${d.filename}`); setPreviewContent(d.content || ''); setPreviewMode('shell'); setPreviewVisible(true) } } catch {}
@@ -635,7 +650,10 @@ OOM | "Out of memory"
 
 			{uploadedFiles.length > 0 && (
 				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16, maxHeight: 360, overflow: 'auto' }}>
-					<h3 style={{ fontWeight: 600, marginBottom: 12 }}>已上传文件 ({uploadedFiles.length})</h3>
+					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+						<h3 style={{ fontWeight: 600, margin: 0 }}>已上传文件 ({uploadedFiles.length})</h3>
+						<span style={{ color: '#6b7280', fontSize: 14 }}>💡 双击文件预览内容</span>
+					</div>
 					{uploadedFiles.map((file: any) => (
 						<div key={file.id} onDoubleClick={() => openFilePreview(file.id, file.filename)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8, cursor: 'zoom-in' }}>
 							<div>
