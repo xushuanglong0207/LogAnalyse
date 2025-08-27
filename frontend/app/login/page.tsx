@@ -17,7 +17,7 @@ function computeApiBase(): string {
 export default function LoginPage() {
 	const router = useRouter()
 	const [apiBase] = useState(computeApiBase())
-	const [form, setForm] = useState({ username: 'admin', password: 'admin123', remember: true })
+	const [form, setForm] = useState({ username: '', password: '', remember: false })
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState('')
 	const [showPwd, setShowPwd] = useState(false)

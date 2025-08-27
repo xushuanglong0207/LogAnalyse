@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
 	TrendingUp, 
@@ -35,6 +35,25 @@ export default function DashboardPage() {
 		recent_activity: [] 
 	})
 	const [analysisResults, setAnalysisResults] = useState<any[]>([])
+
+	// 去重并按最新时间排序的结果列表
+	const latestResults = useMemo(() => {
+		const map = new Map()
+		for (const item of analysisResults || []) {
+			const ts = item?.analysis_time ? new Date(item.analysis_time).getTime() : 0
+			const prev = map.get(item?.file_id)
+			if (!prev || (new Date(prev?.analysis_time || 0).getTime() < ts)) {
+				map.set(item?.file_id, item)
+			}
+		}
+		const deduped = Array.from(map.values())
+		deduped.sort((a: any, b: any) => {
+			const ta = a?.analysis_time ? new Date(a.analysis_time).getTime() : 0
+			const tb = b?.analysis_time ? new Date(b.analysis_time).getTime() : 0
+			return tb - ta
+		})
+		return deduped.slice(0, 40)
+	}, [analysisResults])
 	
 	// 详情模态框相关状态
 	const [detailVisible, setDetailVisible] = useState(false)
@@ -232,10 +251,10 @@ export default function DashboardPage() {
 						</div>
 					</div>
 
-					<div className="max-h-96 overflow-auto">
-						{analysisResults.length > 0 ? (
+					<div className="max-h-[70vh] overflow-auto">
+						{latestResults.length > 0 ? (
 							<div className="divide-y divide-gray-100">
-								{analysisResults.slice(-20).reverse().map((result, index) => (
+								{latestResults.map((result, index) => (
 									<div 
 										key={index} 
 										onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)}
@@ -245,7 +264,7 @@ export default function DashboardPage() {
 											<div className="flex-1">
 												<h3 
 													className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 truncate"
-													title={result.filename} // 鼠标悬停显示完整文件名
+													title={result.filename}
 												>
 													{result.filename}
 												</h3>
@@ -261,7 +280,7 @@ export default function DashboardPage() {
 													result.summary?.total_issues > 0 
 														? 'bg-red-100 text-red-600' 
 														: 'bg-green-100 text-green-600'
-												}`}>
+													}`}>
 													{result.summary?.total_issues > 0 ? '有问题' : '正常'}
 												</div>
 											</div>
@@ -293,7 +312,7 @@ export default function DashboardPage() {
 								</div>
 								<div>
 									<h3 
-										className="text-lg font-bold text-gray-900 truncate max-w-md"
+										className="text-lg font-bold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap group-hover:overflow-visible group-hover:whitespace-normal max-w-[60vw]"
 										title={detailData?.filename}
 									>
 										{detailData?.filename || '分析详情'}
