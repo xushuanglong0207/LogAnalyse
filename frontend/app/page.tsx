@@ -1403,9 +1403,60 @@ OOM | "Out of memory"
 						const rule = allDetectionRules.find((r: any) => r.name === ruleName)
 						return rule?.description || ''
 					}
+					// 解析日志时间（多格式），返回时间戳毫秒
+					const monthMap: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 }
+					const parseTimestampMs = (text: string): { ms: number|null, raw: string } => {
+						try {
+							const s = String(text || '')
+							// ISO 2025-08-27 22:49:12 或 2025-08-27T22:49:12(.sss)?
+							let m = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/)
+							if (m) {
+								const [_, y, mo, d, h, mi, se] = m
+								const date = new Date(Number(y), Number(mo)-1, Number(d), Number(h), Number(mi), se?Number(se):0)
+								return { ms: date.getTime(), raw: m[0] }
+							}
+							// Syslog: Aug 27 22:49:12
+							m = s.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\b/)
+							if (m) {
+								const now = new Date()
+								const [_, mon, d, h, mi, se] = m
+								const date = new Date(now.getFullYear(), monthMap[mon], Number(d), Number(h), Number(mi), Number(se))
+								return { ms: date.getTime(), raw: m[0] }
+							}
+							// 尝试 Date.parse
+							m = s.match(/\d{4}[^\n]{0,20}(\d{2}:?\d{2}:?\d{2})/)
+							if (m) {
+								const t = Date.parse(m[0])
+								if (!Number.isNaN(t)) return { ms: t, raw: m[0] }
+							}
+							return { ms: null, raw: '' }
+						} catch { return { ms: null, raw: '' } }
+					}
+					// 找出最接近当前时间的一个错误
+					let nearest: { issue: any|null, diff: number, when: string } = { issue: null, diff: Number.POSITIVE_INFINITY, when: '' }
+					const nowMs = Date.now()
+					for (const it of (detailData.data.issues || [])) {
+						const src = `${it.context || ''} ${it.matched_text || ''}`
+						const { ms, raw } = parseTimestampMs(src)
+						if (ms !== null) {
+							const diff = Math.abs(nowMs - ms)
+							if (diff < nearest.diff) nearest = { issue: it, diff, when: raw }
+						}
+					}
 					return (
 						<div style={{ maxHeight: '65vh', overflow: 'auto', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial' }}>
 							<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题，{entries.length} 个类型</div>
+							{/* 最新错误置顶块 */}
+							{nearest.issue && (
+								<div style={{ border: '1px solid #fde68a', background: '#fffbeb', padding: 10, borderRadius: 10, marginBottom: 10 }}>
+									<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+										<span style={{ fontSize: 12, background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>
+										<span style={{ fontWeight: 800, color: '#dc2626' }}>{String(nearest.issue.rule_name || '问题')}</span>
+										{nearest.when && <span style={{ color: '#6b7280', fontSize: 12 }}>时间 {nearest.when}</span>}
+									</div>
+									<pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: 1.4 }}>{nearest.issue.context || nearest.issue.matched_text || ''}</pre>
+								</div>
+							)}
 							{entries.map(([typeKey, list], gi) => {
 								const page = pageByGroup[typeKey] || 1
 								const shown = (list as any[]).slice(0, page * PAGE_SIZE_PER_GROUP)
@@ -1425,18 +1476,22 @@ OOM | "Out of memory"
 										</div>
 										{!collapsedGroups[typeKey] && (
 											<div>
-												{shown.map((it: any, ii: number) => (
-													<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
-														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-															<div style={{ color: '#6b7280', fontSize: 12 }}>
-																行 {it.line_number ? (typeof it.line_number === 'string' ? parseInt(it.line_number) || '-' : it.line_number) : '-'}
+												{shown.map((it: any, ii: number) => {
+													const isNearest = nearest.issue && it === nearest.issue
+													return (
+														<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+															<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+																<div style={{ color: '#6b7280', fontSize: 12 }}>
+																	行 {it.line_number ? (typeof it.line_number === 'string' ? parseInt(it.line_number) || '-' : it.line_number) : '-'}
+																</div>
+																{isNearest && (<span style={{ fontSize: 10, background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>)}
 															</div>
+															<pre style={{ margin: '0', whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: '1.4' }}>{it.context || it.matched_text || ''}</pre>
 														</div>
-														<pre style={{ margin: '0', whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: '1.4' }}>{it.context || it.matched_text || ''}</pre>
-													</div>
-												))}
+														)
+												})}
 												{shown.length < (list as any[]).length && (
-													<div style={{ textAlign: 'center', padding: 8 }}>
+													<div style={{ textAlign: '中心', padding: 8 }}>
 														<button onClick={() => setPageByGroup(v => ({ ...v, [typeKey]: (v[typeKey] || 1) + 1 }))} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>
 															加载更多（{(list as any[]).length - shown.length}）
 														</button>
