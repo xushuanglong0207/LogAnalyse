@@ -208,9 +208,26 @@ export default function Home() {
 	}, [])
 
 	const checkBackendStatus = async (base?: string) => {
-		const urlBase = base || getApiBase()
-		if (!urlBase) return false
-		try { const response = await fetch(`${urlBase}/health`); if (response.ok) { setBackendStatus('connected'); return true } else { setBackendStatus('failed'); return false } } catch { setBackendStatus('failed'); return false }
+		try {
+			if (typeof window === 'undefined') return false
+			const protocol = window.location.protocol
+			const host = window.location.hostname
+			const preferred = base || getApiBase() || `${protocol}//${host}:8001`
+			const candidates = [preferred, `${protocol}//${host}:8000`]
+			for (const urlBase of candidates) {
+				const controller = new AbortController()
+				const timer = setTimeout(() => controller.abort(), 5000)
+				try {
+					const r = await fetch(`${urlBase}/health`, { signal: controller.signal })
+					clearTimeout(timer)
+					if (r.ok) { setApiBase(urlBase); setBackendStatus('connected'); return true }
+				} catch {
+					clearTimeout(timer)
+				}
+			}
+			setBackendStatus('failed');
+			return false
+		} catch { setBackendStatus('failed'); return false }
 	}
 	const fetchDashboardStats = async (useCache = true) => { 
 		if (useCache && dataCache.dashboardStats) return
@@ -235,8 +252,8 @@ export default function Home() {
 			} 
 		} catch {} 
 	}
-	const fetchDetectionRules = async (q = '', folderId: number | null = null) => { try { const params = new URLSearchParams(); if (q) params.set('query', q); if (folderId !== null) params.set('folder_id', String(folderId)); const r = await authedFetch(`${getApiBase()}/api/rules?${params.toString()}`); if (r.ok) { const d = await r.json(); const rules = d.rules || []; setDetectionRules(rules); setAllDetectionRules(prev => (prev && prev.length >= rules.length ? prev : rules)) } } catch {} }
-	const fetchRuleFolders = async () => { try { const r = await authedFetch(`${getApiBase()}/api/rule-folders`); if (r.ok) { const d = await r.json(); setRuleFolders(d.folders || []); if (d.folders && d.folders.length && selectedFolderId === null) setSelectedFolderId(d.folders[0].id) } } catch {} }
+	const fetchDetectionRules = async (q = '', folderId: number | null = null) => { try { const params = new URLSearchParams(); if (q) params.set('query', q); if (folderId !== null) params.set('folder_id', String(folderId)); const r = await authedFetch(`${getApiBase()}/api/rules?${params.toString()}`); if (r.ok) { const d = await r.json(); const rules = (d.rules || []).sort((a:any,b:any)=> (b.id||0) - (a.id||0)); setDetectionRules(rules); setAllDetectionRules(prev => (prev && prev.length >= rules.length ? prev : rules)) } } catch {} }
+	const fetchRuleFolders = async () => { try { const r = await authedFetch(`${getApiBase()}/api/rule-folders`); if (r.ok) { const d = await r.json(); const folders = (d.folders || []).sort((a:any,b:any)=> (b.id||0) - (a.id||0)); setRuleFolders(folders); if (folders && folders.length && selectedFolderId === null) setSelectedFolderId(folders[0].id) } } catch {} }
 	const fetchUsers = async () => { try { const r = await authedFetch(`${getApiBase()}/api/users`); if (r.ok) { const d = await r.json(); setUsers(d.users || []) } } catch {} }
 	const fetchMe = async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/me`); if (r.ok) { const d = await r.json(); setCurrentUser(d.user) } } catch {} }
 	const fetchAnalysisResults = async () => { try { const r = await authedFetch(`${getApiBase()}/api/analysis/results`); if (r.ok) { const d = await r.json(); setAnalysisResults(d.results || []) } } catch {} }
