@@ -849,8 +849,10 @@ export default function Home() {
 				{analysisResults.length > 0 ? (
 					analysisResults.slice(-20).reverse().map((result, index) => (
 						<div key={index} data-analysis-id={result.file_id} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.25rem', marginBottom: '0.5rem', cursor: 'zoom-in', background: highlightAnalysisId===result.file_id ? '#e8f7ee' : viewHighlightId===result.file_id ? '#fff7da' : 'transparent', transition: 'background 0.2s ease' }}>
-							<p style={{ fontWeight: 600, margin: 0 }}>{result.filename}</p>
-							<p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>发现 {result.summary.total_issues} 个问题 - {new Date(result.analysis_time).toLocaleString()}</p>
+							<p style={{ fontWeight: 600, margin: 0 }}>{result?.filename || '未知文件'}</p>
+							{(() => { const sum = (result && result.summary) ? result.summary : { total_issues: 0 }; const ts = result?.analysis_time ? new Date(result.analysis_time).toLocaleString() : ''; return (
+								<p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>发现 {sum.total_issues || 0} 个问题{ts ? ` - ${ts}` : ''}</p>
+							) })()}
 						</div>
 					))
 				) : (<p style={{ color: '#6b7280' }}>暂无分析记录</p>)}
