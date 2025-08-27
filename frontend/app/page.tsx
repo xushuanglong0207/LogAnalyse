@@ -136,6 +136,12 @@ export default function Home() {
 	const [confirmState, setConfirmState] = useState<{ visible: boolean; text: string; resolve: null | ((v: boolean) => void) }>({ visible: false, text: '', resolve: null })
 	const openConfirm = (text: string) => new Promise<boolean>((resolve) => { setConfirmState({ visible: true, text, resolve }) })
 
+	// 分析状态管理
+	const [analyzingFiles, setAnalyzingFiles] = useState<Set<number>>(new Set())
+	const [analysisProgress, setAnalysisProgress] = useState<Record<number, { progress: number; message: string }>>({})
+	const [analyzingText, setAnalyzingText] = useState(false)
+	const [textAnalysisProgress, setTextAnalysisProgress] = useState({ progress: 0, message: '' })
+	
 	// 预览弹窗
 	const [pasteText, setPasteText] = useState('')
 	const [previewVisible, setPreviewVisible] = useState(false)
@@ -363,36 +369,199 @@ export default function Home() {
 	const handleAnalyzeText = async () => {
 		try {
 			if (!pasteText) return showToast('请先粘贴内容', 'info')
-			const r = await authedFetch(`${getApiBase()}/api/logs/analyze_text`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pasteText, filename: 'pasted.log' }) })
+			
+			// 启动分析状态
+			setAnalyzingText(true)
+			setTextAnalysisProgress({ progress: 0, message: '开始分析粘贴内容...' })
+			
+			const textSizeKB = new Blob([pasteText]).size / 1024
+			const estimatedTime = Math.max(1, Math.min(10, Math.ceil(textSizeKB / 100))) // 每100KB约1秒
+			showToast(`开始分析文本内容，预计耗时 ${estimatedTime} 秒`, 'info')
+			
+			// 开始分析请求
+			const analysisPromise = authedFetch(`${getApiBase()}/api/logs/analyze_text`, { 
+				method: 'POST', 
+				headers: { 'Content-Type': 'application/json' }, 
+				body: JSON.stringify({ text: pasteText, filename: 'pasted.log' }) 
+			})
+			
+			// 进度模拟器
+			let currentProgress = 0
+			const progressInterval = setInterval(() => {
+				currentProgress += Math.random() * 20 + 10 // 每次增加10-30%
+				if (currentProgress > 85) currentProgress = 85 // 最多到85%，等待实际完成
+				
+				const progressMessages = [
+					'正在处理文本内容...',
+					'正在应用检测规则...',
+					'正在分析文本模式...',
+					'即将完成分析...'
+				]
+				const messageIndex = Math.floor((currentProgress / 100) * progressMessages.length)
+				
+				setTextAnalysisProgress({ 
+					progress: currentProgress, 
+					message: progressMessages[Math.min(messageIndex, progressMessages.length - 1)]
+				})
+			}, estimatedTime * 1000 / 8) // 将预估时间分成8个进度更新
+			
+			const r = await analysisPromise
+			clearInterval(progressInterval)
+			
 			if (r.ok) {
-				const d = await r.json(); setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d]); await Promise.all([fetchUploadedFiles(), fetchDashboardStats()]); setPasteText(''); showToast('分析完成', 'success')
+				const d = await r.json()
+				setTextAnalysisProgress({ progress: 100, message: '分析完成！正在跳转...' })
+				
+				// 短暂延迟让用户看到完成状态
+				setTimeout(async () => {
+					setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
+					await Promise.all([fetchUploadedFiles(false), fetchDashboardStats(false), fetchAnalysisResults()])
+					setPasteText('')
+					
+					// 清理状态
+					setAnalyzingText(false)
+					setTextAnalysisProgress({ progress: 0, message: '' })
+					
+					showToast(`文本分析完成！发现 ${d.summary?.total_issues || 0} 个问题`, 'success')
+					
+					// 跳转到仪表板
+					setCurrentPage('dashboard')
+					setHighlightAnalysisId(d.file_id)
+					setTimeout(() => setHighlightAnalysisId(null), 5000)
+				}, 600)
 			} else {
+				setAnalyzingText(false)
+				setTextAnalysisProgress({ progress: 0, message: '' })
 				showToast('分析失败', 'error')
 			}
-		} catch { showToast('分析失败', 'error') }
+		} catch (error) { 
+			setAnalyzingText(false)
+			setTextAnalysisProgress({ progress: 0, message: '' })
+			showToast('分析失败', 'error') 
+		}
 	}
 	const analyzeFile = async (fileId: number) => {
 		try { 
-			const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' })
+			// 获取文件信息估算处理时间
+			const fileInfo = uploadedFiles.find(f => f.id === fileId)
+			const fileSizeKB = fileInfo?.size ? fileInfo.size / 1024 : 0
+			const estimatedTime = Math.max(2, Math.min(30, Math.ceil(fileSizeKB / 200))) // 每200KB约1秒，最少2秒，最多30秒
+			
+			// 标记文件为分析中状态
+			setAnalyzingFiles(prev => new Set(prev.add(fileId)))
+			setAnalysisProgress(prev => ({ 
+				...prev, 
+				[fileId]: { progress: 0, message: `开始分析 ${fileInfo?.filename || '文件'}...` }
+			}))
+			
+			// 显示分析开始提示
+			showToast(`开始分析文件，预计耗时 ${estimatedTime} 秒`, 'info')
+			
+			// 开始分析请求
+			const analysisPromise = authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' })
+			
+			// 进度模拟器
+			let currentProgress = 0
+			const progressInterval = setInterval(() => {
+				currentProgress += Math.random() * 15 + 5 // 每次增加5-20%
+				if (currentProgress > 90) currentProgress = 90 // 最多到90%，等待实际完成
+				
+				const progressMessages = [
+					'正在读取文件内容...',
+					'正在应用检测规则...',
+					'正在分析日志模式...',
+					'正在生成分析报告...',
+					'即将完成分析...'
+				]
+				const messageIndex = Math.floor((currentProgress / 100) * progressMessages.length)
+				
+				setAnalysisProgress(prev => ({ 
+					...prev, 
+					[fileId]: { 
+						progress: currentProgress, 
+						message: progressMessages[Math.min(messageIndex, progressMessages.length - 1)]
+					}
+				}))
+			}, estimatedTime * 1000 / 10) // 将预估时间分成10个进度更新
+			
+			// 等待分析完成
+			const r = await analysisPromise
+			clearInterval(progressInterval)
+			
 			if (r.ok) { 
 				const d = await r.json()
+				
+				// 完成进度显示
+				setAnalysisProgress(prev => ({ 
+					...prev, 
+					[fileId]: { progress: 100, message: '分析完成！正在跳转...' }
+				}))
+				
 				// 更新分析结果
 				setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
-				// 强制刷新仪表盘统计数据
-				await fetchDashboardStats(false)
-				// 切换到仪表盘页面时需要重新加载分析结果
-				await fetchAnalysisResults()
-				showToast('分析完成', 'success')
-				// 跳转到仪表板并高亮该条
-				setCurrentPage('dashboard')
-				setHighlightAnalysisId(d.file_id)
-				setTimeout(() => setHighlightAnalysisId(null), 5000)
-				// 等待DOM更新后滚动到可见
-				setTimeout(() => {
-					try { const el = document.querySelector(`[data-analysis-id="${d.file_id}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {}
-				}, 100)
-			} else showToast('分析失败', 'error') 
-		} catch { showToast('分析失败', 'error') }
+				
+				// 短暂延迟让用户看到完成状态
+				setTimeout(async () => {
+					// 强制刷新相关数据
+					await Promise.all([
+						fetchDashboardStats(false),
+						fetchAnalysisResults()
+					])
+					
+					// 清理分析状态
+					setAnalyzingFiles(prev => {
+						const newSet = new Set(prev)
+						newSet.delete(fileId)
+						return newSet
+					})
+					setAnalysisProgress(prev => {
+						const { [fileId]: removed, ...rest } = prev
+						return rest
+					})
+					
+					showToast(`分析完成！发现 ${d.summary?.total_issues || 0} 个问题`, 'success')
+					
+					// 跳转到仪表板并高亮
+					setCurrentPage('dashboard')
+					setHighlightAnalysisId(d.file_id)
+					setTimeout(() => setHighlightAnalysisId(null), 5000)
+					
+					// 等待DOM更新后滚动到可见
+					setTimeout(() => {
+						try { 
+							const el = document.querySelector(`[data-analysis-id="${d.file_id}"]`) as HTMLElement
+							if (el) el.scrollIntoView({ block: 'center' })
+						} catch {}
+					}, 100)
+				}, 800) // 800ms延迟让用户看到完成状态
+				
+			} else {
+				// 分析失败
+				clearInterval(progressInterval)
+				setAnalyzingFiles(prev => {
+					const newSet = new Set(prev)
+					newSet.delete(fileId)
+					return newSet
+				})
+				setAnalysisProgress(prev => {
+					const { [fileId]: removed, ...rest } = prev
+					return rest
+				})
+				showToast('分析失败，请重试', 'error')
+			}
+		} catch (error) { 
+			// 异常处理
+			setAnalyzingFiles(prev => {
+				const newSet = new Set(prev)
+				newSet.delete(fileId)
+				return newSet
+			})
+			setAnalysisProgress(prev => {
+				const { [fileId]: removed, ...rest } = prev
+				return rest
+			})
+			showToast('分析失败，请检查网络连接', 'error')
+		}
 	}
 	const deleteFile = async (fileId: number) => {
 		const ok = await askConfirm('确定删除该日志文件？')
@@ -639,12 +808,81 @@ OOM | "Out of memory"
 						</label>
 					</div>
 				</div>
-				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16 }}>
+				<div style={{ 
+					background: 'rgba(255,255,255,0.75)', 
+					backdropFilter: 'blur(6px)', 
+					border: '1px solid rgba(255,255,255,0.35)', 
+					borderRadius: 12, 
+					padding: 16,
+					borderColor: analyzingText ? '#3b82f6' : 'rgba(255,255,255,0.35)'
+				}}>
 					<h3 style={{ fontWeight: 600, marginBottom: 8 }}>直接粘贴文本分析（≤ 5MB）</h3>
-					<textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="在此粘贴日志文本..." style={{ width: '100%', minHeight: 160, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }} />
+					<textarea 
+						value={pasteText} 
+						onChange={(e) => setPasteText(e.target.value)} 
+						placeholder="在此粘贴日志文本..." 
+						disabled={analyzingText}
+						style={{ 
+							width: '100%', 
+							minHeight: 160, 
+							border: '1px solid #e5e7eb', 
+							borderRadius: 8, 
+							padding: 12, 
+							fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+							opacity: analyzingText ? 0.6 : 1,
+							backgroundColor: analyzingText ? '#f9fafb' : 'white'
+						}} 
+					/>
+					{analyzingText && textAnalysisProgress.message && (
+						<div style={{ marginTop: 12, marginBottom: 8 }}>
+							<div style={{ fontSize: 12, color: '#3b82f6', marginBottom: 6 }}>{textAnalysisProgress.message}</div>
+							<div style={{ 
+								width: '100%', 
+								height: 4, 
+								background: '#e5e7eb', 
+								borderRadius: 2, 
+								overflow: 'hidden' 
+							}}>
+								<div style={{ 
+									width: `${textAnalysisProgress.progress}%`, 
+									height: '100%', 
+									background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', 
+									borderRadius: 2,
+									transition: 'width 0.3s ease'
+								}} />
+							</div>
+							<div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{Math.round(textAnalysisProgress.progress)}% 完成</div>
+						</div>
+					)}
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
 						<span style={{ color: '#6b7280', fontSize: 12 }}>当前大小：{(new Blob([pasteText]).size / 1024).toFixed(2)} KB</span>
-						<button onClick={handleAnalyzeText} style={{ background: '#2563eb', color: 'white', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>分析文本</button>
+						<button 
+							onClick={handleAnalyzeText} 
+							disabled={analyzingText || !pasteText}
+							style={{ 
+								background: analyzingText ? '#9ca3af' : (!pasteText ? '#9ca3af' : '#2563eb'), 
+								color: 'white', 
+								padding: '8px 14px', 
+								borderRadius: 8, 
+								border: 'none', 
+								cursor: (analyzingText || !pasteText) ? 'not-allowed' : 'pointer',
+								display: 'flex',
+								alignItems: 'center',
+								gap: 6
+							}}
+						>
+							{analyzingText && (
+								<div style={{ 
+									width: 14, 
+									height: 14, 
+									border: '2px solid rgba(255,255,255,0.3)', 
+									borderTop: '2px solid white', 
+									borderRadius: '50%',
+									animation: 'spin 1s linear infinite' 
+								}} />
+							)}
+							{analyzingText ? '分析中...' : '分析文本'}
+						</button>
 					</div>
 				</div>
 			</div>
@@ -655,18 +893,95 @@ OOM | "Out of memory"
 						<h3 style={{ fontWeight: 600, margin: 0 }}>已上传文件 ({uploadedFiles.length})</h3>
 						<span style={{ color: '#6b7280', fontSize: 14 }}>💡 双击文件预览内容</span>
 					</div>
-					{uploadedFiles.map((file: any) => (
-						<div key={file.id} onDoubleClick={() => openFilePreview(file.id, file.filename)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8, cursor: 'zoom-in' }}>
-							<div>
-								<p style={{ fontWeight: 600, margin: 0 }}>{file.filename}</p>
-								<p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{(file.size / 1024).toFixed(2)} KB - {new Date(file.upload_time).toLocaleString()}</p>
+					{uploadedFiles.map((file: any) => {
+						const isAnalyzing = analyzingFiles.has(file.id)
+						const progress = analysisProgress[file.id]
+						return (
+							<div key={file.id} onDoubleClick={() => openFilePreview(file.id, file.filename)} style={{ 
+								display: 'flex', 
+								justifyContent: 'space-between', 
+								alignItems: 'center', 
+								padding: 12, 
+								border: '1px solid #e5e7eb', 
+								borderRadius: 8, 
+								marginBottom: 8, 
+								cursor: 'zoom-in',
+								background: isAnalyzing ? '#f0f9ff' : 'transparent',
+								borderColor: isAnalyzing ? '#3b82f6' : '#e5e7eb'
+							}}>
+								<div style={{ flex: 1 }}>
+									<p style={{ fontWeight: 600, margin: 0 }}>{file.filename}</p>
+									<p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{(file.size / 1024).toFixed(2)} KB - {new Date(file.upload_time).toLocaleString()}</p>
+									{isAnalyzing && progress && (
+										<div style={{ marginTop: 8 }}>
+											<div style={{ fontSize: 11, color: '#3b82f6', marginBottom: 4 }}>{progress.message}</div>
+											<div style={{ 
+												width: '100%', 
+												height: 4, 
+												background: '#e5e7eb', 
+												borderRadius: 2, 
+												overflow: 'hidden' 
+											}}>
+												<div style={{ 
+													width: `${progress.progress}%`, 
+													height: '100%', 
+													background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', 
+													borderRadius: 2,
+													transition: 'width 0.3s ease'
+												}} />
+											</div>
+											<div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{Math.round(progress.progress)}% 完成</div>
+										</div>
+									)}
+								</div>
+								<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+									<button 
+										onClick={() => analyzeFile(file.id)} 
+										disabled={isAnalyzing}
+										style={{ 
+											background: isAnalyzing ? '#9ca3af' : '#2563eb', 
+											color: 'white', 
+											padding: '6px 10px', 
+											borderRadius: 6, 
+											border: 'none', 
+											cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+											opacity: isAnalyzing ? 0.6 : 1,
+											display: 'flex',
+											alignItems: 'center',
+											gap: 4
+										}}
+									>
+										{isAnalyzing && (
+											<div style={{ 
+												width: 12, 
+												height: 12, 
+												border: '2px solid rgba(255,255,255,0.3)', 
+												borderTop: '2px solid white', 
+												borderRadius: '50%',
+												animation: 'spin 1s linear infinite' 
+											}} />
+										)}
+										{isAnalyzing ? '分析中...' : '分析'}
+									</button>
+									<button 
+										onClick={() => deleteFile(file.id)} 
+										disabled={isAnalyzing}
+										style={{ 
+											background: isAnalyzing ? '#9ca3af' : '#ef4444', 
+											color: 'white', 
+											padding: '6px 10px', 
+											borderRadius: 6, 
+											border: 'none', 
+											cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+											opacity: isAnalyzing ? 0.6 : 1
+										}}
+									>
+										删除
+									</button>
+								</div>
 							</div>
-							<div style={{ display: 'flex', gap: 8 }}>
-								<button onClick={() => analyzeFile(file.id)} style={{ background: '#2563eb', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>分析</button>
-								<button onClick={() => deleteFile(file.id)} style={{ background: '#ef4444', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>删除</button>
-							</div>
-						</div>
-					))}
+						)
+					})}
 				</div>
 			)}
 
