@@ -76,6 +76,7 @@ export default function Home() {
 	const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
 	const [dashboardStats, setDashboardStats] = useState<any>({ uploaded_files: 0, detected_issues: 0, detection_rules: 7, recent_activity: [] })
 	const [detectionRules, setDetectionRules] = useState<any[]>([])
+	const [allDetectionRules, setAllDetectionRules] = useState<any[]>([])
 	const [ruleFolders, setRuleFolders] = useState<any[]>([])
 	const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null)
 	const [searchRule, setSearchRule] = useState('')
@@ -97,6 +98,7 @@ export default function Home() {
 	const [highlightProblemId, setHighlightProblemId] = useState<number | null>(null)
 	const [statsExpanded, setStatsExpanded] = useState(false)
 	const [problemPage, setProblemPage] = useState(1)
+	const [problemTypeQuery, setProblemTypeQuery] = useState('')
 	const PROBLEM_PAGE_SIZE = 200
 
 	// Toast 通知状态
@@ -216,7 +218,7 @@ export default function Home() {
 			} 
 		} catch {} 
 	}
-	const fetchDetectionRules = async (q = '', folderId: number | null = null) => { try { const params = new URLSearchParams(); if (q) params.set('query', q); if (folderId !== null) params.set('folder_id', String(folderId)); const r = await authedFetch(`${getApiBase()}/api/rules?${params.toString()}`); if (r.ok) { const d = await r.json(); setDetectionRules(d.rules || []) } } catch {} }
+	const fetchDetectionRules = async (q = '', folderId: number | null = null) => { try { const params = new URLSearchParams(); if (q) params.set('query', q); if (folderId !== null) params.set('folder_id', String(folderId)); const r = await authedFetch(`${getApiBase()}/api/rules?${params.toString()}`); if (r.ok) { const d = await r.json(); const rules = d.rules || []; setDetectionRules(rules); setAllDetectionRules(prev => (prev && prev.length >= rules.length ? prev : rules)) } } catch {} }
 	const fetchRuleFolders = async () => { try { const r = await authedFetch(`${getApiBase()}/api/rule-folders`); if (r.ok) { const d = await r.json(); setRuleFolders(d.folders || []); if (d.folders && d.folders.length && selectedFolderId === null) setSelectedFolderId(d.folders[0].id) } } catch {} }
 	const fetchUsers = async () => { try { const r = await authedFetch(`${getApiBase()}/api/users`); if (r.ok) { const d = await r.json(); setUsers(d.users || []) } } catch {} }
 	const fetchMe = async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/me`); if (r.ok) { const d = await r.json(); setCurrentUser(d.user) } } catch {} }
@@ -977,9 +979,16 @@ export default function Home() {
 					}} /></div>
 					<div className="form-col" style={{ position: 'relative' }}>
 						<div className="label">问题类型*</div>
+						<input className="ui-input" placeholder="搜索名称/描述..." value={problemTypeQuery} onChange={(e)=> setProblemTypeQuery(e.target.value)} style={{ marginBottom: 6 }} />
 						<select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>
 							<option value="">请选择问题类型</option>
-							{detectionRules.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description || '无描述'}）</option>))}
+							{(allDetectionRules.length ? allDetectionRules : detectionRules)
+								.filter((r:any)=>{
+									const q = (problemTypeQuery||'').toLowerCase()
+									if (!q) return true
+									return (r.name||'').toLowerCase().includes(q) || (r.description||'').toLowerCase().includes(q)
+								})
+								.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description || '无描述'}）</option>))}
 						</select>
 					</div>
 				</div>
