@@ -8,12 +8,15 @@
       "Bash(pkill:*)",
       "Bash(lsof:*)",
       "Bash(taskkill:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(ss:*)",
+      "Bash(./docker-start.sh:*)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "D:\\d"
+      "D:\\d",
+      "D:\\"
     ]
   }
 }

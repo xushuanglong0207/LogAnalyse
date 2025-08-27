@@ -34,13 +34,23 @@ diagnose_problem() {
     
     # 2. 检查端口占用
     echo "2. 🔌 端口占用检查:"
-    for port in 3000 5433 6379 8001; do
-        if lsof -ti:$port &>/dev/null; then
-            local pid=$(lsof -ti:$port)
-            local process=$(ps -p $pid -o comm= 2>/dev/null || echo "未知")
-            echo -e "   端口 $port: ${YELLOW}⚠️  被占用${NC} (PID: $pid, 进程: $process)"
+    for port in 3000 5433 6380 8001; do
+        if command -v lsof &> /dev/null; then
+            if lsof -ti:$port &>/dev/null; then
+                local pid=$(lsof -ti:$port)
+                local process=$(ps -p $pid -o comm= 2>/dev/null || echo "未知")
+                echo -e "   端口 $port: ${YELLOW}⚠️  被占用${NC} (PID: $pid, 进程: $process)"
+            else
+                echo -e "   端口 $port: ${GREEN}✅ 可用${NC}"
+            fi
+        elif command -v netstat &> /dev/null; then
+            if netstat -tlnp 2>/dev/null | grep ":$port " &>/dev/null; then
+                echo -e "   端口 $port: ${YELLOW}⚠️  被占用${NC}"
+            else
+                echo -e "   端口 $port: ${GREEN}✅ 可用${NC}"
+            fi
         else
-            echo -e "   端口 $port: ${GREEN}✅ 可用${NC}"
+            echo -e "   端口 $port: ${BLUE}ℹ️  无法检测${NC} (缺少lsof/netstat)"
         fi
     done
     echo ""
