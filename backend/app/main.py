@@ -44,6 +44,222 @@ problems: List[Dict[str, Any]] = []  # 问题库：{id, title, url, error_type, 
 EXECUTOR = ThreadPoolExecutor(max_workers=int(os.environ.get("ANALYSIS_WORKERS", "2")))
 ANALYSIS_RUNNING = set()  # file_id 集合，表示正在分析
 
+# —— 规则DSL解析 ——
+class _Ast:
+    def __init__(self, op=None, left=None, right=None, value=None):
+        self.op = op  # 'AND' 'OR' 'NOT' or None
+        self.left = left
+        self.right = right
+        self.value = value  # phrase
+
+_DEF_PRECEDENCE = {'!': 3, '&': 2, '|': 1}
+
+def _tokenize(expr: str):
+    if not expr:
+        return []
+    s = expr.replace('！', '!')
+    out = []
+    i = 0
+    n = len(s)
+    while i < n:
+        c = s[i]
+        if c.isspace():
+            i += 1
+            continue
+        if c in '()&|!':
+            out.append(c)
+            i += 1
+            continue
+        if c == '"':
+            j = i + 1
+            buf = []
+            while j < n and s[j] != '"':
+                buf.append(s[j])
+                j += 1
+            # 跳过结束引号
+            i = j + 1 if j < n and s[j] == '"' else j
+            out.append(('PHRASE', ''.join(buf)))
+            continue
+        # 普通单词直到空白或运算符
+        j = i
+        buf = []
+        while j < n and (not s[j].isspace()) and s[j] not in '()&|!':
+            buf.append(s[j])
+            j += 1
+        out.append(('PHRASE', ''.join(buf)))
+        i = j
+    # 插入隐式与（AND）：operand 后紧跟 operand/!/( 的情况
+    implicit = []
+    def is_operand(tok):
+        return isinstance(tok, tuple) and tok[0] == 'PHRASE' or tok == ')'
+    def is_unary_or_open(tok):
+        return tok == '!' or tok == '(' or (isinstance(tok, tuple) and tok[0] == 'PHRASE')
+    for idx, tok in enumerate(out):
+        if idx > 0:
+            prev = out[idx-1]
+            if (is_operand(prev) and (tok == '(' or tok == '!' or (isinstance(tok, tuple) and tok[0]=='PHRASE'))):
+                implicit.append('&')
+        implicit.append(tok)
+    return implicit
+
+def _to_rpn(tokens):
+    # Shunting-yard 算法
+    output = []
+    ops = []
+    def prec(op):
+        return _DEF_PRECEDENCE.get(op, 0)
+    i = 0
+    n = len(tokens)
+    while i < n:
+        tok = tokens[i]
+        if isinstance(tok, tuple):  # PHRASE
+            output.append(tok)
+        elif tok == '!' :
+            ops.append(tok)
+        elif tok in ('&','|'):
+            while ops and ops[-1] != '(' and prec(ops[-1]) >= prec(tok):
+                output.append(ops.pop())
+            ops.append(tok)
+        elif tok == '(':
+            ops.append(tok)
+        elif tok == ')':
+            while ops and ops[-1] != '(':
+                output.append(ops.pop())
+            if ops and ops[-1] == '(':
+                ops.pop()
+        i += 1
+    while ops:
+        output.append(ops.pop())
+    return output
+
+def _rpn_to_ast(rpn):
+    st = []
+    for tok in rpn:
+        if isinstance(tok, tuple):
+            st.append(_Ast(value=tok[1]))
+        elif tok == '!':
+            a = st.pop() if st else _Ast(value='')
+            st.append(_Ast(op='NOT', left=a))
+        elif tok in ('&','|'):
+            b = st.pop() if st else _Ast(value='')
+            a = st.pop() if st else _Ast(value='')
+            st.append(_Ast(op=('AND' if tok=='&' else 'OR'), left=a, right=b))
+    return st[-1] if st else None
+
+def _eval_ast(ast: _Ast, text_lower: str) -> bool:
+    if ast is None:
+        return False
+    if ast.op is None:
+        phrase = (ast.value or '').lower()
+        if phrase == '':
+            return False
+        return phrase in text_lower
+    if ast.op == 'NOT':
+        return not _eval_ast(ast.left, text_lower)
+    if ast.op == 'AND':
+        return _eval_ast(ast.left, text_lower) and _eval_ast(ast.right, text_lower)
+    if ast.op == 'OR':
+        return _eval_ast(ast.left, text_lower) or _eval_ast(ast.right, text_lower)
+    return False
+
+# —— 规则匹配逻辑 ——
+
+def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Any]:
+    """根据规则返回匹配列表。支持 DSL(| & ! () 和引号短语)；
+    若未检测到DSL符号，则回退到旧的 OR/AND/NOT/正则 行为。
+    结果以“近似行级”返回，避免逐字匹配。
+    """
+    # 预判 DSL
+    expr = ''
+    if isinstance(rule.get('dsl'), str) and rule['dsl'].strip():
+        expr = rule['dsl'].strip()
+    else:
+        # 兼容：如果 patterns 是单行表达式且包含 DSL 运算符，则当作 DSL
+        pats = rule.get('patterns')
+        if isinstance(pats, list) and len(pats)==1 and isinstance(pats[0], str):
+            cand = pats[0].strip()
+            if any(ch in cand for ch in ['&','|','!','！','(',')','"']):
+                expr = cand
+    if expr:
+        tokens = _tokenize(expr)
+        rpn = _to_rpn(tokens)
+        ast = _rpn_to_ast(rpn)
+        # 按行评估
+        lines = content.split('\n')
+        matches = []
+        offset = 0
+        for idx, line in enumerate(lines):
+            line_lower = line.lower()
+            if _eval_ast(ast, line_lower):
+                # 找到一个代表性的命中位置：取任意短语首次出现
+                pos = 0
+                found = False
+                # 粗略从 tokens 提取短语
+                for t in tokens:
+                    if isinstance(t, tuple) and t[0]=='PHRASE':
+                        p = t[1].lower()
+                        k = line_lower.find(p)
+                        if k >= 0:
+                            pos = k
+                            found = True
+                            break
+                start_index = offset + (pos if found else 0)
+                end_index = start_index + (len(tokens[0][1]) if found and isinstance(tokens[0], tuple) else max(1, len(line)))
+                # 构造一个与正则匹配对象类似的轻量对象
+                class M:
+                    def __init__(self, s, e, g):
+                        self._s=s; self._e=e; self._g=g
+                    def start(self): return self._s
+                    def end(self): return self._e
+                    def group(self): return self._g
+                matches.append(M(start_index, end_index, line.strip()))
+            offset += len(line) + 1
+        return matches
+
+    # —— 旧逻辑回退（保留向后兼容） ——
+    patterns = rule.get("patterns", []) or []
+    operator = (rule.get("operator") or "OR").upper()
+    is_regex = bool(rule.get("is_regex", True))
+
+    def find_matches(pat: str):
+        if is_regex:
+            return list(re.finditer(pat, content, re.IGNORECASE))
+        else:
+            matches = []
+            start = 0
+            pat_l = pat.lower()
+            cont_l = content.lower()
+            while True:
+                idx = cont_l.find(pat_l, start)
+                if idx == -1:
+                    break
+                class M:
+                    def __init__(self, s, e):
+                        self._s = s; self._e = e
+                    def start(self): return self._s
+                    def end(self): return self._e
+                    def group(self): return content[self._s:self._e]
+                matches.append(M(idx, idx + len(pat)))
+                start = idx + len(pat)
+            return matches
+
+    all_lists = [find_matches(p) for p in patterns]
+
+    if operator == "AND":
+        return [lst[0] for lst in all_lists if lst] if all(len(lst) > 0 for lst in all_lists) else []
+    elif operator == "NOT":
+        # 所有模式都不出现才算命中（返回一个空占位匹配）
+        if all(len(lst) == 0 for lst in all_lists):
+            class M:
+                def start(self): return 0
+                def end(self): return 0
+                def group(self): return ""
+            return [M()]
+        return []
+    else:  # OR
+        flat = [m for lst in all_lists for m in lst]
+        return flat
+
 # —— 持久化设置 ——
 DATA_DIR = os.environ.get("LOG_ANALYZER_DATA", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "database")))
 FILES_DIR = os.path.join(DATA_DIR, "uploads")

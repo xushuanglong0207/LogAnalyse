@@ -188,7 +188,7 @@ export default function Home() {
 	const [userForm, setUserForm] = useState<any>({ id: null, username: '', email: '', password: '', role: '普通用户' })
 	const [ruleModalVisible, setRuleModalVisible] = useState(false)
 	const [ruleModalMode, setRuleModalMode] = useState<'add' | 'edit'>('add')
-	const [ruleForm, setRuleForm] = useState<any>({ id: null, name: '', description: '', enabled: true, patterns: '', operator: 'OR', is_regex: true, folder_id: 1 })
+	const [ruleForm, setRuleForm] = useState<any>({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: 1 })
 	const [folderModalVisible, setFolderModalVisible] = useState(false)
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
 
@@ -397,14 +397,20 @@ export default function Home() {
 	}
 
 	// —— 规则：增删改查/拖拽 ——
-	const openRuleAdd = () => { setRuleForm({ id: null, name: '', description: '', enabled: true, patterns: '', operator: 'OR', is_regex: true, folder_id: ruleFolders[0]?.id || 1 }); setRuleModalMode('add'); setRuleModalVisible(true) }
-	const openRuleEdit = (rule: any) => { setRuleForm({ id: rule.id, name: rule.name, description: rule.description || '', enabled: !!rule.enabled, patterns: (rule.patterns || []).join('\n'), operator: rule.operator || 'OR', is_regex: !!rule.is_regex, folder_id: rule.folder_id || 1 }); setRuleModalMode('edit'); setRuleModalVisible(true) }
+	const openRuleAdd = () => { setRuleForm({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: ruleFolders[0]?.id || 1 }); setRuleModalMode('add'); setRuleModalVisible(true) }
+	const openRuleEdit = (rule: any) => { setRuleForm({ id: rule.id, name: rule.name, description: rule.description || '', enabled: !!rule.enabled, patterns: (rule.patterns || []).join('\n'), dsl: (rule.dsl || ''), folder_id: rule.folder_id || 1 }); setRuleModalMode('edit'); setRuleModalVisible(true) }
 	const submitRule = async () => {
 		try {
-			const payload = { name: ruleForm.name, description: ruleForm.description || '', enabled: !!ruleForm.enabled, patterns: parsePatterns(ruleForm.patterns), operator: (ruleForm.operator || 'OR'), is_regex: !!ruleForm.is_regex, folder_id: ruleForm.folder_id || 1 }
+			const base: any = { name: ruleForm.name, description: ruleForm.description || '', enabled: !!ruleForm.enabled, folder_id: ruleForm.folder_id || 1 }
+			const dsl = (ruleForm.dsl || '').trim()
+			if (dsl) {
+				base.dsl = dsl
+			} else {
+				base.patterns = parsePatterns(ruleForm.patterns)
+			}
 			let r
-			if (ruleModalMode === 'add') r = await authedFetch(`${getApiBase()}/api/rules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-			else r = await authedFetch(`${getApiBase()}/api/rules/${ruleForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			if (ruleModalMode === 'add') r = await authedFetch(`${getApiBase()}/api/rules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(base) })
+			else r = await authedFetch(`${getApiBase()}/api/rules/${ruleForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(base) })
 			if (r.ok) { setRuleModalVisible(false); await fetchDetectionRules(searchRule, selectedFolderId); await fetchRuleFolders(); showToast('保存成功', 'success') } else showToast('保存失败', 'error')
 		} catch { showToast('保存失败', 'error') }
 	}
@@ -529,24 +535,17 @@ export default function Home() {
 					<div className="label">描述</div>
 					<input className="ui-input" value={ruleForm.description} onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })} />
 				</div>
-				<div className="form-col">
-					<div className="label">组合</div>
-					<select className="ui-select" value={ruleForm.operator} onChange={(e) => setRuleForm({ ...ruleForm, operator: e.target.value })}>
-						<option value="OR">或 (任一匹配)</option>
-						<option value="AND">与 (全部匹配)</option>
-						<option value="NOT">非 (均不匹配)</option>
-					</select>
-				</div>
-				<div className="form-col">
-					<div className="label">是否正则</div>
-					<select className="ui-select" value={ruleForm.is_regex ? '1' : '0'} onChange={(e) => setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })}>
-						<option value="1">正则</option>
-						<option value="0">普通包含</option>
-					</select>
+				<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+					<div className="label">规则表达式（DSL）</div>
+					<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.dsl} onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })} placeholder='使用 | & ! () 和引号短语，例如：
+OOM | "Out of memory"
+("No space left" | "disk full") !write
+(("No space left" | "disk full") !write) & "space error"' />
+					<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>提示：大小写不敏感；含空格短语请用引号；中文全角！等同 !；若留空将使用传统"匹配模式"兼容。</div>
 				</div>
 				<div className="form-col" style={{ gridColumn: '1 / -1' }}>
-					<div className="label">匹配模式</div>
-					<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="正则匹配可写多个：OOM|Out of memory；组合选择 与/或/非 决定多模式关系" />
+					<div className="label">（兼容）匹配模式列表</div>
+					<textarea className="ui-input" style={{ minHeight: 100 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；若填写了 DSL，将优先使用 DSL" />
 				</div>
 				<div className="form-col">
 					<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -731,29 +730,19 @@ export default function Home() {
 						<div style={{ fontSize: 12, color: '#6b7280' }}>描述</div>
 						<input value={ruleForm.description} onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
 					</div>
-					<div>
-						<div style={{ fontSize: 12, color: '#6b7280' }}>组合</div>
-						<select value={ruleForm.operator} onChange={(e) => setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
-							<option value="OR">或 (任一匹配)</option>
-							<option value="AND">与 (全部匹配)</option>
-							<option value="NOT">非 (均不匹配)</option>
-						</select>
-					</div>
-					<div>
-						<div style={{ fontSize: 12, color: '#6b7280' }}>是否正则</div>
-						<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e) => setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
-							<option value="1">正则</option>
-							<option value="0">普通包含</option>
-						</select>
+					<div style={{ gridColumn: '1 / -1' }}>
+						<div style={{ fontSize: 12, color: '#6b7280' }}>规则表达式（DSL）</div>
+						<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.dsl} onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })} placeholder='使用 | & ! () 和引号短语，例如：
+OOM | "Out of memory"
+("No space left" | "disk full") !write
+(("No space left" | "disk full") !write) & "space error"' />
+						<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>提示：大小写不敏感；含空格短语请用引号；中文全角！等同 !；若留空将使用传统"匹配模式"兼容。</div>
 					</div>
 					<div style={{ gridColumn: '1 / -1' }}>
-						<div style={{ fontSize: 12, color: '#6b7280', display: 'flex', justifyContent: 'space-between' }}>
-							<span>匹配模式（多行分隔，或用逗号/分号）</span>
-							<span style={{ color: '#9ca3af' }}>提示：如使用正则匹配多种写法，可写为 OOM|Out of memory；组合选择 与/或/非 决定多模式关系</span>
-						</div>
-						<textarea value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} style={{ width: '100%', minHeight: 120, border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }} />
+						<div style={{ fontSize: 12, color: '#6b7280' }}>（兼容）匹配模式列表</div>
+						<textarea className="ui-input" style={{ minHeight: 100 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；若填写了 DSL，将优先使用 DSL" />
 					</div>
-					<div>
+					<div className="form-col">
 						<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 							<input type="checkbox" checked={!!ruleForm.enabled} onChange={(e) => setRuleForm({ ...ruleForm, enabled: e.target.checked })} /> 启用该规则
 						</label>
