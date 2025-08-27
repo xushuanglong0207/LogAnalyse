@@ -10,7 +10,8 @@
       "Bash(taskkill:*)",
       "Bash(chmod:*)",
       "Bash(ss:*)",
-      "Bash(./docker-start.sh:*)"
+      "Bash(./docker-start.sh:*)",
+      "Bash(docker compose:*)"
     ],
     "deny": [],
     "ask": [],

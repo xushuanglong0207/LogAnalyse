@@ -1,10 +1,7 @@
 -- 日志分析平台数据库初始化脚本
 
--- 创建数据库（如果不存在）
-CREATE DATABASE IF NOT EXISTS loganalyzer;
-
--- 使用数据库
-\c loganalyzer;
+-- PostgreSQL数据库初始化
+-- 数据库 'loganalyzer' 已通过环境变量 POSTGRES_DB 创建
 
 -- 创建扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
