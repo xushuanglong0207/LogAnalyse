@@ -403,7 +403,7 @@ export default function RulesPage() {
 
 						{/* Rules List */}
 						<div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 overflow-hidden">
-							<div className="max-h-[600px] overflow-auto">
+							<div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
 								{detectionRules.length > 0 ? (
 									<div className="divide-y divide-gray-100">
 										{detectionRules.map((rule: any) => (

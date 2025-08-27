@@ -60,6 +60,15 @@ export default function DashboardPage() {
 	const [detailData, setDetailData] = useState<any>(null)
 	const [detailLoading, setDetailLoading] = useState(false)
 
+	// 仅展示：问题类型 + 问题描述
+	const getDetailTitle = useMemo(() => {
+		if (!detailData || !Array.isArray(detailData.issues) || detailData.issues.length === 0) return '分析详情'
+		const pick = detailData.issues.find((i: any) => i?.severity === 'high') || detailData.issues[0]
+		const type = String(pick?.rule_name || '问题')
+		const desc = String(pick?.description || '')
+		return desc ? `${type} - ${desc}` : type
+	}, [detailData])
+	
 	const getStoredToken = () => (typeof window === 'undefined' ? '' : (localStorage.getItem('token') || sessionStorage.getItem('token') || ''))
 	
 	const authedFetch = async (url: string, options: any = {}) => {
@@ -251,7 +260,7 @@ export default function DashboardPage() {
 						</div>
 					</div>
 
-					<div className="max-h-[70vh] overflow-auto">
+					<div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
 						{latestResults.length > 0 ? (
 							<div className="divide-y divide-gray-100">
 								{latestResults.map((result, index) => (
@@ -312,19 +321,11 @@ export default function DashboardPage() {
 								</div>
 								<div>
 									<h3 
-										className="text-lg font-bold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap group-hover:overflow-visible group-hover:whitespace-normal max-w-[60vw]"
-										title={detailData?.filename}
+										className="text-lg font-bold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap max-w-[60vw]"
+										title={getDetailTitle}
 									>
-										{detailData?.filename || '分析详情'}
+										{getDetailTitle}
 									</h3>
-									{detailData?.summary && (
-										<p className="text-sm text-gray-600">
-											共发现 {detailData.summary.total_issues} 个问题
-											{detailData.summary.high_severity > 0 && 
-												<span className="ml-2 text-red-600">• {detailData.summary.high_severity} 个高风险</span>
-											}
-										</p>
-									)}
 								</div>
 							</div>
 							<button
