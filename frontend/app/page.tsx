@@ -16,9 +16,14 @@ function computeApiBase(): string {
 // 简易Modal组件（美化）
 function Modal({ visible, title, children, onClose, footer }: any) {
 	if (!visible) return null
+	const overlayDown = useRef(false)
 	return (
-		<div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={onClose}>
-			<div className="ui-card" onClick={(e) => e.stopPropagation()} style={{ width: 'min(920px, 94vw)', maxHeight: '86vh', overflow: 'auto' }}>
+		<div
+			style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+			onMouseDown={(e) => { if (e.target === e.currentTarget) overlayDown.current = true }}
+			onMouseUp={(e) => { if (overlayDown.current && e.target === e.currentTarget) onClose(); overlayDown.current = false }}
+		>
+			<div className="ui-card" onMouseDown={(e) => e.stopPropagation()} onMouseUp={(e) => e.stopPropagation()} style={{ width: 'min(920px, 94vw)', maxHeight: '86vh', overflow: 'auto' }}>
 				<div className="modal-header">
 					<h3 className="modal-title">{title}</h3>
 					<button className="btn btn-outline" onClick={onClose}>×</button>
