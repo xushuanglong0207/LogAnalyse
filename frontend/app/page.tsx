@@ -294,13 +294,13 @@ export default function Home() {
 			<h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>🚀 日志分析平台</h1>
 			<div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
 				{[
-					{ id: 'dashboard', label: '📊 仪表板' },
-					{ id: 'logs', label: '📁 日志管理' },
-					{ id: 'rules', label: '🔍 规则管理' },
-					{ id: 'problems', label: '📚 问题库' },
-					{ id: 'users', label: '👥 用户管理' }
+					{ id: 'dashboard', label: '📊 仪表板', href: '/dashboard' },
+					{ id: 'logs', label: '📁 日志管理', href: '/logs' },
+					{ id: 'rules', label: '🔍 规则管理', href: '/rules' },
+					{ id: 'problems', label: '📚 问题库', href: '/problems' },
+					{ id: 'users', label: '👥 用户管理', href: '/users' }
 				].map(nav => (
-					<button key={nav.id} onClick={() => setCurrentPage(nav.id)} className="btn" style={{ background: currentPage === nav.id ? 'linear-gradient(135deg, var(--brand), var(--brand2))' : '#fff', color: currentPage === nav.id ? '#fff' : '#374151' }}>{nav.label}</button>
+					<button key={nav.id} onClick={() => window.location.href = nav.href} className="btn" style={{ background: '#fff', color: '#374151' }}>{nav.label}</button>
 				))}
 				<button onClick={() => window.location.href = '/profile'} className="btn btn-outline">个人中心</button>
 			</div>

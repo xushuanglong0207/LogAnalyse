@@ -5,9 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
 	User, 
-	Settings, 
 	Shield, 
-	Bell, 
 	Eye, 
 	EyeOff, 
 	Save, 
@@ -57,14 +55,6 @@ export default function ProfilePage() {
 		confirm: false
 	})
 
-	// 设置状态
-	const [settings, setSettings] = useState({
-		emailNotifications: true,
-		systemNotifications: true,
-		securityAlerts: true,
-		theme: 'light'
-	})
-
 	const [activeTab, setActiveTab] = useState('profile')
 
 	const getStoredToken = () => (typeof window === 'undefined' ? '' : (localStorage.getItem('token') || sessionStorage.getItem('token') || ''))
@@ -95,8 +85,6 @@ export default function ProfilePage() {
 			}
 		} catch (err) {
 			setError('获取用户信息失败')
-		} finally {
-			setLoading(false)
 		}
 	}
 
@@ -105,6 +93,8 @@ export default function ProfilePage() {
 			router.replace('/login')
 			return
 		}
+		// 立即设置loading为false，显示骨架屏
+		setLoading(false)
 		fetchCurrentUser()
 	}, [])
 
@@ -126,9 +116,16 @@ export default function ProfilePage() {
 			
 			if (r.ok) {
 				setSuccess('个人资料更新成功')
-				await fetchCurrentUser()
+				// 更新本地状态
+				setCurrentUser({
+					...currentUser,
+					email: profileForm.email,
+					position: profileForm.position,
+					bio: profileForm.bio
+				})
 			} else {
-				setError('更新失败，请稍后重试')
+				const errorData = await r.text()
+				setError(errorData || '更新失败，请稍后重试')
 			}
 		} catch (err) {
 			setError('更新失败，请稍后重试')
@@ -184,6 +181,34 @@ export default function ProfilePage() {
 		sessionStorage.removeItem('token')
 		window.location.href = '/login'
 	}
+
+	const SkeletonLoader = () => (
+		<div className="animate-pulse">
+			<div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+			<div className="space-y-4">
+				<div className="grid md:grid-cols-2 gap-6">
+					<div className="space-y-2">
+						<div className="h-4 bg-gray-200 rounded w-1/4"></div>
+						<div className="h-12 bg-gray-200 rounded"></div>
+					</div>
+					<div className="space-y-2">
+						<div className="h-4 bg-gray-200 rounded w-1/4"></div>
+						<div className="h-12 bg-gray-200 rounded"></div>
+					</div>
+				</div>
+				<div className="grid md:grid-cols-2 gap-6">
+					<div className="space-y-2">
+						<div className="h-4 bg-gray-200 rounded w-1/4"></div>
+						<div className="h-12 bg-gray-200 rounded"></div>
+					</div>
+					<div className="space-y-2 md:col-span-2">
+						<div className="h-4 bg-gray-200 rounded w-1/4"></div>
+						<div className="h-24 bg-gray-200 rounded"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	)
 
 	if (loading) {
 		return (
@@ -247,9 +272,7 @@ export default function ProfilePage() {
 							<nav className="p-4">
 								{[
 									{ id: 'profile', label: '基本信息', icon: User },
-									{ id: 'security', label: '安全设置', icon: Shield },
-									{ id: 'notifications', label: '通知设置', icon: Bell },
-									{ id: 'preferences', label: '偏好设置', icon: Settings }
+									{ id: 'security', label: '安全设置', icon: Shield }
 								].map((item) => (
 									<button
 										key={item.id}
@@ -301,75 +324,81 @@ export default function ProfilePage() {
 										<Edit3 className="w-6 h-6 text-gray-400" />
 									</div>
 
-									<div className="grid md:grid-cols-2 gap-6">
-										<div className="space-y-2">
-											<label className="block text-sm font-semibold text-gray-700">用户名</label>
-											<div className="relative">
-												<input
-													type="text"
-													value={profileForm.username}
-													disabled
-													className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
-												/>
-												<div className="absolute inset-y-0 right-0 flex items-center pr-3">
-													<div className="text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded">只读</div>
+									{!currentUser ? (
+										<SkeletonLoader />
+									) : (
+										<>
+											<div className="grid md:grid-cols-2 gap-6">
+												<div className="space-y-2">
+													<label className="block text-sm font-semibold text-gray-700">用户名</label>
+													<div className="relative">
+														<input
+															type="text"
+															value={profileForm.username}
+															disabled
+															className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+														/>
+														<div className="absolute inset-y-0 right-0 flex items-center pr-3">
+															<div className="text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded">只读</div>
+														</div>
+													</div>
+												</div>
+
+												<div className="space-y-2">
+													<label className="block text-sm font-semibold text-gray-700">邮箱地址</label>
+													<input
+														type="email"
+														value={profileForm.email}
+														onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+														placeholder="请输入邮箱地址"
+														className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
+													/>
+												</div>
+
+												<div className="space-y-2">
+													<label className="block text-sm font-semibold text-gray-700">职位</label>
+													<input
+														type="text"
+														value={profileForm.position}
+														onChange={(e) => setProfileForm({ ...profileForm, position: e.target.value })}
+														placeholder="如：运维工程师、系统管理员"
+														className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
+													/>
+												</div>
+
+												<div className="space-y-2 md:col-span-2">
+													<label className="block text-sm font-semibold text-gray-700">个人简介</label>
+													<textarea
+														value={profileForm.bio}
+														onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+														placeholder="介绍一下自己..."
+														rows={4}
+														className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none"
+													/>
 												</div>
 											</div>
-										</div>
 
-										<div className="space-y-2">
-											<label className="block text-sm font-semibold text-gray-700">邮箱地址</label>
-											<input
-												type="email"
-												value={profileForm.email}
-												onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-												placeholder="请输入邮箱地址"
-												className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
-											/>
-										</div>
-
-										<div className="space-y-2">
-											<label className="block text-sm font-semibold text-gray-700">职位</label>
-											<input
-												type="text"
-												value={profileForm.position}
-												onChange={(e) => setProfileForm({ ...profileForm, position: e.target.value })}
-												placeholder="如：运维工程师、系统管理员"
-												className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
-											/>
-										</div>
-
-										<div className="space-y-2 md:col-span-2">
-											<label className="block text-sm font-semibold text-gray-700">个人简介</label>
-											<textarea
-												value={profileForm.bio}
-												onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-												placeholder="介绍一下自己..."
-												rows={4}
-												className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none"
-											/>
-										</div>
-									</div>
-
-									<div className="flex justify-end pt-6 border-t border-gray-100 mt-8">
-										<button
-											onClick={updateProfile}
-											disabled={saving}
-											className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 disabled:shadow-none transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed"
-										>
-											{saving ? (
-												<>
-													<div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-													<span>保存中...</span>
-												</>
-											) : (
-												<>
-													<Save className="w-5 h-5" />
-													<span>保存资料</span>
-												</>
-											)}
-										</button>
-									</div>
+											<div className="flex justify-end pt-6 border-t border-gray-100 mt-8">
+												<button
+													onClick={updateProfile}
+													disabled={saving}
+													className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 disabled:shadow-none transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed"
+												>
+													{saving ? (
+														<>
+															<div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+															<span>保存中...</span>
+														</>
+													) : (
+														<>
+															<Save className="w-5 h-5" />
+															<span>保存资料</span>
+														</>
+													)}
+												</button>
+											</div>
+										</>
+									)}
 								</div>
 							)}
 
@@ -464,83 +493,6 @@ export default function ProfilePage() {
 												</>
 											)}
 										</button>
-									</div>
-								</div>
-							)}
-
-							{/* Notifications Tab */}
-							{activeTab === 'notifications' && (
-								<div className="p-8">
-									<div className="flex items-center justify-between mb-8">
-										<div>
-											<h3 className="text-2xl font-bold text-gray-900">通知设置</h3>
-											<p className="text-gray-600 mt-1">管理您的通知偏好</p>
-										</div>
-										<Bell className="w-6 h-6 text-gray-400" />
-									</div>
-
-									<div className="space-y-6">
-										{[
-											{ key: 'emailNotifications', label: '邮件通知', desc: '接收系统邮件通知' },
-											{ key: 'systemNotifications', label: '系统通知', desc: '接收系统内通知提醒' },
-											{ key: 'securityAlerts', label: '安全警告', desc: '接收安全相关的重要通知' }
-										].map((item) => (
-											<div key={item.key} className="flex items-center justify-between p-4 bg-white/50 rounded-xl border border-gray-100">
-												<div>
-													<h4 className="font-semibold text-gray-900">{item.label}</h4>
-													<p className="text-sm text-gray-600">{item.desc}</p>
-												</div>
-												<label className="relative inline-flex items-center cursor-pointer">
-													<input
-														type="checkbox"
-														checked={settings[item.key as keyof typeof settings] as boolean}
-														onChange={(e) => setSettings({ ...settings, [item.key]: e.target.checked })}
-														className="sr-only peer"
-													/>
-													<div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-												</label>
-											</div>
-										))}
-									</div>
-								</div>
-							)}
-
-							{/* Preferences Tab */}
-							{activeTab === 'preferences' && (
-								<div className="p-8">
-									<div className="flex items-center justify-between mb-8">
-										<div>
-											<h3 className="text-2xl font-bold text-gray-900">偏好设置</h3>
-											<p className="text-gray-600 mt-1">个性化您的使用体验</p>
-										</div>
-										<Settings className="w-6 h-6 text-gray-400" />
-									</div>
-
-									<div className="space-y-6">
-										<div className="p-4 bg-white/50 rounded-xl border border-gray-100">
-											<h4 className="font-semibold text-gray-900 mb-3">主题设置</h4>
-											<div className="grid grid-cols-2 gap-4">
-												{[
-													{ value: 'light', label: '浅色主题', desc: '明亮简洁的界面风格' },
-													{ value: 'dark', label: '深色主题', desc: '护眼的深色界面风格' }
-												].map((theme) => (
-													<label key={theme.value} className="cursor-pointer">
-														<input
-															type="radio"
-															name="theme"
-															value={theme.value}
-															checked={settings.theme === theme.value}
-															onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
-															className="sr-only peer"
-														/>
-														<div className="p-3 border-2 border-gray-200 rounded-lg peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all duration-200">
-															<h5 className="font-medium text-gray-900">{theme.label}</h5>
-															<p className="text-sm text-gray-600">{theme.desc}</p>
-														</div>
-													</label>
-												))}
-											</div>
-										</div>
 									</div>
 								</div>
 							)}
