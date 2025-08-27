@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 import re
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 # 可存储内容的最大字节数（默认20MB，可通过环境变量覆盖）
 MAX_CONTENT_BYTES = int(os.environ.get("MAX_CONTENT_BYTES", str(20 * 1024 * 1024)))
@@ -38,6 +39,10 @@ app.add_middleware(
 uploaded_files: List[Dict[str, Any]] = []
 analysis_results: List[Dict[str, Any]] = []
 problems: List[Dict[str, Any]] = []  # 问题库：{id, title, url, error_type, created_at}
+
+# 简单后台分析队列（线程池），避免阻塞主事件循环
+EXECUTOR = ThreadPoolExecutor(max_workers=int(os.environ.get("ANALYSIS_WORKERS", "2")))
+ANALYSIS_RUNNING = set()  # file_id 集合，表示正在分析
 
 # —— 持久化设置 ——
 DATA_DIR = os.environ.get("LOG_ANALYZER_DATA", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "database")))
@@ -427,7 +432,15 @@ async def analyze_text(payload: AnalyzeTextPayload, ctx: Dict[str, Any] = Depend
         "status": "uploaded"
     }
     uploaded_files.append(file_info)
-    return await analyze_log_file(file_info["id"])  # 直接复用分析流程
+    # 文本分析同样走后台队列
+    ANALYSIS_RUNNING.add(file_info["id"])
+    def _task():
+        try:
+            _perform_analysis(file_info["id"])
+        finally:
+            ANALYSIS_RUNNING.discard(file_info["id"])
+    EXECUTOR.submit(_task)
+    return JSONResponse(status_code=202, content={"status": "accepted", "file_id": file_info["id"]})
 
 # 规则匹配逻辑
 
@@ -477,73 +490,89 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Dict[str, 
         flat = [m for lst in all_lists for m in lst]
         return flat
 
+def _perform_analysis(file_id: int):
+    file_info = next((f for f in uploaded_files if f["id"] == file_id), None)
+    if not file_info:
+        return
+    # 从磁盘读取
+    content = ""
+    try:
+        with open(file_info.get("path"), "r", encoding="utf-8", errors="ignore") as fr:
+            chunks = []
+            read = 0
+            while read < MAX_CONTENT_BYTES:
+                part = fr.read(min(1024 * 1024, MAX_CONTENT_BYTES - read))
+                if not part:
+                    break
+                chunks.append(part)
+                read += len(part)
+            content = ''.join(chunks)
+    except Exception:
+        content = file_info.get("content", "")
+    # 分析
+    issues = []
+    lines = content.split('\n')
+    for rule in detection_rules:
+        matches = evaluate_rule_matches(content, rule)
+        if not matches:
+            continue
+        for m in matches:
+            if m is None:
+                line_number = 1
+                context = '\n'.join(lines[:5])
+                matched_text = ""
+            else:
+                line_number = content[:m.start()].count('\n') + 1
+                context_start = max(0, line_number - 3)
+                context_end = min(len(lines), line_number + 2)
+                context = '\n'.join(lines[context_start:context_end])
+                matched_text = m.group()
+            issues.append({
+                "rule_name": rule["name"],
+                "description": rule.get("description", ""),
+                "line_number": line_number,
+                "matched_text": matched_text,
+                "context": context,
+                "severity": "high" if ("panic" in rule["name"].lower() or "oom" in rule["name"].lower()) else "medium"
+            })
+    result = {
+        "file_id": file_id,
+        "filename": file_info["filename"],
+        "analysis_time": datetime.now().isoformat(),
+        "issues": issues,
+        "summary": {
+            "total_issues": len(issues),
+            "high_severity": len([i for i in issues if i["severity"] == "high"]),
+            "medium_severity": len([i for i in issues if i["severity"] == "medium"])
+        }
+    }
+    global analysis_results
+    analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
+    analysis_results.append(result)
+    save_analysis_index()
+
 @app.post("/api/logs/{file_id}/analyze")
 async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
-    try:
-        file_info = next((f for f in uploaded_files if f["id"] == file_id), None)
-        if not file_info:
-            raise HTTPException(status_code=404, detail="文件不存在")
-        # 从磁盘读取
-        content = ""
+    # 防止重复点击
+    if file_id in ANALYSIS_RUNNING:
+        return JSONResponse(status_code=202, content={"status": "running"})
+    ANALYSIS_RUNNING.add(file_id)
+    def _task():
         try:
-            with open(file_info.get("path"), "r", encoding="utf-8", errors="ignore") as fr:
-                # 分块读取，控制峰值内存
-                chunks = []
-                read = 0
-                while read < MAX_CONTENT_BYTES:
-                    part = fr.read(min(1024 * 1024, MAX_CONTENT_BYTES - read))
-                    if not part:
-                        break
-                    chunks.append(part)
-                    read += len(part)
-                content = ''.join(chunks)
-        except Exception:
-            content = file_info.get("content", "")
-        # 以下保持原有分析逻辑
-        issues = []
-        lines = content.split('\n')
-        for rule in detection_rules:
-            matches = evaluate_rule_matches(content, rule)
-            if not matches:
-                continue
-            for m in matches:
-                if m is None:
-                    line_number = 1
-                    context = '\n'.join(lines[:5])
-                    matched_text = ""
-                else:
-                    line_number = content[:m.start()].count('\n') + 1
-                    context_start = max(0, line_number - 3)
-                    context_end = min(len(lines), line_number + 2)
-                    context = '\n'.join(lines[context_start:context_end])
-                    matched_text = m.group()
-                issues.append({
-                    "rule_name": rule["name"],
-                    "description": rule.get("description", ""),
-                    "line_number": line_number,
-                    "matched_text": matched_text,
-                    "context": context,
-                    "severity": "high" if ("panic" in rule["name"].lower() or "oom" in rule["name"].lower()) else "medium"
-                })
-        result = {
-            "file_id": file_id,
-            "filename": file_info["filename"],
-            "analysis_time": datetime.now().isoformat(),
-            "issues": issues,
-            "summary": {
-                "total_issues": len(issues),
-                "high_severity": len([i for i in issues if i["severity"] == "high"]),
-                "medium_severity": len([i for i in issues if i["severity"] == "medium"])
-            }
-        }
-        # 替换旧结果
-        global analysis_results
-        analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
-        analysis_results.append(result)
-        save_analysis_index()
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
+            _perform_analysis(file_id)
+        finally:
+            ANALYSIS_RUNNING.discard(file_id)
+    EXECUTOR.submit(_task)
+    return JSONResponse(status_code=202, content={"status": "accepted"})
+
+@app.get("/api/analysis/{file_id}/status")
+async def get_analysis_status(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    exists = next((r for r in analysis_results if r.get("file_id") == file_id), None)
+    if exists:
+        return {"status": "ready"}
+    if file_id in ANALYSIS_RUNNING:
+        return {"status": "running"}
+    return {"status": "none"}
 
 # 分析结果查询
 @app.get("/api/analysis/results")
