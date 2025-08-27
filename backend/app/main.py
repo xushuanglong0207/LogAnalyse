@@ -310,6 +310,7 @@ INDEX_PATH = os.path.join(DATA_DIR, "uploads_index.json")
 ANALYSIS_INDEX_PATH = os.path.join(DATA_DIR, "analysis_results.json")
 PROBLEMS_PATH = os.path.join(DATA_DIR, "problems.json")
 RULES_PATH = os.path.join(DATA_DIR, "detection_rules.json")  # 新增规则持久化路径
+USERS_PATH = os.path.join(DATA_DIR, "users.json")
 
 os.makedirs(FILES_DIR, exist_ok=True)
 
@@ -343,6 +344,21 @@ try:
 except Exception:
     problems = []
 
+# 启动时加载用户
+try:
+    if os.path.exists(USERS_PATH):
+        with open(USERS_PATH, "r", encoding="utf-8") as f:
+            users = json.load(f)
+    else:
+        # 若无文件，保持内置admin
+        users: List[Dict[str, Any]] = [
+            {"id": 1, "username": "admin", "email": "", "role": "管理员", "password": "admin123", "position": "管理员"}
+        ]
+except Exception:
+    users = [
+        {"id": 1, "username": "admin", "email": "", "role": "管理员", "password": "admin123", "position": "管理员"}
+    ]
+
 
 def save_index():
     try:
@@ -371,6 +387,15 @@ def save_rules():
     try:
         with open(RULES_PATH, "w", encoding="utf-8") as f:
             json.dump(detection_rules, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+# 新增：保存用户到文件
+
+def save_users():
+    try:
+        with open(USERS_PATH, "w", encoding="utf-8") as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 
@@ -442,9 +467,6 @@ class ChangePasswordPayload(BaseModel):
     old_password: str
     new_password: str
 
-users: List[Dict[str, Any]] = [
-    {"id": 1, "username": "admin", "email": "", "role": "管理员", "password": "admin123", "position": "管理员"}
-]
 
 # 在应用启动时执行一次过期清理，避免导入阶段调用
 @app.on_event("startup")
@@ -1251,6 +1273,7 @@ async def create_user(payload: UserCreate, ctx: Dict[str, Any] = Depends(require
         "position": payload.position or ""
     }
     users.append(new_user)
+    save_users()
     return {"message": "用户创建成功", "user": _public_user(new_user)}
 
 @app.put("/api/users/{user_id}")
@@ -1266,6 +1289,7 @@ async def update_user(user_id: int, payload: UserUpdate, ctx: Dict[str, Any] = D
         user["password"] = payload.password
     if payload.position is not None:
         user["position"] = payload.position
+    save_users()
     return {"message": "用户更新成功", "user": _public_user(user)}
 
 @app.delete("/api/users/{user_id}")
@@ -1275,6 +1299,7 @@ async def delete_user(user_id: int, ctx: Dict[str, Any] = Depends(require_auth))
     users = [u for u in users if u["id"] != user_id]
     if len(users) == before:
         raise HTTPException(status_code=404, detail="用户不存在")
+    save_users()
     return {"message": "用户已删除"}
 
 if __name__ == "__main__":
