@@ -1285,7 +1285,10 @@ OOM | "Out of memory"
 				</div>
 			</div>
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
-				<h4 style={{ marginTop: 0 }}>统计</h4>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+					<h4 style={{ marginTop: 0 }}>统计</h4>
+					<div style={{ color: '#6b7280', fontSize: 12 }}>问题总数：{problems.length}</div>
+				</div>
 				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: statsExpanded ? 260 : 60, overflow: 'auto' }}>
 					{Object.entries(problemStatsByType).length === 0 ? (
 						<span style={{ color: '#6b7280' }}>暂无统计</span>
