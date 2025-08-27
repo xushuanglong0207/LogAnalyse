@@ -12,7 +12,9 @@
       "Bash(ss:*)",
       "Bash(./docker-start.sh:*)",
       "Bash(docker compose:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(docker-compose:*)",
+      "Read(/D:\\/**)"
     ],
     "deny": [],
     "ask": [],

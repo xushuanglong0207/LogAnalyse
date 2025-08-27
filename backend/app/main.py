@@ -187,15 +187,32 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Any]:
     """
     # 预判 DSL
     expr = ''
+    print(f"  DSL检查开始 - 规则: {rule.get('name', 'unknown')}")
+    print(f"  rule.get('dsl'): {repr(rule.get('dsl'))}")
+    print(f"  isinstance(rule.get('dsl'), str): {isinstance(rule.get('dsl'), str)}")
+    
     if isinstance(rule.get('dsl'), str) and rule['dsl'].strip():
         expr = rule['dsl'].strip()
+        print(f"  DSL字段检查通过，expr设置为: {repr(expr)}")
     else:
+        print(f"  DSL字段检查失败，尝试patterns兼容性检查")
         # 兼容：如果 patterns 是单行表达式且包含 DSL 运算符，则当作 DSL
         pats = rule.get('patterns')
+        print(f"  patterns: {pats}")
         if isinstance(pats, list) and len(pats)==1 and isinstance(pats[0], str):
             cand = pats[0].strip()
+            print(f"  检查patterns候选: {repr(cand)}")
             if any(ch in cand for ch in ['&','|','!','！','(',')','"']):
                 expr = cand
+                print(f"  patterns兼容性检查通过，expr设置为: {repr(expr)}")
+            else:
+                print(f"  patterns不包含DSL运算符")
+        else:
+            print(f"  patterns格式不符合DSL兼容要求")
+    
+    print(f"  最终expr值: {repr(expr)}")
+    print(f"  expr布尔值: {bool(expr)}")
+    
     if expr:
         print(f"  开始DSL处理，表达式: {expr}")  # 调试信息
         tokens = _tokenize(expr)
@@ -844,51 +861,6 @@ async def analyze_text(payload: AnalyzeTextPayload, ctx: Dict[str, Any] = Depend
 
 # 规则匹配逻辑
 
-def evaluate_rule_matches(content: str, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
-    if not rule.get("enabled", True):
-        return []
-    patterns = rule.get("patterns", []) or []
-    operator = (rule.get("operator") or "OR").upper()
-    is_regex = bool(rule.get("is_regex", True))
-
-    def find_matches(pat: str):
-        if is_regex:
-            return list(re.finditer(pat, content, re.IGNORECASE))
-        else:
-            matches = []
-            start = 0
-            pat_l = pat.lower()
-            cont_l = content.lower()
-            while True:
-                idx = cont_l.find(pat_l, start)
-                if idx == -1:
-                    break
-                class M:
-                    def __init__(self, s, e):
-                        self._s = s; self._e = e
-                    def start(self): return self._s
-                    def end(self): return self._e
-                    def group(self): return content[self._s:self._e]
-                matches.append(M(idx, idx + len(pat)))
-                start = idx + len(pat)
-            return matches
-
-    all_lists = [find_matches(p) for p in patterns]
-
-    if operator == "AND":
-        # 所有模式至少出现一次才算匹配，返回每个模式的首个匹配
-        if all(len(lst) > 0 for lst in all_lists):
-            firsts = [lst[0] for lst in all_lists]
-            return firsts
-        return []
-    elif operator == "NOT":
-        # 所有模式都不出现才算命中（返回空匹配以指示命中）
-        if all(len(lst) == 0 for lst in all_lists):
-            return [None]  # 用None占位表示命中但无具体片段
-        return []
-    else:  # OR
-        flat = [m for lst in all_lists for m in lst]
-        return flat
 
 def _perform_analysis(file_id: int):
     file_info = next((f for f in uploaded_files if f["id"] == file_id), None)
