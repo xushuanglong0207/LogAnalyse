@@ -171,11 +171,15 @@ export default function Home() {
 	const [detailVisible, setDetailVisible] = useState(false)
 	const [detailData, setDetailData] = useState<any>(null)
 	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+	const [pageByGroup, setPageByGroup] = useState<Record<string, number>>({})
+	const PAGE_SIZE_PER_GROUP = 300
 	useEffect(() => { if (detailVisible) setCollapsedGroups({}) }, [detailVisible])
 	useEffect(() => {
 		if (!detailVisible || !detailData?.data?.issues) return
-		const types = Array.from(new Set((detailData.data.issues || []).map((it: any) => String(it.rule_name || '其他'))))
+		const types = Array.from(new Set((detailData.data.issues || []).map((it: any) => String(it.matched_text || it.rule_name || '其他'))))
 		fetchProblemStats(types)
+		// 打开详情时重置每组页码
+		setPageByGroup({})
 	}, [detailVisible, detailData])
 
 	// 用户/规则弹窗
@@ -1086,24 +1090,36 @@ export default function Home() {
 							<div style={{ color: '#6b7280', fontSize: 12, marginBottom: 8 }}>共 {detailData.data.summary.total_issues} 个问题，{entries.length} 个类型</div>
 							{entries.map(([key, list], gi) => {
 								const [typeKey, zh] = key.split('||')
+								const page = pageByGroup[key] || 1
+								const shown = (list as any[]).slice(0, page * PAGE_SIZE_PER_GROUP)
 								return (
 									<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
 										<div onClick={() => setCollapsedGroups(v => ({ ...v, [key]: !v[key] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
 											<div style={{ fontWeight: 800, color: '#111827' }}>{typeKey} <span style={{ marginLeft: 8, color: '#ef4444', fontWeight: 700 }}>{zh}</span></div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-												<span style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[key] ? '点击展开' : '点击折叠'} · {list.length}</span>
-												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[list?.[0]?.rule_name || typeKey] || 0}</span>
-												<button onClick={(e) => { e.preventDefault(); e.stopPropagation(); clearSelection(); goToProblems(list?.[0]?.rule_name || typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
+												<span style={{ color: '#6b7280', fontSize: 12 }}>{collapsedGroups[key] ? '点击展开' : '点击折叠'} · 共 {Array.isArray(list)?list.length:0} 条</span>
+												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[typeKey] || 0}</span>
+												<button onClick={(e) => { e.stopPropagation(); goToProblems(typeKey) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '4px 8px', borderRadius: 6, cursor: 'pointer' }}>查看</button>
 											</div>
 										</div>
 										{!collapsedGroups[key] && (
-											<div className="stack-12" style={{ marginTop: 8 }}>
-												{list.map((it: any, idx: number) => (
-													<div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
-														<div style={{ fontWeight: 600 }}><span style={{ color: '#ef4444', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.matched_text}</span> <span style={{ color: '#6b7280', fontWeight: 400 }}>#{it.line_number}</span></div>
-														<pre style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 6, fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>{it.context}</pre>
-												</div>
+											<div>
+												{shown.map((it: any, ii: number) => (
+													<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+															<div style={{ fontWeight: 600 }}>{it.rule_name || typeKey}</div>
+															<div style={{ color: '#6b7280', fontSize: 12 }}>行 {it.line_number || '-'}</div>
+														</div>
+														<pre style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{it.context || it.matched_text || ''}</pre>
+													</div>
 												))}
+												{shown.length < (list as any[]).length && (
+													<div style={{ textAlign: 'center', padding: 8 }}>
+														<button onClick={() => setPageByGroup(v => ({ ...v, [key]: (v[key] || 1) + 1 }))} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>
+															加载更多（{(list as any[]).length - shown.length}）
+														</button>
+													</div>
+												)}
 											</div>
 										)}
 									</div>
