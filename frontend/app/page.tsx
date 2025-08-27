@@ -82,6 +82,7 @@ export default function Home() {
 	const [draggingRuleId, setDraggingRuleId] = useState<number | null>(null)
 	const [backendStatus, setBackendStatus] = useState<'connected' | 'connecting' | 'failed'>('connecting')
 	const [analysisResults, setAnalysisResults] = useState<any[]>([])
+	const [highlightAnalysisId, setHighlightAnalysisId] = useState<number | null>(null)
 	const [users, setUsers] = useState<any[]>([])
 
 	// —— 问题库：状态 ——
@@ -326,7 +327,23 @@ export default function Home() {
 		} catch { showToast('分析失败', 'error') }
 	}
 	const analyzeFile = async (fileId: number) => {
-		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' }); if (r.ok) { const d = await r.json(); setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d]); await fetchDashboardStats(); showToast('分析完成', 'success') } else showToast('分析失败', 'error') } catch { showToast('分析失败', 'error') }
+		try { 
+			const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' })
+			if (r.ok) { 
+				const d = await r.json()
+				setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
+				await fetchDashboardStats(false)
+				showToast('分析完成', 'success')
+				// 跳转到仪表板并高亮该条
+				setCurrentPage('dashboard')
+				setHighlightAnalysisId(d.file_id)
+				setTimeout(() => setHighlightAnalysisId(null), 5000)
+				// 等待DOM更新后滚动到可见
+				setTimeout(() => {
+					try { const el = document.querySelector(`[data-analysis-id="${d.file_id}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {}
+				}, 100)
+			} else showToast('分析失败', 'error') 
+		} catch { showToast('分析失败', 'error') }
 	}
 	const deleteFile = async (fileId: number) => {
 		const ok = await askConfirm('确定删除该日志文件？')
@@ -796,7 +813,7 @@ export default function Home() {
 				<h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>最近分析结果（双击查看详情）</h3>
 				{analysisResults.length > 0 ? (
 					analysisResults.slice(-20).reverse().map((result, index) => (
-						<div key={index} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.25rem', marginBottom: '0.5rem', cursor: 'zoom-in' }}>
+						<div key={index} data-analysis-id={result.file_id} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.25rem', marginBottom: '0.5rem', cursor: 'zoom-in', background: highlightAnalysisId===result.file_id ? '#eef2ff' : 'transparent', transition: 'background 0.2s ease' }}>
 							<p style={{ fontWeight: 600, margin: 0 }}>{result.filename}</p>
 							<p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>发现 {result.summary.total_issues} 个问题 - {new Date(result.analysis_time).toLocaleString()}</p>
 						</div>
