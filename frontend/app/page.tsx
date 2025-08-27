@@ -375,7 +375,7 @@ export default function Home() {
 			setTextAnalysisProgress({ progress: 0, message: '开始分析粘贴内容...' })
 			
 			const textSizeKB = new Blob([pasteText]).size / 1024
-			const estimatedTime = Math.max(0.5, Math.min(6, Math.ceil(textSizeKB / 200))) // 每200KB约1秒，最少0.5秒，最多6秒
+			const estimatedTime = Math.max(2, Math.min(10, Math.ceil(textSizeKB / 150))) // 每150KB约1秒，最少2秒，最多10秒
 			showToast(`开始分析文本内容，预计耗时 ${estimatedTime} 秒`, 'info')
 			
 			// 开始分析请求
@@ -410,6 +410,10 @@ export default function Home() {
 			
 			if (r.ok) {
 				const d = await r.json()
+				
+				// 调试：打印返回的数据结构
+				console.log('文本分析结果数据：', d)
+				
 				setTextAnalysisProgress({ progress: 100, message: '分析完成！正在跳转...' })
 				
 				// 短暂延迟让用户看到完成状态
@@ -422,7 +426,9 @@ export default function Home() {
 					setAnalyzingText(false)
 					setTextAnalysisProgress({ progress: 0, message: '' })
 					
-					showToast(`文本分析完成！发现 ${d.summary?.total_issues || 0} 个问题`, 'success')
+					// 多种方式获取问题数量
+					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || 0
+					showToast(`文本分析完成！发现 ${totalIssues} 个问题`, 'success')
 					
 					// 跳转到仪表板
 					setCurrentPage('dashboard')
@@ -442,10 +448,10 @@ export default function Home() {
 	}
 	const analyzeFile = async (fileId: number) => {
 		try { 
-			// 获取文件信息估算处理时间 - 优化算法，提升速度
+			// 获取文件信息估算处理时间 - 更准确的时间预估
 			const fileInfo = uploadedFiles.find(f => f.id === fileId)
 			const fileSizeKB = fileInfo?.size ? fileInfo.size / 1024 : 0
-			const estimatedTime = Math.max(1, Math.min(15, Math.ceil(fileSizeKB / 500))) // 每500KB约1秒，加快处理速度，最多15秒
+			const estimatedTime = Math.max(3, Math.min(20, Math.ceil(fileSizeKB / 300))) // 每300KB约1秒，最少3秒，最多20秒
 			
 			// 标记文件为分析中状态
 			setAnalyzingFiles(prev => new Set(prev.add(fileId)))
@@ -491,6 +497,9 @@ export default function Home() {
 			if (r.ok) { 
 				const d = await r.json()
 				
+				// 调试：打印返回的数据结构
+				console.log('分析结果数据：', d)
+				
 				// 完成进度显示
 				setAnalysisProgress(prev => ({ 
 					...prev, 
@@ -519,7 +528,9 @@ export default function Home() {
 						return rest
 					})
 					
-					showToast(`分析完成！发现 ${d.summary?.total_issues || 0} 个问题`, 'success')
+					// 多种方式获取问题数量
+					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || 0
+					showToast(`分析完成！发现 ${totalIssues} 个问题`, 'success')
 					
 					// 跳转到仪表板并高亮
 					setCurrentPage('dashboard')
