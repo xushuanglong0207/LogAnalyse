@@ -60,13 +60,13 @@ export default function DashboardPage() {
 	const [detailData, setDetailData] = useState<any>(null)
 	const [detailLoading, setDetailLoading] = useState(false)
 
-	// 仅展示：问题类型 + 问题描述
+	// 简化标题：仅显示规则名称和描述
 	const getDetailTitle = useMemo(() => {
 		if (!detailData || !Array.isArray(detailData.issues) || detailData.issues.length === 0) return '分析详情'
 		const pick = detailData.issues.find((i: any) => i?.severity === 'high') || detailData.issues[0]
-		const type = String(pick?.rule_name || '问题')
+		const name = String(pick?.rule_name || '问题')
 		const desc = String(pick?.description || '')
-		return desc ? `${type} - ${desc}` : type
+		return desc ? `${name}: ${desc}` : name
 	}, [detailData])
 	
 	const getStoredToken = () => (typeof window === 'undefined' ? '' : (localStorage.getItem('token') || sessionStorage.getItem('token') || ''))
@@ -260,7 +260,7 @@ export default function DashboardPage() {
 						</div>
 					</div>
 
-					<div className="overflow-auto" style={{ maxHeight: '1000px', minHeight: '700px', height: '800px', backgroundColor: 'rgba(0,255,0,0.1)' }}>
+					<div className="overflow-auto" style={{ maxHeight: '70vh', minHeight: '50vh', height: 'auto' }}>
 						{latestResults.length > 0 ? (
 							<div className="divide-y divide-gray-100">
 								{latestResults.map((result, index) => (
