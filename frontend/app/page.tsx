@@ -83,6 +83,7 @@ export default function Home() {
 	const [backendStatus, setBackendStatus] = useState<'connected' | 'connecting' | 'failed'>('connecting')
 	const [analysisResults, setAnalysisResults] = useState<any[]>([])
 	const [highlightAnalysisId, setHighlightAnalysisId] = useState<number | null>(null)
+	const [viewHighlightId, setViewHighlightId] = useState<number | null>(null)
 	const [users, setUsers] = useState<any[]>([])
 
 	// —— 问题库：状态 ——
@@ -354,7 +355,7 @@ export default function Home() {
 		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`); if (r.ok) { const d = await r.json(); setPreviewTitle(`${d.filename}`); setPreviewContent(d.content || ''); setPreviewMode('shell'); setPreviewVisible(true) } } catch {}
 	}
 	const openAnalysisDetail = async (fileId: number, filename: string) => {
-		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); setDetailData({ title: `${filename}`, data: d }); setDetailVisible(true) } } catch { showToast('详情加载失败', 'error') }
+		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); setDetailData({ title: `${filename}`, data: d }); setDetailVisible(true); setCurrentPage('dashboard'); setViewHighlightId(fileId); setTimeout(()=>setViewHighlightId(null), 10000); setTimeout(()=>{ try { const el = document.querySelector(`[data-analysis-id="${fileId}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {} }, 100) } } catch { showToast('详情加载失败', 'error') }
 	}
 
 	// —— 规则：增删改查/拖拽 ——
@@ -813,7 +814,7 @@ export default function Home() {
 				<h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>最近分析结果（双击查看详情）</h3>
 				{analysisResults.length > 0 ? (
 					analysisResults.slice(-20).reverse().map((result, index) => (
-						<div key={index} data-analysis-id={result.file_id} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.25rem', marginBottom: '0.5rem', cursor: 'zoom-in', background: highlightAnalysisId===result.file_id ? '#eef2ff' : 'transparent', transition: 'background 0.2s ease' }}>
+						<div key={index} data-analysis-id={result.file_id} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.25rem', marginBottom: '0.5rem', cursor: 'zoom-in', background: highlightAnalysisId===result.file_id ? '#e8f7ee' : viewHighlightId===result.file_id ? '#fff7da' : 'transparent', transition: 'background 0.2s ease' }}>
 							<p style={{ fontWeight: 600, margin: 0 }}>{result.filename}</p>
 							<p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>发现 {result.summary.total_issues} 个问题 - {new Date(result.analysis_time).toLocaleString()}</p>
 						</div>
@@ -853,7 +854,22 @@ export default function Home() {
 			if (r.ok) { const d = await r.json(); setProblemStatsByType(d.by_type || {}) }
 		} catch {}
 	}
-	const openProblemAdd = () => { setProblemForm({ id: null, title: '', url: '', error_type: problemFilterType || '', category: '' }); setProblemModalVisible(true) }
+	const openProblemAdd = () => {
+		// 推断一个合理的默认错误类型
+		let defaultType = ''
+		try {
+			const q = (searchRule || '').toLowerCase()
+			const inQuery = (detectionRules || []).find((r:any)=> q && (r.name||'').toLowerCase().includes(q))
+			if (inQuery) defaultType = inQuery.name
+			if (!defaultType && selectedFolderId) {
+				const inFolder = (detectionRules || []).find((r:any)=> r.folder_id === selectedFolderId)
+				if (inFolder) defaultType = inFolder.name
+			}
+			if (!defaultType && (detectionRules||[]).length) defaultType = detectionRules[0].name
+		} catch {}
+		setProblemForm({ id: null, title: '', url: '', error_type: defaultType, category: '' })
+		setProblemModalVisible(true)
+	}
 	const openProblemEdit = (p: any) => { setProblemForm({ id: p.id, title: p.title, url: p.url, error_type: p.error_type }); setProblemModalVisible(true) }
 	const submitProblem = async () => {
 		try {
@@ -861,6 +877,7 @@ export default function Home() {
 			const cleanedUrl = sanitizeUrl(problemForm.url || '') || sanitizeUrl(problemForm.title || '')
 			let cleanedTitle = removeUrls(problemForm.title || '')
 			if (!cleanedTitle) cleanedTitle = cleanedUrl ? titleFromUrl(cleanedUrl) : '未命名问题'
+			if (!problemForm.error_type) { showToast('请选择问题类型', 'error'); return }
 			const payload = { title: cleanedTitle, url: cleanedUrl, error_type: problemForm.error_type }
 			if (!payload.url) { showToast('请填写有效链接', 'error'); return }
 			let r
