@@ -830,6 +830,66 @@ async def delete_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_au
     save_analysis_index()
     return {"message": "文件已删除"}
 
+@app.get("/api/logs/{file_id}/preview")
+async def preview_log_file(file_id: int, offset: int = 0, size: int = 512*1024, ctx: Dict[str, Any] = Depends(require_auth)):
+    """按字节偏移返回日志片段，用于大文件分片预览。
+    返回：chunk(字符串)、offset、next_offset、eof、total_size、filename
+    """
+    try:
+        f = next((x for x in uploaded_files if x["id"] == file_id), None)
+        if not f:
+            raise HTTPException(status_code=404, detail="文件不存在")
+        filename = f.get("filename") or str(file_id)
+        # 确定总大小
+        total_size = 0
+        content_bytes = None
+        if f.get("path") and os.path.exists(f["path"]):
+            try:
+                total_size = os.path.getsize(f["path"])
+                size = max(1, min(int(size), 1024 * 1024))  # 上限1MB每次
+                offset = max(0, min(int(offset), total_size))
+                with open(f["path"], "rb") as frb:
+                    frb.seek(offset)
+                    data = frb.read(size)
+                next_offset = offset + len(data)
+                eof = next_offset >= total_size
+                chunk = data.decode("utf-8", errors="ignore")
+                return {
+                    "file_id": file_id,
+                    "filename": filename,
+                    "offset": offset,
+                    "next_offset": next_offset,
+                    "eof": eof,
+                    "total_size": total_size,
+                    "chunk": chunk
+                }
+            except Exception as e:
+                # 回退到内存内容
+                pass
+        # 内存内容回退
+        content_str = f.get("content", "")
+        content_bytes = content_str.encode("utf-8", errors="ignore")
+        total_size = len(content_bytes)
+        size = max(1, min(int(size), 1024 * 1024))
+        offset = max(0, min(int(offset), total_size))
+        data = content_bytes[offset: offset + size]
+        next_offset = offset + len(data)
+        eof = next_offset >= total_size
+        chunk = data.decode("utf-8", errors="ignore")
+        return {
+            "file_id": file_id,
+            "filename": filename,
+            "offset": offset,
+            "next_offset": next_offset,
+            "eof": eof,
+            "total_size": total_size,
+            "chunk": chunk
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"预览失败: {e}")
+
 class AnalyzeTextPayload(BaseModel):
     text: str
     filename: Optional[str] = "pasted.log"

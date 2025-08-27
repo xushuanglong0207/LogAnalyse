@@ -460,26 +460,21 @@ export default function Home() {
 			const fileInfo = uploadedFiles.find(f => f.id === fileId)
 			const fileSizeKB = fileInfo?.size ? fileInfo.size / 1024 : 0
 			const estimatedTime = Math.max(3, Math.min(20, Math.ceil(fileSizeKB / 300))) // 每300KB约1秒，最少3秒，最多20秒
-			
 			// 标记文件为分析中状态
 			setAnalyzingFiles(prev => new Set(prev.add(fileId)))
 			setAnalysisProgress(prev => ({ 
 				...prev, 
 				[fileId]: { progress: 0, message: `开始分析 ${fileInfo?.filename || '文件'}...` }
 			}))
-			
-			// 显示分析开始提示
-			showToast(`开始分析文件，预计耗时 ${estimatedTime} 秒`, 'info')
-			
+			// 显示分析开始提示（仅提示开始，不再预估数量）
+			showToast(`开始分析文件，预计耗时约 ${estimatedTime} 秒`, 'info')
 			// 开始分析请求
 			const analysisPromise = authedFetch(`${getApiBase()}/api/logs/${fileId}/analyze`, { method: 'POST' })
-			
-			// 进度模拟器 - 优化性能，减少更新频率
+			// 进度模拟器（视觉进度），上限85%
 			let currentProgress = 0
 			const progressInterval = setInterval(() => {
-				currentProgress += Math.random() * 20 + 10 // 每次增加10-30%，加快进度
-				if (currentProgress > 85) currentProgress = 85 // 最多到85%，等待实际完成
-				
+				currentProgress += Math.random() * 20 + 10
+				if (currentProgress > 85) currentProgress = 85
 				const progressMessages = [
 					'正在读取文件内容...',
 					'正在应用检测规则...',
@@ -488,106 +483,51 @@ export default function Home() {
 					'即将完成分析...'
 				]
 				const messageIndex = Math.floor((currentProgress / 100) * progressMessages.length)
-				
 				setAnalysisProgress(prev => ({ 
 					...prev, 
-					[fileId]: { 
-						progress: currentProgress, 
-						message: progressMessages[Math.min(messageIndex, progressMessages.length - 1)]
-					}
+					[fileId]: { progress: currentProgress, message: progressMessages[Math.min(messageIndex, progressMessages.length - 1)] }
 				}))
-			}, Math.max(800, estimatedTime * 1000 / 6)) // 最少800ms更新一次，减少频率提升性能
-			
-			// 等待分析完成
+			}, Math.max(800, estimatedTime * 1000 / 6))
+			// 等待后端接受
 			const r = await analysisPromise
-			clearInterval(progressInterval)
-			
-			if (r.ok) { 
-				const d = await r.json()
-				
-				// 调试：打印返回的数据结构
-				console.log('分析结果数据：', d)
-				console.log('文件分析结果数据结构检查：', {
-					'd.summary?.total_issues': d.summary?.total_issues,
-					'd.data?.summary?.total_issues': d.data?.summary?.total_issues, 
-					'd.issues?.length': d.issues?.length,
-					'd.data?.issues?.length': d.data?.issues?.length,
-					'd.total_issues': d.total_issues,
-					'd.data?.total_issues': d.data?.total_issues
-				})
-				
-				// 完成进度显示
-				setAnalysisProgress(prev => ({ 
-					...prev, 
-					[fileId]: { progress: 100, message: '分析完成！正在跳转...' }
-				}))
-				
-				// 更新分析结果
-				setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
-				
-				// 短暂延迟让用户看到完成状态
-				setTimeout(async () => {
-					// 强制刷新相关数据
-					await Promise.all([
-						fetchDashboardStats(false),
-						fetchAnalysisResults()
-					])
-					
-					// 清理分析状态
-					setAnalyzingFiles(prev => {
-						const newSet = new Set(prev)
-						newSet.delete(fileId)
-						return newSet
-					})
-					setAnalysisProgress(prev => {
-						const { [fileId]: removed, ...rest } = prev
-						return rest
-					})
-					
-					// 多种方式获取问题数量
-					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || d.total_issues || d.data?.total_issues || 0
-					showToast(`分析完成！发现 ${totalIssues} 个问题`, 'success')
-					
-					// 跳转到仪表板并高亮
-					setCurrentPage('dashboard')
-					setHighlightAnalysisId(d.file_id)
-					setTimeout(() => setHighlightAnalysisId(null), 5000)
-					
-					// 等待DOM更新后滚动到可见
-					setTimeout(() => {
-						try { 
-							const el = document.querySelector(`[data-analysis-id="${d.file_id}"]`) as HTMLElement
-							if (el) el.scrollIntoView({ block: 'center' })
-						} catch {}
-					}, 100)
-				}, 500) // 500ms延迟，加快跳转速度
-				
-			} else {
-				// 分析失败
-				clearInterval(progressInterval)
-				setAnalyzingFiles(prev => {
-					const newSet = new Set(prev)
-					newSet.delete(fileId)
-					return newSet
-				})
-				setAnalysisProgress(prev => {
-					const { [fileId]: removed, ...rest } = prev
-					return rest
-				})
-				showToast('分析失败，请重试', 'error')
+			if (!r.ok) throw new Error('start_failed')
+			// 轮询状态直到 ready，然后获取真实结果
+			const pollStatus = async (): Promise<any> => {
+				for (let i = 0; i < 60; i++) { // 最多轮询60次（~60s）
+					await new Promise(res => setTimeout(res, 1000))
+					try { 
+						const sr = await authedFetch(`${getApiBase()}/api/analysis/${fileId}/status`)
+						if (sr.ok) { 
+							const s = await sr.json()
+							if (s.status === 'ready') {
+								const rr = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`)
+								if (rr.ok) return await rr.json()
+							}
+						}
+					} catch {}
+				}
+				throw new Error('timeout')
 			}
+			const d = await pollStatus()
+			clearInterval(progressInterval)
+			// 完成进度显示
+			setAnalysisProgress(prev => ({ ...prev, [fileId]: { progress: 100, message: '分析完成！' } }))
+			// 更新分析结果与统计
+			setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
+			await Promise.all([fetchDashboardStats(false), fetchAnalysisResults()])
+			// 清理状态
+			setAnalyzingFiles(prev => { const n = new Set(prev); n.delete(fileId); return n })
+			setAnalysisProgress(prev => { const { [fileId]: _, ...rest } = prev; return rest })
+			// 使用真实数量
+			const totalIssues = d?.summary?.total_issues || 0
+			showToast(`分析完成！发现 ${totalIssues} 个问题`, 'success')
+			// 跳转并高亮
+			setCurrentPage('dashboard'); setHighlightAnalysisId(d.file_id); setTimeout(() => setHighlightAnalysisId(null), 5000)
+			setTimeout(() => { try { const el = document.querySelector(`[data-analysis-id="${d.file_id}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {} }, 100)
 		} catch (error) { 
-			// 异常处理
-			setAnalyzingFiles(prev => {
-				const newSet = new Set(prev)
-				newSet.delete(fileId)
-				return newSet
-			})
-			setAnalysisProgress(prev => {
-				const { [fileId]: removed, ...rest } = prev
-				return rest
-			})
-			showToast('分析失败，请检查网络连接', 'error')
+			setAnalyzingFiles(prev => { const n = new Set(prev); n.delete(fileId); return n })
+			setAnalysisProgress(prev => { const { [fileId]: _, ...rest } = prev; return rest })
+			showToast('分析失败，请重试', 'error')
 		}
 	}
 	const deleteFile = async (fileId: number) => {
@@ -607,7 +547,19 @@ export default function Home() {
 		}
 	}
 	const openFilePreview = async (fileId: number, filename: string) => {
-		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`); if (r.ok) { const d = await r.json(); setPreviewTitle(`${d.filename}`); setPreviewContent(d.content || ''); setPreviewMode('shell'); setPreviewVisible(true) } } catch {}
+		try {
+			// 使用分片预览接口，首次加载从0开始
+			const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}/preview?offset=0&size=${512*1024}`)
+			if (r.ok) { 
+				const d = await r.json()
+				setPreviewTitle(`${d.filename}`)
+				setPreviewContent(d.chunk || '')
+				setPreviewMode('shell')
+				setPreviewVisible(true)
+				// 将下一次偏移保存在 window 作用域（简单实现）
+				;(window as any).__preview_state__ = { fileId, nextOffset: d.next_offset, total: d.total_size }
+			}
+		} catch {}
 	}
 	const openAnalysisDetail = async (fileId: number, filename: string) => {
 		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); 
@@ -1018,8 +970,17 @@ OOM | "Out of memory"
 						<button onClick={() => setPreviewMode('shell')} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb', background: previewMode === 'shell' ? '#111827' : '#fff', color: previewMode === 'shell' ? '#d1fae5' : '#111' }}>Shell</button>
 						<button onClick={() => setPreviewMode('txt')} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb', background: previewMode === 'txt' ? '#111827' : '#fff', color: previewMode === 'txt' ? '#d1fae5' : '#111' }}>TXT</button>
 					</div>
-					{/* 搜索功能已移除以避免性能问题 */}
-					<div />
+					<div>
+						<button onClick={async () => {
+							try {
+								const st = (window as any).__preview_state__ || {}
+								if (!st.fileId) return
+								if (st.nextOffset >= st.total) return
+								const rr = await authedFetch(`${getApiBase()}/api/logs/${st.fileId}/preview?offset=${st.nextOffset}&size=${512*1024}`)
+								if (rr.ok) { const dd = await rr.json(); setPreviewContent(prev => prev + dd.chunk); (window as any).__preview_state__ = { fileId: st.fileId, nextOffset: dd.next_offset, total: dd.total_size } }
+							} catch {}
+						}} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb' }}>加载更多</button>
+					</div>
 				</div>
 				<div ref={previewContainerRef} style={{ maxHeight: '65vh', overflow: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
 					{previewMode === 'shell' ? (
