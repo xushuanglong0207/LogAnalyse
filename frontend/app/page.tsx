@@ -291,18 +291,45 @@ export default function Home() {
 	// 顶部导航
 	const Nav = () => (
 		<nav className="ui-card" style={{ position: 'sticky', top: 0, zIndex: 40, margin: '0 0 16px', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-			<h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>🚀 日志分析平台</h1>
-			<div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+			<div className="flex items-center space-x-3">
+				<div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+					<span className="text-white font-bold text-lg">📊</span>
+				</div>
+				<h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #1f2937, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>日志分析平台</h1>
+			</div>
+			<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 				{[
-					{ id: 'dashboard', label: '📊 仪表板', href: '/dashboard' },
-					{ id: 'logs', label: '📁 日志管理', href: '/logs' },
-					{ id: 'rules', label: '🔍 规则管理', href: '/rules' },
-					{ id: 'problems', label: '📚 问题库', href: '/problems' },
-					{ id: 'users', label: '👥 用户管理', href: '/users' }
+					{ id: 'dashboard', label: '📊 仪表板', color: 'from-blue-500 to-indigo-600' },
+					{ id: 'logs', label: '📁 日志管理', color: 'from-orange-500 to-red-600' },
+					{ id: 'rules', label: '🔍 规则管理', color: 'from-emerald-500 to-teal-600' },
+					{ id: 'problems', label: '📚 问题库', color: 'from-purple-500 to-indigo-600' },
+					{ id: 'users', label: '👥 用户管理', color: 'from-green-500 to-emerald-600' }
 				].map(nav => (
-					<button key={nav.id} onClick={() => window.location.href = nav.href} className="btn" style={{ background: '#fff', color: '#374151' }}>{nav.label}</button>
+					<button 
+						key={nav.id} 
+						onClick={() => setCurrentPage(nav.id)} 
+						className={`relative px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${
+							currentPage === nav.id 
+								? `bg-gradient-to-r ${nav.color} text-white shadow-lg shadow-${nav.color.split('-')[1]}-500/25`
+								: 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md border border-gray-100'
+						}`}
+						style={{
+							backdropFilter: currentPage === nav.id ? 'none' : 'blur(10px)',
+						}}
+					>
+						<span className="relative z-10">{nav.label}</span>
+						{currentPage === nav.id && (
+							<div className="absolute inset-0 bg-gradient-to-r opacity-10 rounded-xl animate-pulse"></div>
+						)}
+					</button>
 				))}
-				<button onClick={() => window.location.href = '/profile'} className="btn btn-outline">个人中心</button>
+				<div className="h-8 w-px bg-gray-200 mx-2"></div>
+				<button 
+					onClick={() => window.location.href = '/profile'} 
+					className="px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-white hover:shadow-md transition-all duration-200 backdrop-blur-sm"
+				>
+					个人中心
+				</button>
 			</div>
 		</nav>
 	)
@@ -792,15 +819,9 @@ export default function Home() {
 					}} /></div>
 					<div className="form-col" style={{ position: 'relative' }}>
 						<div className="label">问题类型*</div>
-						<input className="ui-input" placeholder="搜索规则名称/描述..." onChange={(e)=> setProblemFilterQuery(e.target.value)} value={problemFilterQuery} style={{ marginBottom: 6 }} />
 						<select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>
-							{detectionRules
-								.filter((r:any)=>{
-									const q = (problemFilterQuery||'').toLowerCase()
-									if (!q) return true
-									return r.name.toLowerCase().includes(q) || (r.description||'').toLowerCase().includes(q)
-								})
-								.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description}）</option>))}
+							<option value="">请选择问题类型</option>
+							{detectionRules.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description || '无描述'}）</option>))}
 						</select>
 					</div>
 				</div>

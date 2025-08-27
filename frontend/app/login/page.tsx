@@ -79,7 +79,7 @@ export default function LoginPage() {
 						<h1 className="text-4xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-violet-800 bg-clip-text text-transparent">
 							日志分析平台
 						</h1>
-						<p className="text-gray-600 text-sm mt-2 font-medium">智能化数据洞察，实时业务分析</p>
+						<p className="text-gray-600 text-sm mt-2 font-medium">快速分析日志错误，问题归类</p>
 					</div>
 				</div>
 			</header>
@@ -195,22 +195,22 @@ export default function LoginPage() {
 					{/* Feature highlights */}
 					<div className="mt-8 grid grid-cols-3 gap-4">
 						<div className="text-center group cursor-default">
-							<div className="w-10 h-10 mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200">
-								<TrendingUp className="w-5 h-5 text-blue-600" />
-							</div>
-							<p className="text-xs font-medium text-gray-600">实时监控</p>
-						</div>
-						<div className="text-center group cursor-default">
 							<div className="w-10 h-10 mx-auto bg-gradient-to-br from-violet-100 to-purple-100 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200">
 								<BarChart3 className="w-5 h-5 text-violet-600" />
 							</div>
-							<p className="text-xs font-medium text-gray-600">智能分析</p>
+							<p className="text-xs font-medium text-gray-600">快速分析</p>
 						</div>
 						<div className="text-center group cursor-default">
 							<div className="w-10 h-10 mx-auto bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200">
 								<Activity className="w-5 h-5 text-emerald-600" />
 							</div>
-							<p className="text-xs font-medium text-gray-600">数据洞察</p>
+							<p className="text-xs font-medium text-gray-600">问题分类</p>
+						</div>
+						<div className="text-center group cursor-default">
+							<div className="w-10 h-10 mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-200">
+								<TrendingUp className="w-5 h-5 text-blue-600" />
+							</div>
+							<p className="text-xs font-medium text-gray-600">趋势监控</p>
 						</div>
 					</div>
 				</div>
@@ -219,7 +219,7 @@ export default function LoginPage() {
 			{/* Footer */}
 			<footer className="relative z-10 pb-8 text-center">
 				<p className="text-xs text-gray-500 font-medium">
-					版本 V1.0.0 · 作者 Carl.Xu · © 2024 日志分析平台
+					版本 V1.0.0 · 作者 Carl.Xu · © 2025 日志分析平台
 				</p>
 			</footer>
 		</div>
