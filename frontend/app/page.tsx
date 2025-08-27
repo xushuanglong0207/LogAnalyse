@@ -398,7 +398,16 @@ export default function Home() {
 		try { const r = await authedFetch(`${getApiBase()}/api/logs/${fileId}`); if (r.ok) { const d = await r.json(); setPreviewTitle(`${d.filename}`); setPreviewContent(d.content || ''); setPreviewMode('shell'); setPreviewVisible(true) } } catch {}
 	}
 	const openAnalysisDetail = async (fileId: number, filename: string) => {
-		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); setDetailData({ title: `${filename}`, data: d }); setDetailVisible(true); setCurrentPage('dashboard'); setViewHighlightId(fileId); setTimeout(()=>setViewHighlightId(null), 10000); setTimeout(()=>{ try { const el = document.querySelector(`[data-analysis-id="${fileId}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {} }, 100) } } catch { showToast('详情加载失败', 'error') }
+		try { const r = await authedFetch(`${getApiBase()}/api/analysis/${fileId}`); if (r.ok) { const d = await r.json(); 
+			// 简化标题：仅显示规则名称和描述
+			let title = filename;
+			if (d.issues && d.issues.length > 0) {
+				const pick = d.issues.find((i: any) => i?.severity === 'high') || d.issues[0];
+				const name = String(pick?.rule_name || '问题');
+				const desc = String(pick?.description || '');
+				title = desc ? `${name}: ${desc}` : name;
+			}
+			setDetailData({ title, data: d }); setDetailVisible(true); setCurrentPage('dashboard'); setViewHighlightId(fileId); setTimeout(()=>setViewHighlightId(null), 10000); setTimeout(()=>{ try { const el = document.querySelector(`[data-analysis-id="${fileId}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {} }, 100) } } catch { showToast('详情加载失败', 'error') }
 	}
 
 	// —— 规则：增删改查/拖拽 ——
@@ -670,7 +679,7 @@ OOM | "Out of memory"
 		<div style={{ padding: '2rem' }}>
 			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>🔍 规则管理</h2>
 			<div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16 }}>
-				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 12, maxHeight: 520, overflow: 'auto' }}>
+				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 12, maxHeight: '70vh', minHeight: '40vh', overflow: 'auto' }}>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
 						<h4 style={{ margin: 0 }}>规则文件夹</h4>
 						<button onClick={() => { setFolderForm({ id: null, name: '' }); setFolderModalVisible(true) }} style={{ border: 'none', background: '#2563eb', color: '#fff', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}>+ 文件夹</button>
@@ -694,7 +703,7 @@ OOM | "Out of memory"
 						<button onClick={openRuleAdd} style={{ background: '#2563eb', color: 'white', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>+ 新建规则</button>
 					</div>
 
-					<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 12, maxHeight: 520, overflow: 'auto' }}>
+					<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 12, maxHeight: '70vh', minHeight: '40vh', overflow: 'auto' }}>
 						{detectionRules.map((rule: any) => (
 							<div key={rule.id} draggable onDragStart={() => onDragStartRule(rule.id)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: 10, padding: 12, marginBottom: 10 }}>
 								<div>
@@ -766,7 +775,7 @@ OOM | "Out of memory"
 					<h3 style={{ fontWeight: 600, margin: 0 }}>用户列表</h3>
 					<button onClick={openUserAdd} style={{ background: '#2563eb', color: 'white', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>+ 添加用户</button>
 				</div>
-				<div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', maxHeight: 520, overflowY: 'auto' }}>
+				<div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', maxHeight: '60vh', minHeight: '40vh', overflowY: 'auto' }}>
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
 						<div>用户名</div><div>邮箱</div><div>角色</div><div>操作</div>
 					</div>
@@ -842,7 +851,7 @@ OOM | "Out of memory"
 				))}
 			</div>
 
-			<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem', maxHeight: 280, overflow: 'auto' }}>
+			<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem', maxHeight: '60vh', minHeight: '40vh', overflow: 'auto' }}>
 				<h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>最近分析结果（双击查看详情）</h3>
 				{analysisResults.length > 0 ? (
 					analysisResults.slice(-20).reverse().map((result, index) => (
