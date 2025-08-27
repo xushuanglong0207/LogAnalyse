@@ -11,8 +11,8 @@ import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-# 导入新的规则管理API
-from .api.v1 import rules as rules_router
+# 暂时注释掉数据库相关导入，等依赖安装好后再启用
+# from .api.v1 import rules as rules_router
 
 # 可存储内容的最大字节数（默认20MB，可通过环境变量覆盖）
 MAX_CONTENT_BYTES = int(os.environ.get("MAX_CONTENT_BYTES", str(20 * 1024 * 1024)))
@@ -38,8 +38,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册API路由
-app.include_router(rules_router.router, prefix="/api/v1", tags=["规则管理"])
+# 暂时注释掉API路由注册，等依赖安装好后再启用
+# app.include_router(rules_router.router, prefix="/api/v1", tags=["规则管理"])
 
 # 内存存储（临时）
 uploaded_files: List[Dict[str, Any]] = []
@@ -490,6 +490,35 @@ def require_auth(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
     if not user:
         raise HTTPException(status_code=401, detail="用户不存在")
     return {"token": token, "user": user}
+
+@app.get("/api/test-dsl")
+async def test_dsl_rule(rule: str, text: str, ctx: Dict[str, Any] = Depends(require_auth)):
+    """测试DSL规则功能"""
+    try:
+        # 构建规则对象
+        test_rule = {
+            "dsl": rule,
+            "enabled": True
+        }
+        
+        # 使用现有的evaluate_rule_matches函数
+        matches = evaluate_rule_matches(text, test_rule)
+        
+        return {
+            "rule": rule,
+            "text": text[:200] + "..." if len(text) > 200 else text,
+            "matched": len(matches) > 0,
+            "match_count": len(matches),
+            "matches": [{"position": m.start() if hasattr(m, 'start') else 0, 
+                        "text": m.group() if hasattr(m, 'group') else str(m)} for m in matches[:5]]
+        }
+    except Exception as e:
+        return {
+            "rule": rule,
+            "text": text[:200] + "..." if len(text) > 200 else text,
+            "matched": False,
+            "error": str(e)
+        }
 
 @app.get("/")
 async def root():
