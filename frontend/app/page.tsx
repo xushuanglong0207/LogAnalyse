@@ -413,6 +413,14 @@ export default function Home() {
 				
 				// 调试：打印返回的数据结构
 				console.log('文本分析结果数据：', d)
+				console.log('文本分析结果数据结构检查：', {
+					'd.summary?.total_issues': d.summary?.total_issues,
+					'd.data?.summary?.total_issues': d.data?.summary?.total_issues, 
+					'd.issues?.length': d.issues?.length,
+					'd.data?.issues?.length': d.data?.issues?.length,
+					'd.total_issues': d.total_issues,
+					'd.data?.total_issues': d.data?.total_issues
+				})
 				
 				setTextAnalysisProgress({ progress: 100, message: '分析完成！正在跳转...' })
 				
@@ -427,7 +435,7 @@ export default function Home() {
 					setTextAnalysisProgress({ progress: 0, message: '' })
 					
 					// 多种方式获取问题数量
-					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || 0
+					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || d.total_issues || d.data?.total_issues || 0
 					showToast(`文本分析完成！发现 ${totalIssues} 个问题`, 'success')
 					
 					// 跳转到仪表板
@@ -499,6 +507,14 @@ export default function Home() {
 				
 				// 调试：打印返回的数据结构
 				console.log('分析结果数据：', d)
+				console.log('文件分析结果数据结构检查：', {
+					'd.summary?.total_issues': d.summary?.total_issues,
+					'd.data?.summary?.total_issues': d.data?.summary?.total_issues, 
+					'd.issues?.length': d.issues?.length,
+					'd.data?.issues?.length': d.data?.issues?.length,
+					'd.total_issues': d.total_issues,
+					'd.data?.total_issues': d.data?.total_issues
+				})
 				
 				// 完成进度显示
 				setAnalysisProgress(prev => ({ 
@@ -529,7 +545,7 @@ export default function Home() {
 					})
 					
 					// 多种方式获取问题数量
-					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || 0
+					const totalIssues = d.summary?.total_issues || d.data?.summary?.total_issues || d.issues?.length || d.data?.issues?.length || d.total_issues || d.data?.total_issues || 0
 					showToast(`分析完成！发现 ${totalIssues} 个问题`, 'success')
 					
 					// 跳转到仪表板并高亮
@@ -1453,7 +1469,7 @@ OOM | "Out of memory"
 										<div onClick={() => setCollapsedGroups(v => ({ ...v, [typeKey]: !v[typeKey] }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<div style={{ fontWeight: 800, color: '#dc2626' }}>{typeKey}</div>
-												{ruleDescription && <div style={{ color: '#dc2626', fontSize: 12, fontStyle: 'italic', fontWeight: 600 }}>- {ruleDescription}</div>}
+												{ruleDescription && <div style={{ color: '#dc2626', fontSize: 14, fontWeight: 800 }}>- {ruleDescription}</div>}
 												<span style={{ color: '#6b7280', fontSize: 12 }}>({Array.isArray(list)?list.length:0} 条)</span>
 											</div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
