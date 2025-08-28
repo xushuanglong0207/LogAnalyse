@@ -253,10 +253,10 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any], pre: Optional[Dict
                 for p in compiled["phrases"]:
                     pl = p.lower()
                     k = line_lower.find(pl)
-                    if k >= 0:
-                        pos = k
-                        found = True
-                        break
+                        if k >= 0:
+                            pos = k
+                            found = True
+                            break
                 start_index = offset + (pos if found else 0)
                 end_index = start_index + (len(compiled["phrases"][0]) if (found and compiled["phrases"]) else max(1, len(lines[idx])))
                 # 构造一个与正则匹配对象类似的轻量对象
@@ -787,20 +787,20 @@ async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
                 total_runs = len(arr)
                 if is_admin:
                     detected = sum(len(r.get("issues", [])) for r in arr)
-                else:
+        else:
                     mine = [r for r in arr if r.get("owner_id", 1) == user_id]
                     detected = sum(len(r.get("issues", [])) for r in mine)
         else:
             total_runs = len(analysis_results)
             if is_admin:
-                detected = sum(len(r.get("issues", [])) for r in analysis_results)
+            detected = sum(len(r.get("issues", [])) for r in analysis_results)
             else:
                 mine = [r for r in analysis_results if r.get("owner_id", 1) == user_id]
                 detected = sum(len(r.get("issues", [])) for r in mine)
     except Exception:
         total_runs = len(analysis_results)
         if is_admin:
-            detected = sum(len(r.get("issues", [])) for r in analysis_results)
+        detected = sum(len(r.get("issues", [])) for r in analysis_results)
         else:
             mine = [r for r in analysis_results if r.get("owner_id", 1) == user_id]
             detected = sum(len(r.get("issues", [])) for r in mine)
@@ -850,10 +850,10 @@ async def get_uploaded_files(ctx: Dict[str, Any] = Depends(require_auth)):
     is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     user_id = ctx["user"]["id"]
     files = [
-        {"id": f["id"], "filename": f["filename"], "size": f["size"], "upload_time": f["upload_time"], "status": f["status"]}
-        for f in uploaded_files
+            {"id": f["id"], "filename": f["filename"], "size": f["size"], "upload_time": f["upload_time"], "status": f["status"]}
+            for f in uploaded_files
         if is_admin or (f.get("owner_id", 1) == user_id)
-    ]
+        ]
     return {"files": files}
 
 @app.get("/api/logs/{file_id}")
@@ -1151,7 +1151,7 @@ async def get_analysis_results(ctx: Dict[str, Any] = Depends(require_auth)):
     is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     user_id = ctx["user"]["id"]
     if is_admin:
-        return {"results": analysis_results}
+    return {"results": analysis_results}
     # 非管理员按 owner 过滤
     return {"results": [r for r in analysis_results if r.get("owner_id", 1) == user_id]}
 

@@ -731,7 +731,7 @@ OOM | "Out of memory"
 					<div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:8 }}>
 						<div>
 							<div style={{ fontSize: 12, color: '#6b7280' }}>组合方式</div>
-							<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }}>
+							<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
 								<option value="OR">OR（任一匹配）</option>
 								<option value="AND">AND（全部匹配）</option>
 								<option value="NOT">NOT（均不出现）</option>
@@ -739,12 +739,15 @@ OOM | "Out of memory"
 						</div>
 						<div>
 							<div style={{ fontSize: 12, color: '#6b7280' }}>匹配类型</div>
-							<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }}>
-								<option value="0">普通包含</option>
-								<option value="1">正则表达式</option>
+							<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
+								<option value="0">关键词包含（忽略大小写）</option>
+								<option value="1">正则表达式（高级）</option>
 							</select>
 						</div>
 					</div>
+					{ (!!(ruleForm.dsl && ruleForm.dsl.trim())) && (
+						<div style={{ color:'#2563eb', fontSize:12, marginTop:6 }}>已填写 DSL，将忽略"组合方式/匹配类型"设置</div>
+					)}
 					<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析并忽略兼容模式设置。</div>
 				</div>
 				<div className="form-col">
@@ -1104,7 +1107,7 @@ OOM | "Out of memory"
 						<div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:8 }}>
 							<div>
 								<div style={{ fontSize: 12, color: '#6b7280' }}>组合方式</div>
-								<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }}>
+								<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
 									<option value="OR">OR（任一匹配）</option>
 									<option value="AND">AND（全部匹配）</option>
 									<option value="NOT">NOT（均不出现）</option>
@@ -1112,12 +1115,15 @@ OOM | "Out of memory"
 							</div>
 							<div>
 								<div style={{ fontSize: 12, color: '#6b7280' }}>匹配类型</div>
-								<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }}>
-									<option value="0">普通包含</option>
-									<option value="1">正则表达式</option>
+								<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
+									<option value="0">关键词包含（忽略大小写）</option>
+									<option value="1">正则表达式（高级）</option>
 								</select>
 							</div>
 						</div>
+						{ (!!(ruleForm.dsl && ruleForm.dsl.trim())) && (
+							<div style={{ color:'#2563eb', fontSize:12, marginTop:6 }}>已填写 DSL，将忽略"组合方式/匹配类型"设置</div>
+						)}
 						<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析并忽略兼容模式设置。</div>
 					</div>
 					<div className="form-col">

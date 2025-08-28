@@ -546,7 +546,7 @@ export default function RulesPage() {
 								<div className="grid md:grid-cols-2 gap-4">
 									<div className="space-y-1">
 										<label className="block text-sm text-gray-700">组合方式</label>
-										<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
+										<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg" disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
 											<option value="OR">OR（任一匹配）</option>
 											<option value="AND">AND（全部匹配）</option>
 											<option value="NOT">NOT（均不出现）</option>
@@ -554,12 +554,15 @@ export default function RulesPage() {
 									</div>
 									<div className="space-y-1">
 										<label className="block text-sm text-gray-700">匹配类型</label>
-										<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
-											<option value="0">普通包含</option>
-											<option value="1">正则表达式</option>
+										<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} className="w-full px-3 py-2 border border-gray-200 rounded-lg" disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
+											<option value="0">关键词包含（忽略大小写）</option>
+											<option value="1">正则表达式（高级）</option>
 										</select>
 									</div>
 								</div>
+								{ (!!(ruleForm.dsl && ruleForm.dsl.trim())) && (
+									<p className="text-xs text-blue-600">已填写 DSL，将忽略“组合方式/匹配类型”设置</p>
+								)}
 								<p className="text-xs text-gray-400">提示：若上方“规则表达式（DSL）”不为空，将优先按照 DSL 进行解析并忽略兼容模式设置。</p>
 							</div>
 							
