@@ -253,10 +253,10 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any], pre: Optional[Dict
                 for p in compiled["phrases"]:
                     pl = p.lower()
                     k = line_lower.find(pl)
-                        if k >= 0:
-                            pos = k
-                            found = True
-                            break
+                    if k >= 0:
+                        pos = k
+                        found = True
+                        break
                 start_index = offset + (pos if found else 0)
                 end_index = start_index + (len(compiled["phrases"][0]) if (found and compiled["phrases"]) else max(1, len(lines[idx])))
                 # 构造一个与正则匹配对象类似的轻量对象
