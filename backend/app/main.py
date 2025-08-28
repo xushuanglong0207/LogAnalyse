@@ -764,7 +764,7 @@ async def change_password(payload: ChangePasswordPayload, ctx: Dict[str, Any] = 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
     # 读取最新索引，确保与磁盘同步
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     user_id = ctx["user"]["id"]
     up_count = len(uploaded_files)
     try:
@@ -847,7 +847,7 @@ async def upload_log_file(file: UploadFile = File(...), ctx: Dict[str, Any] = De
 
 @app.get("/api/logs")
 async def get_uploaded_files(ctx: Dict[str, Any] = Depends(require_auth)):
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     user_id = ctx["user"]["id"]
     files = [
         {"id": f["id"], "filename": f["filename"], "size": f["size"], "upload_time": f["upload_time"], "status": f["status"]}
@@ -861,7 +861,7 @@ async def get_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)
     f = next((x for x in uploaded_files if x["id"] == file_id), None)
     if not f:
         raise HTTPException(status_code=404, detail="文件不存在")
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
         raise HTTPException(status_code=403, detail="无权访问该文件")
     content = ""
@@ -884,7 +884,7 @@ async def delete_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_au
     target = next((f for f in uploaded_files if f["id"] == file_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="文件不存在")
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     if not is_admin and target.get("owner_id", 1) != ctx["user"]["id"]:
         raise HTTPException(status_code=403, detail="无权删除该文件")
     uploaded_files = [f for f in uploaded_files if f["id"] != file_id]
@@ -908,7 +908,7 @@ async def preview_log_file(file_id: int, offset: int = 0, size: int = 512*1024, 
         if not f:
             raise HTTPException(status_code=404, detail="文件不存在")
         # 权限校验
-        is_admin = (ctx["user"].get("role") == "管理员")
+        is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
         if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
             raise HTTPException(status_code=403, detail="无权预览该文件")
         filename = f.get("filename") or str(file_id)
@@ -1118,7 +1118,7 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
     f = next((x for x in uploaded_files if x["id"] == file_id), None)
     if not f:
         raise HTTPException(status_code=404, detail="文件不存在")
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
         raise HTTPException(status_code=403, detail="无权分析该文件")
     ANALYSIS_RUNNING.add(file_id)
@@ -1135,7 +1135,7 @@ async def get_analysis_status(file_id: int, ctx: Dict[str, Any] = Depends(requir
     f = next((x for x in uploaded_files if x["id"] == file_id), None)
     if not f:
         return {"status": "none"}
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
         return {"status": "none"}
     exists = next((r for r in analysis_results if r.get("file_id") == file_id), None)
@@ -1148,7 +1148,7 @@ async def get_analysis_status(file_id: int, ctx: Dict[str, Any] = Depends(requir
 # 分析结果查询
 @app.get("/api/analysis/results")
 async def get_analysis_results(ctx: Dict[str, Any] = Depends(require_auth)):
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     user_id = ctx["user"]["id"]
     if is_admin:
         return {"results": analysis_results}
@@ -1161,7 +1161,7 @@ async def get_file_analysis_result(file_id: int, ctx: Dict[str, Any] = Depends(r
     f = next((x for x in uploaded_files if x["id"] == file_id), None)
     if not f:
         raise HTTPException(status_code=404, detail="文件不存在")
-    is_admin = (ctx["user"].get("role") == "管理员")
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
         raise HTTPException(status_code=403, detail="无权访问分析结果")
     result = next((r for r in analysis_results if r.get("file_id") == file_id), None)

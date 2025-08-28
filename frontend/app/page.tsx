@@ -511,24 +511,24 @@ export default function Home() {
 			}
 			const d = await pollStatus()
 			clearInterval(progressInterval)
-			// 完成进度显示
+				// 完成进度显示
 			setAnalysisProgress(prev => ({ ...prev, [fileId]: { progress: 100, message: '分析完成！' } }))
 			// 更新分析结果与统计
-			setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
+				setAnalysisResults(prev => [...prev.filter(x => x.file_id !== d.file_id), d])
 			await Promise.all([fetchDashboardStats(false), fetchAnalysisResults()])
 			// 清理状态
 			setAnalyzingFiles(prev => { const n = new Set(prev); n.delete(fileId); return n })
 			setAnalysisProgress(prev => { const { [fileId]: _, ...rest } = prev; return rest })
 			// 使用真实数量
 			const totalIssues = d?.summary?.total_issues || 0
-			showToast(`分析完成！发现 ${totalIssues} 个问题`, 'success')
+					showToast(`分析完成！发现 ${totalIssues} 个问题`, 'success')
 			// 跳转并高亮
 			setCurrentPage('dashboard'); setHighlightAnalysisId(d.file_id); setTimeout(() => setHighlightAnalysisId(null), 5000)
 			setTimeout(() => { try { const el = document.querySelector(`[data-analysis-id="${d.file_id}"]`) as HTMLElement; if (el) el.scrollIntoView({ block: 'center' }) } catch {} }, 100)
 		} catch (error) { 
 			setAnalyzingFiles(prev => { const n = new Set(prev); n.delete(fileId); return n })
 			setAnalysisProgress(prev => { const { [fileId]: _, ...rest } = prev; return rest })
-			showToast('分析失败，请重试', 'error')
+				showToast('分析失败，请重试', 'error')
 		}
 	}
 	const deleteFile = async (fileId: number) => {
@@ -1288,7 +1288,7 @@ OOM | "Out of memory"
 			</div>
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-					<h4 style={{ marginTop: 0 }}>统计</h4>
+				<h4 style={{ marginTop: 0 }}>统计</h4>
 					<div style={{ color: '#6b7280', fontSize: 12 }}>问题总数：{problems.length}</div>
 				</div>
 				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: statsExpanded ? 260 : 60, overflow: 'auto' }}>
@@ -1309,7 +1309,7 @@ OOM | "Out of memory"
 					<div style={{ fontSize: '14px' }}>链接</div>
 					<div style={{ fontSize: '14px', cursor: 'pointer', userSelect: 'none' }} onClick={() => setProblemSort(s => ({ key: 'error_type', order: s.key==='error_type' && s.order==='asc' ? 'desc' : 'asc' }))}>
 						错误类型 {problemSort.key==='error_type' ? (problemSort.order==='asc' ? '↑' : '↓') : ''}
-					</div>
+				</div>
 					<div style={{ fontSize: '14px' }}>操作</div>
 				</div>
 				{(() => {
@@ -1324,19 +1324,19 @@ OOM | "Out of memory"
 					}
 					const pageItems = list.slice((problemPage-1)*PROBLEM_PAGE_SIZE, problemPage*PROBLEM_PAGE_SIZE)
 					return (
-						<div style={{ maxHeight: 480, overflow: 'auto' }}>
+				<div style={{ maxHeight: 480, overflow: 'auto' }}>
 							{pageItems.map((p) => (
 								<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent'), alignItems: 'center' }}>
 									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '500', paddingTop: 2 }} title={p.title}>{p.title}</div>
 									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', paddingTop: 2 }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }} onMouseEnter={(e) => (e.target as HTMLElement).style.textDecoration = 'underline'} onMouseLeave={(e) => (e.target as HTMLElement).style.textDecoration = 'none'}>{p.url}</a></div>
 									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: '#6b7280', paddingTop: 2 }} title={p.error_type}>{p.error_type}</div>
 									<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-										<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
-										<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
-									</div>
-								</div>
-							))}
+								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
+								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
+							</div>
 						</div>
+					))}
+				</div>
 					)
 				})()}
 				{/* 分页 */}
@@ -1520,15 +1520,15 @@ OOM | "Out of memory"
 												{shown.map((it: any, ii: number) => {
 													const isNearest = nearest.issue && it === nearest.issue
 													return (
-														<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
-															<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-																<div style={{ color: '#6b7280', fontSize: 12 }}>
-																	行 {it.line_number ? (typeof it.line_number === 'string' ? parseInt(it.line_number) || '-' : it.line_number) : '-'}
-																</div>
-																{isNearest && (<span style={{ fontSize: 10, background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>)}
+													<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+															<div style={{ color: '#6b7280', fontSize: 12 }}>
+																行 {it.line_number ? (typeof it.line_number === 'string' ? parseInt(it.line_number) || '-' : it.line_number) : '-'}
 															</div>
-															<pre style={{ margin: '0', whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: '1.4' }}>{it.context || it.matched_text || ''}</pre>
+																{isNearest && (<span style={{ fontSize: 10, background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>)}
 														</div>
+														<pre style={{ margin: '0', whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: '1.4' }}>{it.context || it.matched_text || ''}</pre>
+													</div>
 														)
 												})}
 												{shown.length < (list as any[]).length && (
