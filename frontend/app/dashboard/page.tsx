@@ -230,7 +230,15 @@ export default function DashboardPage() {
 							label: '分析结果',
 							bgColor: 'bg-violet-50',
 							textColor: 'text-violet-600'
-						}
+						},
+						...(dashboardStats.total_analysis_runs !== undefined ? [{
+							icon: TrendingUp,
+							color: 'from-amber-500 to-yellow-600',
+							value: dashboardStats.total_analysis_runs,
+							label: '全站分析总次数',
+							bgColor: 'bg-amber-50',
+							textColor: 'text-amber-600'
+						}] : [])
 					].map((stat, index) => (
 						<div key={index} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 hover:shadow-2xl transition-all duration-300 hover:scale-105">
 							<div className="flex items-center justify-between mb-4">

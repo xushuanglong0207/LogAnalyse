@@ -764,28 +764,55 @@ async def change_password(payload: ChangePasswordPayload, ctx: Dict[str, Any] = 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
     # 读取最新索引，确保与磁盘同步
+    is_admin = (ctx["user"].get("role") == "管理员")
+    user_id = ctx["user"]["id"]
     up_count = len(uploaded_files)
     try:
         if os.path.exists(INDEX_PATH):
             with open(INDEX_PATH, "r", encoding="utf-8") as f:
-                up_count = len(json.load(f))
+                idx = json.load(f)
+                if is_admin:
+                    up_count = len(idx)
+                else:
+                    up_count = len([x for x in idx if (x.get("owner_id", 1) == user_id)])
     except Exception:
-        pass
+        if not is_admin:
+            up_count = len([x for x in uploaded_files if x.get("owner_id", 1) == user_id])
     detected = 0
+    total_runs = 0
     try:
         if os.path.exists(ANALYSIS_INDEX_PATH):
             with open(ANALYSIS_INDEX_PATH, "r", encoding="utf-8") as f:
-                detected = sum(len(r.get("issues", [])) for r in json.load(f))
+                arr = json.load(f)
+                total_runs = len(arr)
+                if is_admin:
+                    detected = sum(len(r.get("issues", [])) for r in arr)
+                else:
+                    mine = [r for r in arr if r.get("owner_id", 1) == user_id]
+                    detected = sum(len(r.get("issues", [])) for r in mine)
         else:
-            detected = sum(len(r.get("issues", [])) for r in analysis_results)
+            total_runs = len(analysis_results)
+            if is_admin:
+                detected = sum(len(r.get("issues", [])) for r in analysis_results)
+            else:
+                mine = [r for r in analysis_results if r.get("owner_id", 1) == user_id]
+                detected = sum(len(r.get("issues", [])) for r in mine)
     except Exception:
-        detected = sum(len(r.get("issues", [])) for r in analysis_results)
-    return {
+        total_runs = len(analysis_results)
+        if is_admin:
+            detected = sum(len(r.get("issues", [])) for r in analysis_results)
+        else:
+            mine = [r for r in analysis_results if r.get("owner_id", 1) == user_id]
+            detected = sum(len(r.get("issues", [])) for r in mine)
+    resp = {
         "uploaded_files": up_count,
         "detected_issues": detected,
         "detection_rules": len([rule for rule in detection_rules if rule["enabled"]]),
         "recent_activity": []
     }
+    if is_admin:
+        resp["total_analysis_runs"] = total_runs
+    return resp
 
 # 日志管理
 @app.post("/api/logs/upload")
@@ -807,7 +834,8 @@ async def upload_log_file(file: UploadFile = File(...), ctx: Dict[str, Any] = De
             "size": len(content),
             "upload_time": datetime.now().isoformat(),
             "path": save_path,
-            "status": "uploaded"
+            "status": "uploaded",
+            "owner_id": ctx["user"]["id"],
         }
         uploaded_files.append(file_info)
         save_index()
@@ -819,18 +847,23 @@ async def upload_log_file(file: UploadFile = File(...), ctx: Dict[str, Any] = De
 
 @app.get("/api/logs")
 async def get_uploaded_files(ctx: Dict[str, Any] = Depends(require_auth)):
-    return {
-        "files": [
-            {"id": f["id"], "filename": f["filename"], "size": f["size"], "upload_time": f["upload_time"], "status": f["status"]}
-            for f in uploaded_files
-        ]
-    }
+    is_admin = (ctx["user"].get("role") == "管理员")
+    user_id = ctx["user"]["id"]
+    files = [
+        {"id": f["id"], "filename": f["filename"], "size": f["size"], "upload_time": f["upload_time"], "status": f["status"]}
+        for f in uploaded_files
+        if is_admin or (f.get("owner_id", 1) == user_id)
+    ]
+    return {"files": files}
 
 @app.get("/api/logs/{file_id}")
 async def get_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
     f = next((x for x in uploaded_files if x["id"] == file_id), None)
     if not f:
         raise HTTPException(status_code=404, detail="文件不存在")
+    is_admin = (ctx["user"].get("role") == "管理员")
+    if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
+        raise HTTPException(status_code=403, detail="无权访问该文件")
     content = ""
     try:
         with open(f.get("path"), "r", encoding="utf-8", errors="ignore") as fr:
@@ -849,10 +882,13 @@ async def get_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)
 async def delete_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
     global uploaded_files, analysis_results
     target = next((f for f in uploaded_files if f["id"] == file_id), None)
-    uploaded_files = [f for f in uploaded_files if f["id"] != file_id]
-    analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
     if not target:
         raise HTTPException(status_code=404, detail="文件不存在")
+    is_admin = (ctx["user"].get("role") == "管理员")
+    if not is_admin and target.get("owner_id", 1) != ctx["user"]["id"]:
+        raise HTTPException(status_code=403, detail="无权删除该文件")
+    uploaded_files = [f for f in uploaded_files if f["id"] != file_id]
+    analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
     try:
         if target.get("path") and os.path.exists(target["path"]):
             os.remove(target["path"])
@@ -871,6 +907,10 @@ async def preview_log_file(file_id: int, offset: int = 0, size: int = 512*1024, 
         f = next((x for x in uploaded_files if x["id"] == file_id), None)
         if not f:
             raise HTTPException(status_code=404, detail="文件不存在")
+        # 权限校验
+        is_admin = (ctx["user"].get("role") == "管理员")
+        if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
+            raise HTTPException(status_code=403, detail="无权预览该文件")
         filename = f.get("filename") or str(file_id)
         # 确定总大小
         total_size = 0
@@ -938,7 +978,8 @@ async def analyze_text(payload: AnalyzeTextPayload, ctx: Dict[str, Any] = Depend
         "size": text_bytes,
         "upload_time": datetime.now().isoformat(),
         "content": payload.text,
-        "status": "uploaded"
+        "status": "uploaded",
+        "owner_id": ctx["user"]["id"],
     }
     uploaded_files.append(file_info)
     # 文本分析同样走后台队列
@@ -1060,7 +1101,8 @@ def _perform_analysis(file_id: int):
             "total_issues": len(issues),
             "high_severity": len([i for i in issues if i["severity"] == "high"]),
             "medium_severity": len([i for i in issues if i["severity"] == "medium"])
-        }
+        },
+        "owner_id": file_info.get("owner_id", 1)
     }
     global analysis_results
     analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
@@ -1072,6 +1114,13 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
     # 防止重复点击
     if file_id in ANALYSIS_RUNNING:
         return JSONResponse(status_code=202, content={"status": "running"})
+    # 权限校验
+    f = next((x for x in uploaded_files if x["id"] == file_id), None)
+    if not f:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    is_admin = (ctx["user"].get("role") == "管理员")
+    if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
+        raise HTTPException(status_code=403, detail="无权分析该文件")
     ANALYSIS_RUNNING.add(file_id)
     def _task():
         try:
@@ -1083,6 +1132,12 @@ async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_a
 
 @app.get("/api/analysis/{file_id}/status")
 async def get_analysis_status(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    f = next((x for x in uploaded_files if x["id"] == file_id), None)
+    if not f:
+        return {"status": "none"}
+    is_admin = (ctx["user"].get("role") == "管理员")
+    if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
+        return {"status": "none"}
     exists = next((r for r in analysis_results if r.get("file_id") == file_id), None)
     if exists:
         return {"status": "ready"}
@@ -1093,10 +1148,22 @@ async def get_analysis_status(file_id: int, ctx: Dict[str, Any] = Depends(requir
 # 分析结果查询
 @app.get("/api/analysis/results")
 async def get_analysis_results(ctx: Dict[str, Any] = Depends(require_auth)):
-    return {"results": analysis_results}
+    is_admin = (ctx["user"].get("role") == "管理员")
+    user_id = ctx["user"]["id"]
+    if is_admin:
+        return {"results": analysis_results}
+    # 非管理员按 owner 过滤
+    return {"results": [r for r in analysis_results if r.get("owner_id", 1) == user_id]}
 
 @app.get("/api/analysis/{file_id}")
 async def get_file_analysis_result(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    # 权限校验基于文件属主
+    f = next((x for x in uploaded_files if x["id"] == file_id), None)
+    if not f:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    is_admin = (ctx["user"].get("role") == "管理员")
+    if not is_admin and f.get("owner_id", 1) != ctx["user"]["id"]:
+        raise HTTPException(status_code=403, detail="无权访问分析结果")
     result = next((r for r in analysis_results if r.get("file_id") == file_id), None)
     if not result:
         raise HTTPException(status_code=404, detail="分析结果不存在")
