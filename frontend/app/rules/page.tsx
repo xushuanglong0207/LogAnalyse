@@ -417,9 +417,15 @@ export default function RulesPage() {
 														</div>
 														<p className="text-gray-600 text-sm mb-2">{rule.description}</p>
 														<div className="flex items-center space-x-4 text-xs text-gray-500">
-															<span>组合：{rule.operator}</span>
-															<span>模式：{(rule.patterns || []).length} 条</span>
-															<span>类型：{rule.is_regex ? '正则' : '普通'}</span>
+															{rule.dsl && rule.dsl.trim() ? (
+																<span className="inline-flex items-center px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">DSL 规则</span>
+															) : (
+																<>
+																	<span>组合：{rule.operator}</span>
+																	<span>模式：{(rule.patterns || []).length} 条</span>
+																	<span>类型：{rule.is_regex ? '正则' : '普通'}</span>
+																</>
+															)}
 														</div>
 													</div>
 													<div className="flex items-center space-x-2">

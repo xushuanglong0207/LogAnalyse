@@ -1038,7 +1038,7 @@ OOM | "Out of memory"
 										<div style={{ fontWeight: 600 }}>{rule.name} <span style={{ color: '#6b7280', fontWeight: 400, fontSize: 12 }}>#{rule.id}</span></div>
 									</div>
 									<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>{rule.description}</div>
-									<div style={{ color: '#374151', fontSize: 12, marginTop: 4 }}>组合：{rule.operator} | 模式数：{(rule.patterns || []).length} | 文件夹：{rule.folder_id}</div>
+									<div style={{ color: '#374151', fontSize: 12, marginTop: 4 }}>{(rule.dsl && rule.dsl.trim()) ? 'DSL 规则' : `组合：${rule.operator} | 模式数：${(rule.patterns || []).length} | 文件夹：${rule.folder_id}`}</div>
 								</div>
 								<div style={{ display: 'flex', gap: 8 }}>
 									<button onClick={() => toggleRule(rule.id, rule.enabled)} style={{ background: rule.enabled ? '#059669' : '#9ca3af', color: '#fff', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>{rule.enabled ? '禁用' : '启用'}</button>
