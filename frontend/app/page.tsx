@@ -600,15 +600,15 @@ export default function Home() {
 	const onDropToFolder = async (folderId: number) => { if (!draggingRuleId) return; try { const r = await authedFetch(`${getApiBase()}/api/rules/${draggingRuleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder_id: folderId }) }); if (r.ok) { await fetchDetectionRules(searchRule, selectedFolderId); await fetchRuleFolders(); setDraggingRuleId(null); showToast('已移动到文件夹', 'success') } } catch { setDraggingRuleId(null) } }
 
 	// —— 用户：增删改 ——
-	const openUserAdd = () => { setUserForm({ id: null, username: '', email: '', password: '', role: '普通用户' }); setUserModalMode('add'); setUserModalVisible(true) }
-	const openUserEdit = (user: any) => { setUserForm({ id: user.id, username: user.username, email: user.email || '', password: '', role: user.role || '普通用户' }); setUserModalMode('edit'); setUserModalVisible(true) }
+	const openUserAdd = () => { setUserForm({ id: null, username: '', email: '', password: '', role: '普通用户', position: '' }); setUserModalMode('add'); setUserModalVisible(true) }
+	const openUserEdit = (user: any) => { setUserForm({ id: user.id, username: user.username, email: user.email || '', password: '', role: user.role || '普通用户', position: user.position || '' }); setUserModalMode('edit'); setUserModalVisible(true) }
 	const submitUser = async () => {
 		try {
 			if (userModalMode === 'add') {
-				const r = await authedFetch(`${getApiBase()}/api/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: userForm.username, email: userForm.email, role: userForm.role, password: userForm.password }) })
+				const r = await authedFetch(`${getApiBase()}/api/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: userForm.username, email: userForm.email, role: userForm.role, password: userForm.password, position: userForm.position }) })
 				if (!r.ok) throw new Error('创建失败')
 			} else {
-				const r = await authedFetch(`${getApiBase()}/api/users/${userForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userForm.email, role: userForm.role, password: userForm.password }) })
+				const r = await authedFetch(`${getApiBase()}/api/users/${userForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: userForm.email, role: userForm.role, password: userForm.password, position: userForm.position }) })
 				if (!r.ok) throw new Error('更新失败')
 			}
 			setUserModalVisible(false); await fetchUsers(); showToast('已保存', 'success')
