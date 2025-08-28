@@ -39,8 +39,7 @@ export default function ProfilePage() {
 	const [profileForm, setProfileForm] = useState({
 		username: '',
 		email: '',
-		position: '',
-		bio: ''
+		position: ''
 	})
 	
 	const [passwordForm, setPasswordForm] = useState({
@@ -79,8 +78,7 @@ export default function ProfilePage() {
 				setProfileForm({
 					username: data.user.username || '',
 					email: data.user.email || '',
-					position: data.user.position || '',
-					bio: data.user.bio || ''
+					position: data.user.position || ''
 				})
 			}
 		} catch (err) {
@@ -109,8 +107,7 @@ export default function ProfilePage() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					email: profileForm.email,
-					position: profileForm.position,
-					bio: profileForm.bio
+					position: profileForm.position
 				})
 			})
 			
@@ -367,14 +364,7 @@ export default function ProfilePage() {
 												</div>
 
 												<div className="space-y-2 md:col-span-2">
-													<label className="block text-sm font-semibold text-gray-700">个人简介</label>
-													<textarea
-														value={profileForm.bio}
-														onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-														placeholder="介绍一下自己..."
-														rows={4}
-														className="w-full px-4 py-3.5 bg-white/80 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none"
-													/>
+													{/* 个人简介已移除 */}
 												</div>
 											</div>
 
