@@ -201,7 +201,7 @@ export default function Home() {
 	const [userForm, setUserForm] = useState<any>({ id: null, username: '', email: '', password: '', role: '普通用户' })
 	const [ruleModalVisible, setRuleModalVisible] = useState(false)
 	const [ruleModalMode, setRuleModalMode] = useState<'add' | 'edit'>('add')
-	const [ruleForm, setRuleForm] = useState<any>({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: 1, operator: 'OR', is_regex: false })
+	const [ruleForm, setRuleForm] = useState<any>({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: 1 })
 	const [folderModalVisible, setFolderModalVisible] = useState(false)
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
 
@@ -577,8 +577,8 @@ export default function Home() {
 	}
 
 	// —— 规则：增删改查/拖拽 ——
-	const openRuleAdd = () => { setRuleForm({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: ruleFolders[0]?.id || 1, operator: 'OR', is_regex: false }); setRuleModalMode('add'); setRuleModalVisible(true) }
-	const openRuleEdit = (rule: any) => { setRuleForm({ id: rule.id, name: rule.name, description: rule.description || '', enabled: !!rule.enabled, patterns: (rule.patterns || []).join('\n'), dsl: (rule.dsl || ''), folder_id: rule.folder_id || 1, operator: rule.operator || 'OR', is_regex: !!rule.is_regex }); setRuleModalMode('edit'); setRuleModalVisible(true) }
+	const openRuleAdd = () => { setRuleForm({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: ruleFolders[0]?.id || 1 }); setRuleModalMode('add'); setRuleModalVisible(true) }
+	const openRuleEdit = (rule: any) => { setRuleForm({ id: rule.id, name: rule.name, description: rule.description || '', enabled: !!rule.enabled, patterns: (rule.patterns || []).join('\n'), dsl: (rule.dsl || ''), folder_id: rule.folder_id || 1 }); setRuleModalMode('edit'); setRuleModalVisible(true) }
 	const submitRule = async () => {
 		try {
 			const base: any = { name: ruleForm.name, description: ruleForm.description || '', enabled: !!ruleForm.enabled, folder_id: ruleForm.folder_id || 1 }
@@ -587,8 +587,6 @@ export default function Home() {
 				base.dsl = dsl
 			} else {
 				base.patterns = parsePatterns(ruleForm.patterns)
-				base.operator = ruleForm.operator || 'OR'
-				base.is_regex = !!ruleForm.is_regex
 			}
 			let r
 			if (ruleModalMode === 'add') r = await authedFetch(`${getApiBase()}/api/rules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(base) })
@@ -728,27 +726,7 @@ OOM | "Out of memory"
 				<div className="form-col" style={{ gridColumn: '1 / -1' }}>
 					<div className="label">（兼容）匹配模式列表</div>
 					<textarea className="ui-input" style={{ minHeight: 100 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；若填写了 DSL，将优先使用 DSL" />
-					<div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:8 }}>
-						<div>
-							<div style={{ fontSize: 12, color: '#6b7280' }}>组合方式</div>
-							<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
-								<option value="OR">OR（任一匹配）</option>
-								<option value="AND">AND（全部匹配）</option>
-								<option value="NOT">NOT（均不出现）</option>
-							</select>
-						</div>
-						<div>
-							<div style={{ fontSize: 12, color: '#6b7280' }}>匹配类型</div>
-							<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
-								<option value="0">关键词包含（忽略大小写）</option>
-								<option value="1">正则表达式（高级）</option>
-							</select>
-						</div>
-					</div>
-					{ (!!(ruleForm.dsl && ruleForm.dsl.trim())) && (
-						<div style={{ color:'#2563eb', fontSize:12, marginTop:6 }}>已填写 DSL，将忽略"组合方式/匹配类型"设置</div>
-					)}
-					<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析并忽略兼容模式设置。</div>
+					<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析；若留空，将按正则方式逐行匹配（支持 | & ! 等）。</div>
 				</div>
 				<div className="form-col">
 					<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1061,7 +1039,7 @@ OOM | "Out of memory"
 										<div style={{ fontWeight: 600 }}>{rule.name} <span style={{ color: '#6b7280', fontWeight: 400, fontSize: 12 }}>#{rule.id}</span></div>
 									</div>
 									<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>{rule.description}</div>
-									<div style={{ color: '#374151', fontSize: 12, marginTop: 4 }}>{(rule.dsl && rule.dsl.trim()) ? 'DSL 规则' : `模式数：${(rule.patterns || []).length} | ${rule.is_regex ? '正则' : '关键字'} | 文件夹：${rule.folder_id}`}</div>
+									<div style={{ color: '#374151', fontSize: 12, marginTop: 4 }}>{(rule.dsl && rule.dsl.trim()) ? 'DSL 规则' : `模式数：${(rule.patterns || []).length} | 文件夹：${rule.folder_id}`}</div>
 								</div>
 								<div style={{ display: 'flex', gap: 8 }}>
 									<button onClick={() => toggleRule(rule.id, rule.enabled)} style={{ background: rule.enabled ? '#059669' : '#9ca3af', color: '#fff', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>{rule.enabled ? '禁用' : '启用'}</button>
@@ -1104,27 +1082,7 @@ OOM | "Out of memory"
 					<div style={{ gridColumn: '1 / -1' }}>
 						<div style={{ fontSize: 12, color: '#6b7280' }}>（兼容）匹配模式列表</div>
 						<textarea className="ui-input" style={{ minHeight: 100 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；若填写了 DSL，将优先使用 DSL" />
-						<div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:8 }}>
-							<div>
-								<div style={{ fontSize: 12, color: '#6b7280' }}>组合方式</div>
-								<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
-									<option value="OR">OR（任一匹配）</option>
-									<option value="AND">AND（全部匹配）</option>
-									<option value="NOT">NOT（均不出现）</option>
-								</select>
-							</div>
-							<div>
-								<div style={{ fontSize: 12, color: '#6b7280' }}>匹配类型</div>
-								<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 12px' }} disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
-									<option value="0">关键词包含（忽略大小写）</option>
-									<option value="1">正则表达式（高级）</option>
-								</select>
-							</div>
-						</div>
-						{ (!!(ruleForm.dsl && ruleForm.dsl.trim())) && (
-							<div style={{ color:'#2563eb', fontSize:12, marginTop:6 }}>已填写 DSL，将忽略"组合方式/匹配类型"设置</div>
-						)}
-						<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析并忽略兼容模式设置。</div>
+						<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析；若留空，将按正则方式逐行匹配（支持 | & ! 等）。</div>
 					</div>
 					<div className="form-col">
 						<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

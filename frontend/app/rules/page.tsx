@@ -45,8 +45,6 @@ export default function RulesPage() {
 		description: '', 
 		enabled: true, 
 		patterns: '', 
-		operator: 'OR',
-		is_regex: false,
 		dsl: '', 
 		folder_id: 1 
 	})
@@ -111,8 +109,6 @@ export default function RulesPage() {
 			description: '', 
 			enabled: true, 
 			patterns: '', 
-			operator: 'OR',
-			is_regex: false,
 			dsl: '', 
 			folder_id: ruleFolders[0]?.id || 1 
 		})
@@ -127,8 +123,6 @@ export default function RulesPage() {
 			description: rule.description || '', 
 			enabled: !!rule.enabled, 
 			patterns: (rule.patterns || []).join('\n'), 
-			operator: rule.operator || 'OR',
-			is_regex: !!rule.is_regex,
 			dsl: (rule.dsl || ''), 
 			folder_id: rule.folder_id || 1 
 		})
@@ -149,8 +143,6 @@ export default function RulesPage() {
 				payload.dsl = dsl
 			} else {
 				payload.patterns = parsePatterns(ruleForm.patterns)
-				payload.operator = ruleForm.operator || 'OR'
-				payload.is_regex = !!ruleForm.is_regex
 			}
 			let r
 			if (ruleModalMode === 'add') {
@@ -430,7 +422,6 @@ export default function RulesPage() {
 															) : (
 																<>
 																	<span>模式：{(rule.patterns || []).length} 条</span>
-																	<span>{rule.is_regex ? '正则' : '关键字'}</span>
 																</>
 															)}
 														</div>
@@ -543,27 +534,7 @@ export default function RulesPage() {
 									placeholder="每行一个模式；若上面的 DSL 不为空，将优先使用 DSL"
 									className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 resize-none font-mono text-sm"
 								/>
-								<div className="grid md:grid-cols-2 gap-4">
-									<div className="space-y-1">
-										<label className="block text-sm text-gray-700">组合方式</label>
-										<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg" disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
-											<option value="OR">OR（任一匹配）</option>
-											<option value="AND">AND（全部匹配）</option>
-											<option value="NOT">NOT（均不出现）</option>
-										</select>
-									</div>
-									<div className="space-y-1">
-										<label className="block text-sm text-gray-700">匹配类型</label>
-										<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} className="w-full px-3 py-2 border border-gray-200 rounded-lg" disabled={!!(ruleForm.dsl && ruleForm.dsl.trim())}>
-											<option value="0">关键词包含（忽略大小写）</option>
-											<option value="1">正则表达式（高级）</option>
-										</select>
-									</div>
-								</div>
-								{ (!!(ruleForm.dsl && ruleForm.dsl.trim())) && (
-									<p className="text-xs text-blue-600">已填写 DSL，将忽略“组合方式/匹配类型”设置</p>
-								)}
-								<p className="text-xs text-gray-400">提示：若上方“规则表达式（DSL）”不为空，将优先按照 DSL 进行解析并忽略兼容模式设置。</p>
+								<p className="text-xs text-gray-400">提示：若上方“规则表达式（DSL）”不为空，将优先按 DSL 解析；若留空，将按正则方式逐行匹配（支持 | & ! 等）。</p>
 							</div>
 							
 							<div className="flex items-center">
