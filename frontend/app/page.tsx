@@ -1102,12 +1102,12 @@ OOM | "Out of memory"
 					<button onClick={openUserAdd} style={{ background: '#2563eb', color: 'white', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>+ 添加用户</button>
 				</div>
 				<div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', maxHeight: '60vh', minHeight: '40vh', overflowY: 'auto' }}>
-					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
-						<div>用户名</div><div>邮箱</div><div>角色</div><div>操作</div>
+					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
+						<div>用户名</div><div>邮箱</div><div>角色</div><div>职位</div><div>操作</div>
 					</div>
 					{users.map((user) => (
-						<div key={user.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
-							<div>{user.username}</div><div>{user.email}</div><div>{user.role}</div>
+						<div key={user.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', padding: 12, borderTop: '1px solid #e5e7eb' }}>
+							<div>{user.username}</div><div>{user.email}</div><div>{user.role}</div><div>{user.position || '-'}</div>
 							<div style={{ display: 'flex', gap: 8 }}>
 								{user.username !== 'admin' ? (
 									<>
@@ -1149,6 +1149,10 @@ OOM | "Out of memory"
 								<option value="普通用户">普通用户</option>
 							</select>
 						)}
+					</div>
+					<div>
+						<div style={{ fontSize: 12, color: '#6b7280' }}>职位</div>
+						<input value={userForm.position || ''} onChange={(e) => setUserForm({ ...userForm, position: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
 					</div>
 					{userModalMode === 'add' && (
 						<div>
