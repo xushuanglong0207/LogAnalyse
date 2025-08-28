@@ -771,10 +771,10 @@ async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
         if os.path.exists(INDEX_PATH):
             with open(INDEX_PATH, "r", encoding="utf-8") as f:
                 idx = json.load(f)
-                if is_admin:
-                    up_count = len(idx)
-                else:
-                    up_count = len([x for x in idx if (x.get("owner_id", 1) == user_id)])
+            if is_admin:
+                up_count = len(idx)
+            else:
+                up_count = len([x for x in idx if (x.get("owner_id", 1) == user_id)])
     except Exception:
         if not is_admin:
             up_count = len([x for x in uploaded_files if x.get("owner_id", 1) == user_id])
@@ -784,23 +784,23 @@ async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
         if os.path.exists(ANALYSIS_INDEX_PATH):
             with open(ANALYSIS_INDEX_PATH, "r", encoding="utf-8") as f:
                 arr = json.load(f)
-                total_runs = len(arr)
-                if is_admin:
-                    detected = sum(len(r.get("issues", [])) for r in arr)
-        else:
-                    mine = [r for r in arr if r.get("owner_id", 1) == user_id]
-                    detected = sum(len(r.get("issues", [])) for r in mine)
+            total_runs = len(arr)
+            if is_admin:
+                detected = sum(len(r.get("issues", [])) for r in arr)
+            else:
+                mine = [r for r in arr if r.get("owner_id", 1) == user_id]
+                detected = sum(len(r.get("issues", [])) for r in mine)
         else:
             total_runs = len(analysis_results)
             if is_admin:
-            detected = sum(len(r.get("issues", [])) for r in analysis_results)
+                detected = sum(len(r.get("issues", [])) for r in analysis_results)
             else:
                 mine = [r for r in analysis_results if r.get("owner_id", 1) == user_id]
                 detected = sum(len(r.get("issues", [])) for r in mine)
     except Exception:
         total_runs = len(analysis_results)
         if is_admin:
-        detected = sum(len(r.get("issues", [])) for r in analysis_results)
+            detected = sum(len(r.get("issues", [])) for r in analysis_results)
         else:
             mine = [r for r in analysis_results if r.get("owner_id", 1) == user_id]
             detected = sum(len(r.get("issues", [])) for r in mine)
@@ -1151,7 +1151,7 @@ async def get_analysis_results(ctx: Dict[str, Any] = Depends(require_auth)):
     is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
     user_id = ctx["user"]["id"]
     if is_admin:
-    return {"results": analysis_results}
+        return {"results": analysis_results}
     # 非管理员按 owner 过滤
     return {"results": [r for r in analysis_results if r.get("owner_id", 1) == user_id]}
 
