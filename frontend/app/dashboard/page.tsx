@@ -353,7 +353,7 @@ export default function DashboardPage() {
 								</div>
 							) : detailData?.issues?.length > 0 ? (
 								<div className="space-y-6">
-									{detailData.issues.map((issue: any, index: number) => (
+									{detailData.issues.slice(0, Math.min(50, detailData.issues.length)).map((issue: any, index: number) => (
 										<div key={index} className="bg-gray-50 rounded-xl p-4 border-l-4 border-red-400">
 											<div className="flex items-start justify-between mb-3">
 												<div className="flex-1">
@@ -370,9 +370,9 @@ export default function DashboardPage() {
 												<div className="ml-4 flex items-center space-x-2">
 													<span className={`px-2 py-1 text-xs font-medium rounded-full ${
 														issue.severity === 'high' 
-															? 'bg-red-100 text-red-600'
+															? 'bg-red-100 text-red-600' 
 															: 'bg-yellow-100 text-yellow-600'
-													}`}>
+													}` }>
 														{issue.severity === 'high' ? '高风险' : '中风险'}
 													</span>
 													{issue.match_count && (
@@ -382,7 +382,6 @@ export default function DashboardPage() {
 													)}
 												</div>
 											</div>
-											
 											{issue.matched_text && (
 												<div className="mb-3">
 													<h5 className="text-sm font-medium text-gray-700 mb-1">匹配内容:</h5>
@@ -394,17 +393,37 @@ export default function DashboardPage() {
 													</code>
 												</div>
 											)}
-											
 											{issue.context && (
 												<div>
 													<h5 className="text-sm font-medium text-gray-700 mb-1">上下文 (行 {issue.line_number}):</h5>
-													<pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
-														{issue.context}
-													</pre>
-												</div>
+													<div className="bg-gray-900 text-green-400 p-3 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-hidden group">
+														<pre className="whitespace-pre-wrap">{issue.context}</pre>
+													</div>
+													<button onClick={(e) => {
+														const box = (e.currentTarget.previousSibling as HTMLElement)
+														if (!box) return
+														if (box.classList.contains('max-h-48')) {
+															box.classList.remove('max-h-48','overflow-y-hidden')
+															box.classList.add('max-h-[70vh]','overflow-y-auto')
+															(e.currentTarget as HTMLButtonElement).innerText = '收起'
+														} else {
+															box.classList.remove('max-h-[70vh]','overflow-y-auto')
+															box.classList.add('max-h-48','overflow-y-hidden')
+															(e.currentTarget as HTMLButtonElement).innerText = '展开更多'
+														}
+													}} className="mt-2 text-xs text-blue-500 hover:underline">展开更多</button>
+											</div>
 											)}
 										</div>
 									))}
+									{detailData.issues.length > 50 && (
+										<div className="text-center pt-2">
+											<button onClick={async () => {
+												// 简化：再次拉取详情或在前端延迟展示更多（这里直接放开所有）
+												setDetailData({ ...detailData, issues: detailData.issues })
+											}} className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg">加载更多</button>
+										</div>
+									)}
 								</div>
 							) : (
 								<div className="text-center py-12">
