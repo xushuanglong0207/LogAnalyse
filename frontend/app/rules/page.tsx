@@ -45,8 +45,9 @@ export default function RulesPage() {
 		description: '', 
 		enabled: true, 
 		patterns: '', 
-		operator: 'OR', 
-		is_regex: true, 
+		operator: 'OR',
+		is_regex: false,
+		dsl: '', 
 		folder_id: 1 
 	})
 	
@@ -110,8 +111,9 @@ export default function RulesPage() {
 			description: '', 
 			enabled: true, 
 			patterns: '', 
-			operator: 'OR', 
-			is_regex: true, 
+			operator: 'OR',
+			is_regex: false,
+			dsl: '', 
 			folder_id: ruleFolders[0]?.id || 1 
 		})
 		setRuleModalMode('add')
@@ -125,8 +127,9 @@ export default function RulesPage() {
 			description: rule.description || '', 
 			enabled: !!rule.enabled, 
 			patterns: (rule.patterns || []).join('\n'), 
-			operator: rule.operator || 'OR', 
-			is_regex: !!rule.is_regex, 
+			operator: rule.operator || 'OR',
+			is_regex: !!rule.is_regex,
+			dsl: (rule.dsl || ''), 
 			folder_id: rule.folder_id || 1 
 		})
 		setRuleModalMode('edit')
@@ -135,14 +138,19 @@ export default function RulesPage() {
 
 	const submitRule = async () => {
 		try {
-			const payload = { 
+			const payload: any = { 
 				name: ruleForm.name, 
 				description: ruleForm.description || '', 
 				enabled: !!ruleForm.enabled, 
-				patterns: parsePatterns(ruleForm.patterns), 
-				operator: (ruleForm.operator || 'OR'), 
-				is_regex: !!ruleForm.is_regex, 
 				folder_id: ruleForm.folder_id || 1 
+			}
+			const dsl = (ruleForm.dsl || '').trim()
+			if (dsl) {
+				payload.dsl = dsl
+			} else {
+				payload.patterns = parsePatterns(ruleForm.patterns)
+				payload.operator = ruleForm.operator || 'OR'
+				payload.is_regex = !!ruleForm.is_regex
 			}
 			let r
 			if (ruleModalMode === 'add') {
@@ -516,41 +524,44 @@ export default function RulesPage() {
 								/>
 							</div>
 							
-							<div className="grid md:grid-cols-2 gap-4">
-								<div className="space-y-2">
-									<label className="block text-sm font-medium text-gray-700">组合逻辑</label>
-									<select
-										value={ruleForm.operator}
-										onChange={(e) => setRuleForm({ ...ruleForm, operator: e.target.value })}
-										className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200"
-									>
-										<option value="OR">或 (任一匹配)</option>
-										<option value="AND">与 (全部匹配)</option>
-										<option value="NOT">非 (均不匹配)</option>
-									</select>
-								</div>
-								<div className="space-y-2">
-									<label className="block text-sm font-medium text-gray-700">匹配类型</label>
-									<select
-										value={ruleForm.is_regex ? '1' : '0'}
-										onChange={(e) => setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })}
-										className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200"
-									>
-										<option value="1">正则表达式</option>
-										<option value="0">普通包含</option>
-									</select>
-								</div>
+							<div className="space-y-2">
+								<label className="block text-sm font-medium text-gray-700">规则表达式（DSL）</label>
+								<textarea
+									value={ruleForm.dsl}
+									onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })}
+									rows={4}
+									placeholder="请输入规则的 DSL 表达式"
+									className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 resize-none font-mono text-sm"
+								/>
 							</div>
 							
 							<div className="space-y-2">
-								<label className="block text-sm font-medium text-gray-700">匹配模式</label>
+								<label className="block text-sm font-medium text-gray-700">（兼容）匹配模式</label>
 								<textarea
 									value={ruleForm.patterns}
 									onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })}
 									rows={4}
-									placeholder="每行一个模式，或用逗号/分号分隔&#10;例如：ERROR|FATAL&#10;Out of memory"
+									placeholder="每行一个模式；若上面的 DSL 不为空，将优先使用 DSL"
 									className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 resize-none font-mono text-sm"
 								/>
+								<div className="grid md:grid-cols-2 gap-4">
+									<div className="space-y-1">
+										<label className="block text-sm text-gray-700">组合方式</label>
+										<select value={ruleForm.operator} onChange={(e)=> setRuleForm({ ...ruleForm, operator: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
+											<option value="OR">OR（任一匹配）</option>
+											<option value="AND">AND（全部匹配）</option>
+											<option value="NOT">NOT（均不出现）</option>
+										</select>
+									</div>
+									<div className="space-y-1">
+										<label className="block text-sm text-gray-700">匹配类型</label>
+										<select value={ruleForm.is_regex ? '1' : '0'} onChange={(e)=> setRuleForm({ ...ruleForm, is_regex: e.target.value === '1' })} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
+											<option value="0">普通包含</option>
+											<option value="1">正则表达式</option>
+										</select>
+									</div>
+								</div>
+								<p className="text-xs text-gray-400">提示：若上方“规则表达式（DSL）”不为空，将优先按照 DSL 进行解析并忽略兼容模式设置。</p>
 							</div>
 							
 							<div className="flex items-center">
@@ -572,7 +583,7 @@ export default function RulesPage() {
 							</button>
 							<button
 								onClick={submitRule}
-								disabled={!ruleForm.name || !ruleForm.patterns}
+								disabled={!ruleForm.name}
 								className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium rounded-lg shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 disabled:cursor-not-allowed"
 							>
 								保存
