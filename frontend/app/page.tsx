@@ -1387,6 +1387,45 @@ OOM | "Out of memory"
 
 			<Toasts toasts={toasts} remove={removeToast} />
 			<ConfirmModal visible={confirmState.visible} text={confirmState.text} onConfirm={() => { confirmState.resolve && confirmState.resolve(true); setConfirmState({ visible: false, text: '', resolve: null }) }} onCancel={() => { confirmState.resolve && confirmState.resolve(false); setConfirmState({ visible: false, text: '', resolve: null }) }} />
+			{/* 问题新增/编辑 Modal */}
+			<Modal visible={problemModalVisible} title={problemForm.id ? '编辑问题' : '新增问题'} onClose={() => setProblemModalVisible(false)} footer={[
+				<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
+				<button key="ok" className="btn btn-primary" onClick={submitProblem}>保存</button>
+			]}>
+				<div className="form-grid">
+					<div className="form-col"><div className="label">问题名称*</div><input className="ui-input" value={problemForm.title} onChange={(e) => {
+						const v = e.target.value
+						const detected = sanitizeUrl(v)
+						setProblemForm({ ...problemForm, title: removeUrls(v), url: detected || problemForm.url })
+					}} onBlur={(e)=> {
+						const v = e.target.value
+						const detected = sanitizeUrl(v)
+						setProblemForm({ ...problemForm, title: removeUrls(v), url: detected || problemForm.url })
+					}} /></div>
+					<div className="form-col"><div className="label">问题链接*</div><input className="ui-input" value={problemForm.url} onChange={(e) => {
+						const v = e.target.value
+						setProblemForm({ ...problemForm, url: v })
+					}} onBlur={(e)=> {
+						const link = sanitizeUrl(e.target.value)
+						setProblemForm({ ...problemForm, url: link, title: (problemForm.title ? removeUrls(problemForm.title) : titleFromUrl(link)) })
+					}} /></div>
+					<div className="form-col" style={{ position: 'relative' }}>
+						<div className="label">错误类型*</div>
+						<input className="ui-input" placeholder="搜索名称/描述..." value={problemTypeQuery} onChange={(e)=> setProblemTypeQuery(e.target.value)} style={{ marginBottom: 6 }} />
+						<select className="ui-select" value={problemForm.error_type} onChange={(e) => setProblemForm({ ...problemForm, error_type: e.target.value })}>
+							<option value="">请选择问题类型</option>
+							{(allDetectionRules.length ? allDetectionRules : detectionRules)
+								.filter((r:any)=>{
+									const q = normalizeForSearch(problemTypeQuery)
+									if (!q) return true
+									const text = normalizeForSearch(`${r.name||''} ${(r.description||'')} ${(r.patterns||[]).join(' ')}`)
+									return text.includes(q)
+								})
+								.map((r:any)=>(<option key={r.id} value={r.name}>{r.name}（{r.description || '无描述'}）</option>))}
+						</select>
+					</div>
+				</div>
+			</Modal>
 			{/* 全局分析详情 Modal：支持从任何页面打开 */}
 			<Modal visible={detailVisible} title={detailData?.title || '分析详情'} onClose={() => setDetailVisible(false)}>
 				{detailData && (() => {
