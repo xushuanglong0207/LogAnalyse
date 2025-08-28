@@ -791,10 +791,11 @@ OOM | "Out of memory"
 				<div style={{ 
 					background: 'rgba(255,255,255,0.75)', 
 					backdropFilter: 'blur(6px)', 
-					border: '1px solid rgba(255,255,255,0.35)', 
+					borderWidth: 1,
+					borderStyle: 'solid',
+					borderColor: analyzingText ? '#3b82f6' : 'rgba(255,255,255,0.35)',
 					borderRadius: 12, 
-					padding: 16,
-					borderColor: analyzingText ? '#3b82f6' : 'rgba(255,255,255,0.35)'
+					padding: 16
 				}}>
 					<h3 style={{ fontWeight: 600, marginBottom: 8 }}>直接粘贴文本分析（≤ 5MB）</h3>
 					<textarea 
@@ -882,12 +883,13 @@ OOM | "Out of memory"
 								justifyContent: 'space-between', 
 								alignItems: 'center', 
 								padding: 12, 
-								border: '1px solid #e5e7eb', 
+								borderWidth: 1,
+								borderStyle: 'solid',
+								borderColor: isAnalyzing ? '#3b82f6' : '#e5e7eb',
 								borderRadius: 8, 
 								marginBottom: 8, 
 								cursor: 'zoom-in',
-								background: isAnalyzing ? '#f0f9ff' : 'transparent',
-								borderColor: isAnalyzing ? '#3b82f6' : '#e5e7eb'
+								background: isAnalyzing ? '#f0f9ff' : 'transparent'
 							}}>
 								<div style={{ flex: 1 }}>
 									<p style={{ fontWeight: 600, margin: 0 }}>{file.filename}</p>
