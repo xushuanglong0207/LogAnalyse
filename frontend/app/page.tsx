@@ -1169,7 +1169,7 @@ OOM | "Out of memory"
 				{currentUser && <div style={{ color: '#374151' }}>Hi，<span style={{ fontWeight: 700 }}>{currentUser.username}</span></div>}
 			</div>
 			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-				{[{ color: '#059669', value: dashboardStats.uploaded_files, label: '已上传文件' }, { color: '#dc2626', value: dashboardStats.detected_issues, label: '检测到错误' }, { color: '#2563eb', value: dashboardStats.detection_rules, label: '检测规则' }, { color: '#8b5cf6', value: Object.values(problemStatsByType).reduce((a,b)=>a+b,0), label: '问题总数' }].map((c, i) => (
+				{[{ color: '#059669', value: dashboardStats.uploaded_files, label: '已上传文件' }, { color: '#dc2626', value: dashboardStats.detected_issues, label: '检测到错误' }, { color: '#2563eb', value: dashboardStats.detection_rules, label: '检测规则' }, { color: '#8b5cf6', value: Object.values(problemStatsByType).reduce((a,b)=>a+b,0), label: '问题总数' }, ...(dashboardStats.total_analysis_runs !== undefined ? [{ color: '#f59e0b', value: dashboardStats.total_analysis_runs, label: '全站分析总次数' }] : [])].map((c, i) => (
 					<div key={i} style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem' }}>
 						<h3 style={{ color: c.color, fontSize: '2rem', margin: 0 }}>{c.value}</h3>
 						<p style={{ color: '#6b7280', margin: 0 }}>{c.label}</p>

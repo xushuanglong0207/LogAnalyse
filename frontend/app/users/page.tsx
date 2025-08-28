@@ -43,7 +43,8 @@ export default function UsersPage() {
 		username: '', 
 		email: '', 
 		password: '', 
-		role: '普通用户' 
+		role: '普通用户',
+		position: '' 
 	})
 
 	const getStoredToken = () => (typeof window === 'undefined' ? '' : (localStorage.getItem('token') || sessionStorage.getItem('token') || ''))
@@ -82,7 +83,8 @@ export default function UsersPage() {
 			username: '', 
 			email: '', 
 			password: '', 
-			role: '普通用户' 
+			role: '普通用户',
+			position: '' 
 		})
 		setUserModalMode('add')
 		setUserModalVisible(true) 
@@ -94,7 +96,8 @@ export default function UsersPage() {
 			username: user.username, 
 			email: user.email || '', 
 			password: '', 
-			role: user.role || '普通用户' 
+			role: user.role || '普通用户',
+			position: user.position || '' 
 		})
 		setUserModalMode('edit')
 		setUserModalVisible(true) 
@@ -110,14 +113,16 @@ export default function UsersPage() {
 						username: userForm.username, 
 						email: userForm.email, 
 						role: userForm.role, 
-						password: userForm.password 
+						password: userForm.password, 
+						position: userForm.position 
 					}) 
 				})
 				if (!r.ok) throw new Error('创建失败')
 			} else {
 				const payload: any = { 
 					email: userForm.email, 
-					role: userForm.role 
+					role: userForm.role,
+					position: userForm.position 
 				}
 				if (userForm.password) {
 					payload.password = userForm.password
@@ -264,7 +269,7 @@ export default function UsersPage() {
 									<div className="col-span-3">用户信息</div>
 									<div className="col-span-3">邮箱地址</div>
 									<div className="col-span-2">用户角色</div>
-									<div className="col-span-2">创建时间</div>
+									<div className="col-span-2">职位</div>
 									<div className="col-span-2 text-center">操作</div>
 								</div>
 							</div>
@@ -301,9 +306,7 @@ export default function UsersPage() {
 												</div>
 											</div>
 											<div className="col-span-2 flex items-center">
-												<span className="text-sm text-gray-600">
-													{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
-												</span>
+												<span className="text-sm text-gray-600">{user.position || '-'}</span>
 											</div>
 											<div className="col-span-2 flex items-center justify-center space-x-2">
 												<button
@@ -399,6 +402,15 @@ export default function UsersPage() {
 									type="password"
 									value={userForm.password}
 									onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+									className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all duration-200"
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<label className="block text-sm font-medium text-gray-700">职位</label>
+								<input
+									value={userForm.position}
+									onChange={(e) => setUserForm({ ...userForm, position: e.target.value })}
 									className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all duration-200"
 								/>
 							</div>
