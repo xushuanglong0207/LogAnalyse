@@ -1385,6 +1385,14 @@ OOM | "Out of memory"
 			) : (
 				<div style={{ padding: '2rem', color: '#6b7280' }}>请先登录以使用平台功能。</div>
 			)}
+			{/* 全局提示与确认弹窗 */}
+			<Toasts toasts={toasts} remove={removeToast} />
+			<ConfirmModal 
+				visible={confirmState.visible}
+				text={confirmState.text}
+				onConfirm={() => { try { confirmState.resolve && confirmState.resolve(true) } finally { setConfirmState({ visible: false, text: '', resolve: null }) } }}
+				onCancel={() => { try { confirmState.resolve && confirmState.resolve(false) } finally { setConfirmState({ visible: false, text: '', resolve: null }) } }}
+			/>
 		</div>
 	)
 }
