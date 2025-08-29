@@ -1376,7 +1376,15 @@ OOM | "Out of memory"
 	return (
 		<div style={{ minHeight: '100vh', background: '#f8fafc' }}>
 			<Nav />
-			{!currentUser && (<div style={{ padding: '2rem', color: '#6b7280' }}>请先登录以使用平台功能。</div>)}
+			{currentUser ? (
+				currentPage === 'dashboard' ? Dashboard() :
+				currentPage === 'logs' ? LogManagement() :
+				currentPage === 'rules' ? RuleManagement() :
+				currentPage === 'problems' ? ProblemsPage() :
+				UserManagement()
+			) : (
+				<div style={{ padding: '2rem', color: '#6b7280' }}>请先登录以使用平台功能。</div>
+			)}
 		</div>
 	)
 }
