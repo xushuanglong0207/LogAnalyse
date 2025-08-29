@@ -1393,6 +1393,38 @@ OOM | "Out of memory"
 				onConfirm={() => { try { confirmState.resolve && confirmState.resolve(true) } finally { setConfirmState({ visible: false, text: '', resolve: null }) } }}
 				onCancel={() => { try { confirmState.resolve && confirmState.resolve(false) } finally { setConfirmState({ visible: false, text: '', resolve: null }) } }}
 			/>
+			{/* 分析详情弹窗 */}
+			<Modal
+				visible={detailVisible}
+				title={detailData?.title || '分析详情'}
+				onClose={() => setDetailVisible(false)}
+				footer={[
+					<button key="close" className="btn btn-primary" onClick={() => setDetailVisible(false)}>关闭</button>
+				]}
+			>
+				{detailData?.data ? (
+					<div>
+						<div style={{ color: '#6b7280', marginBottom: 8 }}>
+							文件：{detailData.data.filename} · 共 {detailData.data?.summary?.total_issues ?? (detailData.data?.issues?.length || 0)} 个问题
+						</div>
+						<div style={{ maxHeight: 540, overflow: 'auto' }}>
+							{(detailData.data.issues || []).map((it: any, idx: number) => (
+								<div key={idx} className="ui-card" style={{ padding: 12, marginBottom: 8 }}>
+									<div style={{ fontWeight: 600 }}>
+										{it.rule_name}{it.description ? `：${it.description}` : ''}
+									</div>
+									<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>行号：{it.line_number} · 严重性：{it.severity}</div>
+									{it.context ? (
+										<pre style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: 8 }}>{it.context}</pre>
+									) : null}
+								</div>
+							))}
+						</div>
+					</div>
+				) : (
+					<div style={{ color: '#6b7280' }}>加载中...</div>
+				)}
+			</Modal>
 			{/* 问题库：新增/编辑弹窗 */}
 			<Modal
 				visible={problemModalVisible}
