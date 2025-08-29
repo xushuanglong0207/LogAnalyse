@@ -228,13 +228,7 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any], pre: Optional[Dict
     
     if isinstance(rule.get('dsl'), str) and rule['dsl'].strip():
         expr = rule['dsl'].strip()
-    else:
-        # 兼容：如果 patterns 是单行表达式且包含 DSL 运算符，则当作 DSL
-        pats = rule.get('patterns')
-        if isinstance(pats, list) and len(pats)==1 and isinstance(pats[0], str):
-            cand = pats[0].strip()
-            if any(ch in cand for ch in ['&','|','!','！','(',')','"']):
-                expr = cand
+    # 注意：不再将单行 patterns 自动当作 DSL，避免正则包含元字符被误判
     
     if expr:
         compiled = _compile_dsl(rule.get('id','0'), expr)
