@@ -250,6 +250,34 @@ export default function Home() {
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
 	const [showLegacyPatterns, setShowLegacyPatterns] = useState(false)
 
+	// 定时分析相关状态
+	const [nasDevices, setNasDevices] = useState<any[]>([])
+	const [monitorTasks, setMonitorTasks] = useState<any[]>([])
+	const [deviceModalVisible, setDeviceModalVisible] = useState(false)
+	const [deviceModalMode, setDeviceModalMode] = useState<'add' | 'edit'>('add')
+	const [deviceForm, setDeviceForm] = useState<any>({ 
+		id: null, name: '', ip_address: '', ssh_port: 22, ssh_username: '', ssh_password: '', description: '' 
+	})
+	const [taskModalVisible, setTaskModalVisible] = useState(false)
+	const [taskModalMode, setTaskModalMode] = useState<'add' | 'edit'>('add')
+	const [taskForm, setTaskForm] = useState<any>({ 
+		id: null, device_id: null, name: '', log_path: '', rule_ids: [], email_recipients: [], email_time: '15:00' 
+	})
+	const [selectedDevice, setSelectedDevice] = useState<any>(null)
+	const [deviceSystemInfo, setDeviceSystemInfo] = useState<any>(null)
+	const [deviceErrorLogs, setDeviceErrorLogs] = useState<any[]>([])
+	const [systemInfoVisible, setSystemInfoVisible] = useState(false)
+	const [errorLogsVisible, setErrorLogsVisible] = useState(false)
+	const [logContentVisible, setLogContentVisible] = useState(false)
+	const [logContent, setLogContent] = useState<any>(null)
+
+	// 邮件服务相关状态
+	const [emailConfig, setEmailConfig] = useState<any>(null)
+	const [schedulerStatus, setSchedulerStatus] = useState<any>(null)
+	const [emailTestVisible, setEmailTestVisible] = useState(false)
+	const [emailTestRecipients, setEmailTestRecipients] = useState('')
+	const [emailTestSending, setEmailTestSending] = useState(false)
+
 	// 数据缓存状态
 	const [dataCache, setDataCache] = useState({
 		dashboardStats: null,
@@ -259,7 +287,9 @@ export default function Home() {
 		users: null,
 		analysisResults: null,
 		problems: null,
-		problemStats: null
+		problemStats: null,
+		nasDevices: null,
+		monitorTasks: null
 	})
 
 	// 状态卡
@@ -316,6 +346,8 @@ export default function Home() {
 	const fetchUsers = async () => { try { const r = await authedFetch(`${getApiBase()}/api/users`); if (r.ok) { const d = await r.json(); setUsers(d.users || []) } } catch {} }
 	const fetchMe = async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/me`); if (r.ok) { const d = await r.json(); setCurrentUser(d.user) } } catch {} }
 	const fetchAnalysisResults = async () => { try { const r = await authedFetch(`${getApiBase()}/api/analysis/results`); if (r.ok) { const d = await r.json(); setAnalysisResults(d.results || []) } } catch {} }
+	const fetchNasDevices = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices`); if (r.ok) { const d = await r.json(); setNasDevices(d || []) } } catch {} }
+	const fetchMonitorTasks = async (deviceId?: number) => { try { const params = deviceId ? `?device_id=${deviceId}` : ''; const r = await authedFetch(`${getApiBase()}/api/monitor/monitor-tasks${params}`); if (r.ok) { const d = await r.json(); setMonitorTasks(d || []) } } catch {} }
 
 	useEffect(() => {
 		const base = computeApiBase(); setApiBase(base)
@@ -353,6 +385,12 @@ export default function Home() {
 					break
 				case 'users':
 					fetchUsers()
+					break
+				case 'monitor':
+					fetchNasDevices()
+					fetchMonitorTasks()
+					fetchEmailConfig()
+					fetchSchedulerStatus()
 					break
 			}
 		} 
@@ -676,6 +714,7 @@ export default function Home() {
 					{ id: 'logs', label: '📁 日志管理', color: 'from-orange-500 to-red-600' },
 					{ id: 'rules', label: '🔍 规则管理', color: 'from-emerald-500 to-teal-600' },
 					{ id: 'problems', label: '📚 问题库', color: 'from-purple-500 to-indigo-600' },
+					{ id: 'monitor', label: '⏰ 定时分析', color: 'from-cyan-500 to-blue-600' },
 					{ id: 'users', label: '👥 用户管理', color: 'from-green-500 to-emerald-600' }
 				].map(nav => (
 					<button 
@@ -1361,6 +1400,332 @@ OOM | "Out of memory"
 		} catch {}
 	}
 
+	// —— 定时分析：设备管理 ——
+	const openDeviceAdd = () => { setDeviceForm({ id: null, name: '', ip_address: '', ssh_port: 22, ssh_username: '', ssh_password: '', description: '' }); setDeviceModalMode('add'); setDeviceModalVisible(true) }
+	const openDeviceEdit = (device: any) => { setDeviceForm({ id: device.id, name: device.name, ip_address: device.ip_address, ssh_port: device.ssh_port, ssh_username: device.ssh_username, ssh_password: '', description: device.description || '' }); setDeviceModalMode('edit'); setDeviceModalVisible(true) }
+	const submitDevice = async () => {
+		try {
+			const payload = { ...deviceForm }
+			delete payload.id
+			if (!payload.ssh_password && deviceModalMode === 'edit') delete payload.ssh_password // 编辑时不更新密码如果为空
+			let r
+			if (deviceModalMode === 'add') r = await authedFetch(`${getApiBase()}/api/monitor/devices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			else r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			if (r.ok) { setDeviceModalVisible(false); await fetchNasDevices(); showToast('保存成功', 'success') } else showToast('保存失败', 'error')
+		} catch { showToast('保存失败', 'error') }
+	}
+	const deleteDevice = async (deviceId: number) => { const ok = await askConfirm('确定删除该设备？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}`, { method: 'DELETE' }); if (r.ok) { await fetchNasDevices(); showToast('删除成功', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
+	const testDeviceConnection = async (deviceId: number) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}/test-connection`, { method: 'POST' }); if (r.ok) { const d = await r.json(); showToast(d.message, d.success ? 'success' : 'error'); await fetchNasDevices() } else showToast('连接测试失败', 'error') } catch { showToast('连接测试失败', 'error') } }
+	const getDeviceSystemInfo = async (deviceId: number) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}/system-info`); if (r.ok) { const d = await r.json(); setDeviceSystemInfo(d); setSystemInfoVisible(true) } else showToast('获取系统信息失败', 'error') } catch { showToast('获取系统信息失败', 'error') } }
+
+	// —— 定时分析：任务管理 ——
+	const openTaskAdd = (device: any) => { setTaskForm({ id: null, device_id: device.id, name: `${device.name}监控任务`, log_path: '/var/log/syslog', rule_ids: [], email_recipients: [], email_time: '15:00' }); setTaskModalMode('add'); setTaskModalVisible(true) }
+	const openTaskEdit = (task: any) => { setTaskForm({ id: task.id, device_id: task.device_id, name: task.name, log_path: task.log_path, rule_ids: task.rule_ids || [], email_recipients: task.email_recipients || [], email_time: task.email_time || '15:00' }); setTaskModalMode('edit'); setTaskModalVisible(true) }
+	const submitTask = async () => {
+		try {
+			const payload = { ...taskForm }
+			delete payload.id
+			if (!payload.rule_ids.length) { showToast('请至少选择一个规则', 'error'); return }
+			if (!payload.email_recipients.length) { showToast('请填写邮件接收者', 'error'); return }
+			let r
+			if (taskModalMode === 'add') r = await authedFetch(`${getApiBase()}/api/monitor/monitor-tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			else r = await authedFetch(`${getApiBase()}/api/monitor/monitor-tasks/${taskForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+			if (r.ok) { setTaskModalVisible(false); await fetchMonitorTasks(); showToast('保存成功', 'success') } else showToast('保存失败', 'error')
+		} catch { showToast('保存失败', 'error') }
+	}
+	const deleteTask = async (taskId: number) => { const ok = await askConfirm('确定删除该监控任务？'); if (!ok) return; try { const r = await authedFetch(`${getApiBase()}/api/monitor/monitor-tasks/${taskId}`, { method: 'DELETE' }); if (r.ok) { await fetchMonitorTasks(); showToast('删除成功', 'success') } else showToast('删除失败', 'error') } catch { showToast('删除失败', 'error') } }
+	const getDeviceErrorLogs = async (deviceId: number) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}/error-logs`); if (r.ok) { const d = await r.json(); setDeviceErrorLogs(d || []); setSelectedDevice(nasDevices.find(dev => dev.id === deviceId)); setErrorLogsVisible(true) } else showToast('获取错误日志失败', 'error') } catch { showToast('获取错误日志失败', 'error') } }
+	const downloadLogContent = async (deviceId: number, filename: string) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}/error-logs/${filename}/content`); if (r.ok) { const d = await r.json(); setLogContent(d); setLogContentVisible(true) } else showToast('下载日志内容失败', 'error') } catch { showToast('下载日志内容失败', 'error') } }
+
+	// —— 邮件服务相关函数 ——
+	const fetchEmailConfig = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/email/config`); if (r.ok) { const d = await r.json(); setEmailConfig(d) } } catch { showToast('获取邮件配置失败', 'error') } }
+	const fetchSchedulerStatus = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/scheduler/status`); if (r.ok) { const d = await r.json(); setSchedulerStatus(d) } } catch { showToast('获取调度器状态失败', 'error') } }
+	const sendTestEmail = async () => {
+		if (!emailTestRecipients.trim()) { showToast('请输入收件人邮箱', 'error'); return }
+		const recipients = emailTestRecipients.split(',').map(email => email.trim()).filter(Boolean)
+		setEmailTestSending(true)
+		try { const r = await authedFetch(`${getApiBase()}/api/monitor/email/test`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recipients) }); if (r.ok) { const d = await r.json(); showToast(d.message, d.success ? 'success' : 'error') } else showToast('发送测试邮件失败', 'error') } catch { showToast('发送测试邮件失败', 'error') } finally { setEmailTestSending(false) }
+	}
+	const sendManualReport = async (taskId: number) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/email/send-report`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id: taskId }) }); if (r.ok) { const d = await r.json(); showToast(d.message, 'success') } else showToast('发送报告失败', 'error') } catch { showToast('发送报告失败', 'error') } }
+
+	// 定时分析管理页面
+	const MonitorManagement = () => (
+		<div style={{ padding: '2rem' }}>
+			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>⏰ 定时分析</h2>
+			
+			{/* 设备管理区域 */}
+			<div className="ui-card" style={{ padding: 16, marginBottom: 24 }}>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+					<h3 style={{ fontWeight: 600, margin: 0, color: '#1f2937' }}>📱 NAS设备管理</h3>
+					<button className="btn btn-primary" onClick={openDeviceAdd}>+ 添加设备</button>
+				</div>
+				<div style={{ maxHeight: '400px', overflow: 'auto' }}>
+					{nasDevices.length === 0 ? (
+						<div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+							<div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔌</div>
+							<p>还没有添加任何NAS设备</p>
+							<button className="btn btn-primary" onClick={openDeviceAdd}>添加第一个设备</button>
+						</div>
+					) : (
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
+							{nasDevices.map((device: any) => (
+								<div key={device.id} className="ui-card" style={{ padding: 16, border: '1px solid #e5e7eb' }}>
+									<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+										<div>
+											<h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#1f2937' }}>{device.name}</h4>
+											<p style={{ margin: '4px 0', color: '#6b7280', fontSize: '0.9rem' }}>{device.ip_address}:{device.ssh_port}</p>
+											{device.description && <p style={{ margin: '4px 0', color: '#9ca3af', fontSize: '0.8rem' }}>{device.description}</p>}
+										</div>
+										<div style={{ 
+											padding: '4px 8px', 
+											borderRadius: 6, 
+											fontSize: '0.75rem', 
+											fontWeight: 600,
+											background: device.status === 'active' ? '#dcfce7' : device.status === 'error' ? '#fee2e2' : '#f3f4f6',
+											color: device.status === 'active' ? '#166534' : device.status === 'error' ? '#991b1b' : '#6b7280'
+										}}>
+											{device.status === 'active' ? '✅ 在线' : device.status === 'error' ? '❌ 离线' : '⚪ 未知'}
+										</div>
+									</div>
+									
+									<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.8rem', color: '#6b7280', marginBottom: 12 }}>
+										<div>用户: {device.ssh_username}</div>
+										<div>脚本: {device.script_deployed ? '✅ 已部署' : '⚪ 未部署'}</div>
+										<div>最后连接: {device.last_connected ? new Date(device.last_connected).toLocaleString() : '从未'}</div>
+									</div>
+									
+									<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+										<button 
+											className="btn btn-outline" 
+											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											onClick={() => testDeviceConnection(device.id)}
+										>
+											🔗 测试连接
+										</button>
+										<button 
+											className="btn btn-outline" 
+											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											onClick={() => getDeviceSystemInfo(device.id)}
+										>
+											📊 系统信息
+										</button>
+										<button 
+											className="btn btn-outline" 
+											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											onClick={() => openTaskAdd(device)}
+										>
+											⏰ 添加任务
+										</button>
+										<button 
+											className="btn btn-outline" 
+											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											onClick={() => getDeviceErrorLogs(device.id)}
+										>
+											📋 错误日志
+										</button>
+										<button 
+											className="btn" 
+											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											onClick={() => openDeviceEdit(device)}
+										>
+											✏️ 编辑
+										</button>
+										<button 
+											className="btn btn-danger" 
+											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											onClick={() => deleteDevice(device.id)}
+										>
+											🗑️ 删除
+										</button>
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* 监控任务区域 */}
+			<div className="ui-card" style={{ padding: 16 }}>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+					<h3 style={{ fontWeight: 600, margin: 0, color: '#1f2937' }}>⏰ 监控任务</h3>
+					<span style={{ color: '#6b7280', fontSize: '0.9rem' }}>总计 {monitorTasks.length} 个任务</span>
+				</div>
+				<div style={{ maxHeight: '400px', overflow: 'auto' }}>
+					{monitorTasks.length === 0 ? (
+						<div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+							<div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏰</div>
+							<p>还没有创建任何监控任务</p>
+							<p style={{ fontSize: '0.9rem', color: '#9ca3af' }}>请先添加NAS设备，然后为设备创建监控任务</p>
+						</div>
+					) : (
+						<div style={{ display: 'grid', gap: 12 }}>
+							{monitorTasks.map((task: any) => {
+								const device = nasDevices.find(d => d.id === task.device_id)
+								return (
+									<div key={task.id} className="ui-card" style={{ padding: 16, border: '1px solid #e5e7eb' }}>
+										<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+											<div>
+												<h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#1f2937' }}>{task.name}</h4>
+												<p style={{ margin: '4px 0', color: '#6b7280', fontSize: '0.9rem' }}>设备: {device?.name || '未知设备'} ({device?.ip_address})</p>
+												<p style={{ margin: '4px 0', color: '#9ca3af', fontSize: '0.8rem' }}>日志路径: {task.log_path}</p>
+											</div>
+											<div style={{ 
+												padding: '4px 8px', 
+												borderRadius: 6, 
+												fontSize: '0.75rem', 
+												fontWeight: 600,
+												background: task.status === 'running' ? '#dcfce7' : task.status === 'error' ? '#fee2e2' : '#f3f4f6',
+												color: task.status === 'running' ? '#166534' : task.status === 'error' ? '#991b1b' : '#6b7280'
+											}}>
+												{task.status === 'running' ? '🟢 运行中' : task.status === 'error' ? '🔴 错误' : task.status === 'pending' ? '🟡 等待中' : '⚪ 已停止'}
+											</div>
+										</div>
+										
+										<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: '0.8rem', color: '#6b7280', marginBottom: 12 }}>
+											<div>规则数: {task.rule_ids?.length || 0}</div>
+											<div>邮件时间: {task.email_time}</div>
+											<div>接收者: {task.email_recipients?.length || 0} 人</div>
+											<div>错误计数: {task.error_count || 0}</div>
+											<div>最后运行: {task.last_run ? new Date(task.last_run).toLocaleString() : '从未'}</div>
+											<div>下次运行: {task.next_run ? new Date(task.next_run).toLocaleString() : '未知'}</div>
+										</div>
+										
+										<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+											<button 
+												className="btn" 
+												style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+												onClick={() => openTaskEdit(task)}
+											>
+												✏️ 编辑
+											</button>
+											<button 
+												className="btn btn-outline" 
+												style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+												onClick={() => sendManualReport(task.id)}
+												disabled={!task.email_recipients || task.email_recipients.length === 0}
+											>
+												📧 发送报告
+											</button>
+											<button 
+												className="btn btn-danger" 
+												style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+												onClick={() => deleteTask(task.id)}
+											>
+												🗑️ 删除
+											</button>
+										</div>
+									</div>
+								)
+							})}
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* 邮件服务配置区域 */}
+			<div className="ui-card" style={{ padding: 16 }}>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+					<h3 style={{ fontWeight: 600, margin: 0, color: '#1f2937' }}>📧 邮件服务配置</h3>
+					<div style={{ display: 'flex', gap: 8 }}>
+						<button className="btn btn-outline" onClick={() => { fetchEmailConfig(); fetchSchedulerStatus() }}>🔄 刷新状态</button>
+						<button className="btn btn-outline" onClick={() => setEmailTestVisible(true)}>📧 测试邮件</button>
+					</div>
+				</div>
+				
+				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+					{/* 邮件配置信息 */}
+					<div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: 8, padding: 16 }}>
+						<h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#495057' }}>SMTP 配置</h4>
+						{emailConfig ? (
+							<div style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>
+								<div style={{ marginBottom: 8 }}>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>服务器: </span>
+									<span>{emailConfig.smtp_server}:{emailConfig.smtp_port}</span>
+								</div>
+								<div style={{ marginBottom: 8 }}>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>发送者: </span>
+									<span>{emailConfig.sender_email}</span>
+								</div>
+								<div style={{ marginBottom: 8 }}>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>显示名: </span>
+									<span>{emailConfig.sender_name}</span>
+								</div>
+								<div style={{ 
+									display: 'inline-flex', 
+									alignItems: 'center', 
+									padding: '4px 8px', 
+									borderRadius: 4, 
+									fontSize: '0.8rem', 
+									fontWeight: 600,
+									background: emailConfig.is_configured ? '#d4edda' : '#f8d7da',
+									color: emailConfig.is_configured ? '#155724' : '#721c24'
+								}}>
+									{emailConfig.is_configured ? '✅ 已配置' : '❌ 未配置'}
+								</div>
+							</div>
+						) : (
+							<div style={{ color: '#6c757d' }}>
+								<button className="btn btn-outline" onClick={fetchEmailConfig} style={{ fontSize: '0.8rem' }}>加载配置信息</button>
+							</div>
+						)}
+					</div>
+
+					{/* 调度器状态 */}
+					<div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: 8, padding: 16 }}>
+						<h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#495057' }}>调度器状态</h4>
+						{schedulerStatus ? (
+							<div style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>
+								<div style={{ marginBottom: 8 }}>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>运行状态: </span>
+									<span style={{ 
+										display: 'inline-flex', 
+										alignItems: 'center', 
+										padding: '2px 6px', 
+										borderRadius: 4, 
+										fontSize: '0.8rem', 
+										fontWeight: 600,
+										background: schedulerStatus.is_running ? '#d4edda' : '#f8d7da',
+										color: schedulerStatus.is_running ? '#155724' : '#721c24'
+									}}>
+										{schedulerStatus.is_running ? '🟢 运行中' : '🔴 已停止'}
+									</span>
+								</div>
+								<div style={{ marginBottom: 8 }}>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>每日报告时间: </span>
+									<span>{schedulerStatus.next_daily_report}</span>
+								</div>
+								<div style={{ marginBottom: 8 }}>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>当前时间: </span>
+									<span>{schedulerStatus.current_time}</span>
+								</div>
+								<div>
+									<span style={{ fontWeight: 600, color: '#6c757d' }}>任务数: </span>
+									<span>{schedulerStatus.scheduled_tasks_count}</span>
+								</div>
+							</div>
+						) : (
+							<div style={{ color: '#6c757d' }}>
+								<button className="btn btn-outline" onClick={fetchSchedulerStatus} style={{ fontSize: '0.8rem' }}>获取状态</button>
+							</div>
+						)}
+					</div>
+				</div>
+
+				{/* 使用说明 */}
+				<div style={{ marginTop: 16, padding: 12, background: '#e3f2fd', borderRadius: 6, fontSize: '0.9rem' }}>
+					<div style={{ fontWeight: 600, marginBottom: 4, color: '#1976d2' }}>💡 使用说明:</div>
+					<ul style={{ margin: '4px 0', paddingLeft: 20, color: '#1976d2' }}>
+						<li>系统将在每天下午 15:00 自动发送错误报告邮件</li>
+						<li>请确保 SMTP 配置正确，可点击"测试邮件"验证</li>
+						<li>每个监控任务的邮件接收者在任务配置中单独设置</li>
+						<li>调度器需要处于运行状态才能发送定时邮件</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	)
+
 	// 问题库页面
 	const ProblemsPage = () => {
 		return (
@@ -1449,6 +1814,7 @@ OOM | "Out of memory"
 				currentPage === 'logs' ? LogManagement() :
 				currentPage === 'rules' ? RuleManagement() :
 				currentPage === 'problems' ? ProblemsPage() :
+				currentPage === 'monitor' ? MonitorManagement() :
 				UserManagement()
 			) : (
 				<div style={{ padding: '2rem', color: '#6b7280' }}>请先登录以使用平台功能。</div>
@@ -1538,6 +1904,198 @@ OOM | "Out of memory"
 
 			{/* 规则管理：文件夹弹窗挂载 */}
 			<FolderModal />
+
+			{/* 定时分析：设备管理弹窗 */}
+			<Modal visible={deviceModalVisible} title={deviceModalMode === 'add' ? '添加NAS设备' : '编辑设备'} onClose={() => setDeviceModalVisible(false)} footer={[
+				<button key="cancel" className="btn btn-outline" onClick={() => setDeviceModalVisible(false)}>取消</button>,
+				<button key="ok" className="btn btn-primary" disabled={!deviceForm.name || !deviceForm.ip_address || !deviceForm.ssh_username} onClick={submitDevice}>保存</button>
+			]}>
+				<div className="form-grid">
+					<div className="form-col">
+						<div className="label">设备名称*</div>
+						<input className="ui-input" value={deviceForm.name} onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })} placeholder="例如：生产环境NAS-01" />
+					</div>
+					<div className="form-col">
+						<div className="label">IP地址*</div>
+						<input className="ui-input" value={deviceForm.ip_address} onChange={(e) => setDeviceForm({ ...deviceForm, ip_address: e.target.value })} placeholder="例如：192.168.1.100" />
+					</div>
+					<div className="form-col">
+						<div className="label">SSH端口</div>
+						<input className="ui-input" type="number" value={deviceForm.ssh_port} onChange={(e) => setDeviceForm({ ...deviceForm, ssh_port: parseInt(e.target.value) || 22 })} />
+					</div>
+					<div className="form-col">
+						<div className="label">SSH用户名*</div>
+						<input className="ui-input" value={deviceForm.ssh_username} onChange={(e) => setDeviceForm({ ...deviceForm, ssh_username: e.target.value })} placeholder="例如：admin" />
+					</div>
+					<div className="form-col">
+						<div className="label">SSH密码* {deviceModalMode === 'edit' && <span style={{ color: '#6b7280', fontSize: 12 }}>(留空不修改)</span>}</div>
+						<input className="ui-input" type="password" value={deviceForm.ssh_password} onChange={(e) => setDeviceForm({ ...deviceForm, ssh_password: e.target.value })} placeholder="设备SSH密码" />
+					</div>
+					<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+						<div className="label">设备描述</div>
+						<input className="ui-input" value={deviceForm.description} onChange={(e) => setDeviceForm({ ...deviceForm, description: e.target.value })} placeholder="设备用途说明（可选）" />
+					</div>
+				</div>
+			</Modal>
+
+			{/* 定时分析：任务管理弹窗 */}
+			<Modal visible={taskModalVisible} title={taskModalMode === 'add' ? '创建监控任务' : '编辑任务'} onClose={() => setTaskModalVisible(false)} footer={[
+				<button key="cancel" className="btn btn-outline" onClick={() => setTaskModalVisible(false)}>取消</button>,
+				<button key="ok" className="btn btn-primary" disabled={!taskForm.name || !taskForm.log_path} onClick={submitTask}>保存</button>
+			]}>
+				<div className="form-grid">
+					<div className="form-col">
+						<div className="label">任务名称*</div>
+						<input className="ui-input" value={taskForm.name} onChange={(e) => setTaskForm({ ...taskForm, name: e.target.value })} placeholder="例如：系统日志监控" />
+					</div>
+					<div className="form-col">
+						<div className="label">邮件发送时间</div>
+						<input className="ui-input" type="time" value={taskForm.email_time} onChange={(e) => setTaskForm({ ...taskForm, email_time: e.target.value })} />
+					</div>
+					<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+						<div className="label">监控日志路径*</div>
+						<input className="ui-input" value={taskForm.log_path} onChange={(e) => setTaskForm({ ...taskForm, log_path: e.target.value })} placeholder="例如：/var/log/syslog" />
+						<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>💡 多个路径可用逗号分隔，例如：/var/log/syslog,/var/log/messages</div>
+					</div>
+					<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+						<div className="label">选择监控规则*</div>
+						<div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, padding: 8 }}>
+							{detectionRules.length === 0 ? (
+								<div style={{ textAlign: 'center', color: '#6b7280', padding: 20 }}>
+									<p>没有可用的规则</p>
+									<button className="btn btn-outline" onClick={() => setCurrentPage('rules')}>前往创建规则</button>
+								</div>
+							) : detectionRules.map(rule => (
+								<label key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
+									<input 
+										type="checkbox" 
+										checked={taskForm.rule_ids.includes(rule.id)}
+										onChange={(e) => {
+											if (e.target.checked) {
+												setTaskForm({ ...taskForm, rule_ids: [...taskForm.rule_ids, rule.id] })
+											} else {
+												setTaskForm({ ...taskForm, rule_ids: taskForm.rule_ids.filter(id => id !== rule.id) })
+											}
+										}}
+									/>
+									<div>
+										<div style={{ fontWeight: 600, fontSize: 14 }}>{rule.name}</div>
+										{rule.description && <div style={{ color: '#6b7280', fontSize: 12 }}>{rule.description}</div>}
+									</div>
+								</label>
+							))}
+						</div>
+						<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>已选择 {taskForm.rule_ids.length} 个规则</div>
+					</div>
+					<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+						<div className="label">邮件接收者*</div>
+						<input 
+							className="ui-input" 
+							value={taskForm.email_recipients.join(', ')} 
+							onChange={(e) => setTaskForm({ ...taskForm, email_recipients: e.target.value.split(',').map(email => email.trim()).filter(Boolean) })} 
+							placeholder="例如：admin@company.com, dev@company.com" 
+						/>
+						<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>多个邮箱用逗号分隔</div>
+					</div>
+				</div>
+			</Modal>
+
+			{/* 系统信息弹窗 */}
+			<Modal visible={systemInfoVisible} title="设备系统信息" onClose={() => setSystemInfoVisible(false)}>
+				{deviceSystemInfo && (
+					<div>
+						<div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 14 }}>
+							<div style={{ fontWeight: 600 }}>主机名:</div>
+							<div>{deviceSystemInfo.hostname}</div>
+							<div style={{ fontWeight: 600 }}>系统信息:</div>
+							<div><pre style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap' }}>{deviceSystemInfo.os_info}</pre></div>
+							<div style={{ fontWeight: 600 }}>运行时间:</div>
+							<div>{deviceSystemInfo.uptime}</div>
+							<div style={{ fontWeight: 600 }}>内核版本:</div>
+							<div>{deviceSystemInfo.kernel}</div>
+							<div style={{ fontWeight: 600 }}>CPU信息:</div>
+							<div>{deviceSystemInfo.cpu_info}</div>
+							<div style={{ fontWeight: 600 }}>内存使用:</div>
+							<div><pre style={{ margin: 0, fontSize: 12 }}>{deviceSystemInfo.memory}</pre></div>
+							<div style={{ fontWeight: 600 }}>磁盘使用:</div>
+							<div><pre style={{ margin: 0, fontSize: 12 }}>{deviceSystemInfo.disk_usage}</pre></div>
+						</div>
+					</div>
+				)}
+			</Modal>
+
+			{/* 错误日志弹窗 */}
+			<Modal visible={errorLogsVisible} title={`错误日志 - ${selectedDevice?.name || '未知设备'}`} onClose={() => setErrorLogsVisible(false)}>
+				<div>
+					{deviceErrorLogs.length === 0 ? (
+						<div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+							<div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📋</div>
+							<p>该设备暂无错误日志</p>
+						</div>
+					) : (
+						<div>
+							<div style={{ marginBottom: 16, color: '#6b7280', fontSize: 14 }}>共找到 {deviceErrorLogs.length} 个错误日志文件</div>
+							<div style={{ maxHeight: 400, overflow: 'auto' }}>
+								{deviceErrorLogs.map((log, index) => (
+									<div key={index} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+										<div>
+											<div style={{ fontWeight: 600, fontSize: 14 }}>{log.filename}</div>
+											<div style={{ color: '#6b7280', fontSize: 12 }}>大小: {log.size} | 修改时间: {log.modified_time}</div>
+										</div>
+										<button className="btn btn-outline" onClick={() => downloadLogContent(selectedDevice.id, log.filename)}>查看内容</button>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+				</div>
+			</Modal>
+
+			{/* 日志内容弹窗 */}
+			<Modal visible={logContentVisible} title={`日志内容 - ${logContent?.filename || '未知文件'}`} onClose={() => setLogContentVisible(false)}>
+				{logContent && (
+					<div>
+						<div style={{ marginBottom: 12, color: '#6b7280', fontSize: 14 }}>
+							文件大小: {(logContent.size / 1024).toFixed(2)} KB
+						</div>
+						<div style={{ maxHeight: 500, overflow: 'auto', backgroundColor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+							<pre style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{logContent.content}</pre>
+						</div>
+					</div>
+				)}
+			</Modal>
+
+			{/* 邮件测试弹窗 */}
+			<Modal visible={emailTestVisible} title="📧 邮件服务测试" onClose={() => setEmailTestVisible(false)} footer={[
+				<button key="cancel" className="btn btn-outline" onClick={() => setEmailTestVisible(false)}>取消</button>,
+				<button key="send" className="btn btn-primary" disabled={emailTestSending || !emailTestRecipients.trim()} onClick={sendTestEmail}>
+					{emailTestSending ? '发送中...' : '发送测试邮件'}
+				</button>
+			]}>
+				<div className="form-grid">
+					<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+						<div className="label">收件人邮箱*</div>
+						<input 
+							className="ui-input" 
+							value={emailTestRecipients} 
+							onChange={(e) => setEmailTestRecipients(e.target.value)} 
+							placeholder="例如：admin@company.com, test@company.com" 
+							disabled={emailTestSending}
+						/>
+						<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>多个邮箱用逗号分隔</div>
+					</div>
+					<div className="form-col" style={{ gridColumn: '1 / -1' }}>
+						<div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, padding: 12, fontSize: '0.9rem' }}>
+							<div style={{ fontWeight: 600, marginBottom: 4, color: '#0284c7' }}>💡 测试说明:</div>
+							<ul style={{ margin: '4px 0', paddingLeft: 20, color: '#0284c7' }}>
+								<li>测试邮件将发送到指定的邮箱地址</li>
+								<li>请确保 SMTP 服务器配置正确</li>
+								<li>如果发送失败，请检查网络连接和邮箱设置</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</Modal>
 		</div>
 	)
 }
