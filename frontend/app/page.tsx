@@ -1370,7 +1370,7 @@ OOM | "Out of memory"
 			</div>
 		</div>
 		)
-	};
+	}
 
 	// render root
 	return (
