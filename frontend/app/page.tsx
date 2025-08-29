@@ -1393,6 +1393,39 @@ OOM | "Out of memory"
 				onConfirm={() => { try { confirmState.resolve && confirmState.resolve(true) } finally { setConfirmState({ visible: false, text: '', resolve: null }) } }}
 				onCancel={() => { try { confirmState.resolve && confirmState.resolve(false) } finally { setConfirmState({ visible: false, text: '', resolve: null }) } }}
 			/>
+			{/* 问题库：新增/编辑弹窗 */}
+			<Modal
+				visible={problemModalVisible}
+				title={problemForm.id ? '编辑问题' : '新增问题'}
+				onClose={() => setProblemModalVisible(false)}
+				footer={[
+					<button key="cancel" className="btn btn-outline" onClick={() => setProblemModalVisible(false)}>取消</button>,
+					<button key="ok" className="btn btn-primary" onClick={submitProblem}>保存</button>
+				]}
+			>
+				<div className="form-grid">
+					<div className="form-col">
+						<div className="label">问题名称*</div>
+						<input className="ui-input" value={problemForm.title} onChange={(e)=> setProblemForm({ ...problemForm, title: e.target.value })} />
+					</div>
+					<div className="form-col">
+						<div className="label">链接*</div>
+						<input className="ui-input" value={problemForm.url} onChange={(e)=> setProblemForm({ ...problemForm, url: e.target.value })} />
+					</div>
+					<div className="form-col">
+						<div className="label">错误类型*</div>
+						<select className="ui-select" value={problemForm.error_type} onChange={(e)=> setProblemForm({ ...problemForm, error_type: e.target.value })}>
+							<option value="">请选择问题类型</option>
+							{(allDetectionRules.length ? allDetectionRules : detectionRules).map((r:any)=> (
+								<option key={r.id} value={r.name}>{r.name}</option>
+							))}
+						</select>
+					</div>
+				</div>
+			</Modal>
+
+			{/* 规则管理：文件夹弹窗挂载 */}
+			<FolderModal />
 		</div>
 	)
 }
