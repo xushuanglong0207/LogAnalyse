@@ -1408,26 +1408,55 @@ OOM | "Out of memory"
 							文件：{detailData.data.filename} · 共 {detailData.data?.summary?.total_issues ?? (detailData.data?.issues?.length || 0)} 个问题
 						</div>
 						<div style={{ maxHeight: 540, overflow: 'auto' }}>
-							{(detailData.data.issues || []).map((it: any, idx: number) => {
-								const collapsed = !!collapsedGroups[String(idx)]
-								return (
-									<div key={idx} className="ui-card" style={{ padding: 12, marginBottom: 8 }}>
-										<div
-											style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-											onClick={() => setCollapsedGroups(s => ({ ...s, [String(idx)]: !collapsed }))}
-										>
-											<div style={{ fontWeight: 700, color: '#dc2626' }}>
-												{it.rule_name}{it.description ? `：${it.description}` : ''}
+							{(() => {
+								// 1) 去重：按 规则名 + 行号 + 上下文 前200 字
+								const raw: any[] = detailData.data.issues || []
+								const seen = new Set<string>()
+								const uniq: any[] = []
+								for (const it of raw) {
+									const key = `${it.rule_name}|${it.line_number}|${(it.context||'').slice(0,200)}`
+									if (!seen.has(key)) { seen.add(key); uniq.push(it) }
+								}
+								// 2) 识别"最新错误"：从上下文或匹配文本解析时间戳，选择最接近当前时间的一条
+								const tsRe = /(20\d{2}[-/年](?:0?[1-9]|1[0-2])[-/月](?:0?[1-9]|[12]\d|3[01])(?:[ T日](?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\.\d+)?(?:[+\-]?[0-2]\d:?\d{2})?)?)/
+								let latestIdx = -1
+								let latestDelta = Number.POSITIVE_INFINITY
+								const now = Date.now()
+								uniq.forEach((it, i) => {
+									const src = `${it.matched_text||''}\n${it.context||''}`
+									const m = src.match(tsRe)
+									if (m && m[1]) {
+										const d = Date.parse(m[1].replace('年','-').replace('月','-').replace('日',' '))
+										if (!Number.isNaN(d)) {
+											const delta = Math.abs(now - d)
+											if (delta < latestDelta) { latestDelta = delta; latestIdx = i }
+										}
+									}
+								})
+								return uniq.map((it: any, idx: number) => {
+									const collapsed = !!collapsedGroups[String(idx)]
+									return (
+										<div key={idx} className="ui-card" style={{ padding: 12, marginBottom: 8 }}>
+											<div
+												style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+												onClick={() => setCollapsedGroups(s => ({ ...s, [String(idx)]: !collapsed }))}
+											>
+												<div style={{ fontWeight: 700, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+													{it.rule_name}{it.description ? `：${it.description}` : ''}
+													{latestIdx === idx && (
+														<span style={{ fontSize: 12, background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>
+													)}
+												</div>
+												<button className="btn btn-outline" style={{ padding: '4px 10px' }}>{collapsed ? '展开' : '收起'}</button>
 											</div>
-											<button className="btn btn-outline" style={{ padding: '4px 10px' }}>{collapsed ? '展开' : '收起'}</button>
+											<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>行号：{it.line_number} · 严重性：{it.severity}</div>
+											{!collapsed && it.context ? (
+												<pre style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: 8 }}>{it.context}</pre>
+											) : null}
 										</div>
-										<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>行号：{it.line_number} · 严重性：{it.severity}</div>
-										{!collapsed && it.context ? (
-											<pre style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: 8 }}>{it.context}</pre>
-										) : null}
-									</div>
-								)
-							})}
+									)
+								})()}
+							</div>
 						</div>
 					</div>
 				) : (

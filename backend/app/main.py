@@ -153,6 +153,8 @@ def _rpn_to_ast(rpn):
             st.append(_Ast(op=('AND' if tok=='&' else 'OR'), left=a, right=b))
     return st[-1] if st else None
 
+DEBUG_DSL = os.environ.get("DEBUG_DSL", "0") == "1"
+
 def _eval_ast(ast: _Ast, text_lower: str) -> bool:
     if ast is None:
         return False
@@ -161,7 +163,8 @@ def _eval_ast(ast: _Ast, text_lower: str) -> bool:
         if phrase == '':
             return False
         result = phrase in text_lower
-        print(f"    检查短语 '{phrase}' 在文本中: {result}")  # 调试信息
+        if DEBUG_DSL:
+            print(f"    检查短语 '{phrase}' 在文本中: {result}")
         return result
     if ast.op == 'NOT':
         return not _eval_ast(ast.left, text_lower)
@@ -169,13 +172,15 @@ def _eval_ast(ast: _Ast, text_lower: str) -> bool:
         left_result = _eval_ast(ast.left, text_lower)
         right_result = _eval_ast(ast.right, text_lower)
         final_result = left_result and right_result
-        print(f"    AND操作: {left_result} & {right_result} = {final_result}")  # 调试信息
+        if DEBUG_DSL:
+            print(f"    AND操作: {left_result} & {right_result} = {final_result}")
         return final_result
     if ast.op == 'OR':
         left_result = _eval_ast(ast.left, text_lower)
         right_result = _eval_ast(ast.right, text_lower)
         final_result = left_result or right_result
-        print(f"    OR操作: {left_result} | {right_result} = {final_result}")  # 调试信息
+        if DEBUG_DSL:
+            print(f"    OR操作: {left_result} | {right_result} = {final_result}")
         return final_result
     return False
 
