@@ -276,7 +276,14 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any], pre: Optional[Dict
 
     def find_matches(pat: str):
         if is_regex:
-            return list(re.finditer(pat, content, re.IGNORECASE))
+            try:
+                ms = list(re.finditer(pat, content, re.IGNORECASE))
+                # 保护：避免纯前瞻/零宽模式在全文每个位置都命中导致爆炸
+                if ms and any((m.end() - m.start()) == 0 for m in ms):
+                    return ms[:1]
+                return ms
+            except re.error:
+                return []
         else:
             # 使用不区分大小写的单个模式搜索
             return list(re.finditer(re.escape(pat), content, re.IGNORECASE))
@@ -291,6 +298,9 @@ def evaluate_rule_matches(content: str, rule: Dict[str, Any], pre: Optional[Dict
                 union = "|".join(re.escape(p) for p in patterns)
                 reg = re.compile(union, re.IGNORECASE)
             flat = list(reg.finditer(content))
+            # 保护：零宽匹配只取首个，避免 O(n) 命中
+            if flat and any((m.end() - m.start()) == 0 for m in flat):
+                return flat[:1]
             return flat
         except Exception:
             pass
