@@ -185,6 +185,7 @@ export default function Home() {
 	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 	const [pageByGroup, setPageByGroup] = useState<Record<string, number>>({})
 	const PAGE_SIZE_PER_GROUP = 300
+	const [latestCollapsed, setLatestCollapsed] = useState(false)
 	useEffect(() => { if (detailVisible) setCollapsedGroups({}) }, [detailVisible])
 	useEffect(() => {
 		if (!detailVisible || !detailData?.data?.issues) return
@@ -1450,6 +1451,8 @@ OOM | "Out of memory"
 						const rule = allDetectionRules.find((r: any) => r.name === ruleName)
 						return rule?.description || ''
 					}
+					// 生成问题签名用于去重
+					const sig = (x: any) => `${String(x.rule_name||'')}|${String(x.line_number||'')}|${String(x.matched_text||'')}|${String(x.context||'')}`
 					// 解析日志时间（多格式），返回时间戳毫秒
 					const monthMap: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 }
 					const parseTimestampMs = (text: string): { ms: number|null, raw: string } => {
@@ -1496,17 +1499,30 @@ OOM | "Out of memory"
 							{/* 最新错误置顶块 */}
 							{nearest.issue && (
 								<div style={{ border: '1px solid #fde68a', background: '#fffbeb', padding: 10, borderRadius: 10, marginBottom: 10 }}>
-									<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+									<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: latestCollapsed ? 0 : 6, cursor: 'pointer' }} onClick={() => setLatestCollapsed(v=>!v)}>
 										<span style={{ fontSize: 12, background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>
 										<span style={{ fontWeight: 800, color: '#dc2626' }}>{String(nearest.issue.rule_name || '问题')}</span>
 										{nearest.when && <span style={{ color: '#6b7280', fontSize: 12 }}>时间 {nearest.when}</span>}
+										<span style={{ marginLeft: 'auto', color: '#2563eb', fontSize: 12 }}>{latestCollapsed ? '展开' : '收起'}</span>
 									</div>
-									<pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: 1.4 }}>{nearest.issue.context || nearest.issue.matched_text || ''}</pre>
+									{!latestCollapsed && (
+										<pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: 1.4 }}>{nearest.issue.context || nearest.issue.matched_text || ''}</pre>
+									)}
 								</div>
 							)}
 							{entries.map(([typeKey, list], gi) => {
 								const page = pageByGroup[typeKey] || 1
-								const shown = (list as any[]).slice(0, page * PAGE_SIZE_PER_GROUP)
+								// 去重并排除已置顶的最新错误
+								const nearestSig = nearest.issue ? sig(nearest.issue) : null
+								const seen = new Set<string>()
+								const dedupList = (list as any[]).filter((x:any) => {
+									const s = sig(x)
+									if (nearestSig && s === nearestSig) return false
+									if (seen.has(s)) return false
+									seen.add(s)
+									return true
+								})
+								const shown = dedupList.slice(0, page * PAGE_SIZE_PER_GROUP)
 								const ruleDescription = getRuleDescription(typeKey)
 								return (
 									<div key={gi} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 10, marginBottom: 10 }}>
@@ -1514,7 +1530,7 @@ OOM | "Out of memory"
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<div style={{ fontWeight: 800, color: '#dc2626' }}>{typeKey}</div>
 												{ruleDescription && <div style={{ color: '#dc2626', fontSize: 14, fontWeight: 800 }}>- {ruleDescription}</div>}
-												<span style={{ color: '#6b7280', fontSize: 12 }}>({Array.isArray(list)?list.length:0} 条)</span>
+												<span style={{ color: '#6b7280', fontSize: 12 }}>({dedupList.length} 条)</span>
 											</div>
 											<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 												<span style={{ color: '#6b7280', fontSize: 12 }}>问题库：{problemStatsByType[typeKey] || 0}</span>
@@ -1524,23 +1540,20 @@ OOM | "Out of memory"
 										{!collapsedGroups[typeKey] && (
 											<div>
 												{shown.map((it: any, ii: number) => {
-													const isNearest = nearest.issue && it === nearest.issue
 													return (
 													<div key={ii} style={{ padding: '6px 8px', borderTop: '1px dashed #e5e7eb', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
 														<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
 															<div style={{ color: '#6b7280', fontSize: 12 }}>
 																行 {it.line_number ? (typeof it.line_number === 'string' ? parseInt(it.line_number) || '-' : it.line_number) : '-'}
 															</div>
-																{isNearest && (<span style={{ fontSize: 10, background: '#f59e0b', color: '#fff', padding: '2px 6px', borderRadius: 6 }}>最新错误</span>)}
 														</div>
 														<pre style={{ margin: '0', whiteSpace: 'pre-wrap', color: '#374151', fontSize: '13px', lineHeight: '1.4' }}>{it.context || it.matched_text || ''}</pre>
 													</div>
-														)
-												})}
-												{shown.length < (list as any[]).length && (
+												))}
+												{shown.length < dedupList.length && (
 													<div style={{ textAlign: '中心', padding: 8 }}>
 														<button onClick={() => setPageByGroup(v => ({ ...v, [typeKey]: (v[typeKey] || 1) + 1 }))} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>
-															加载更多（{(list as any[]).length - shown.length}）
+															加载更多（{dedupList.length - shown.length}）
 														</button>
 													</div>
 												)}
