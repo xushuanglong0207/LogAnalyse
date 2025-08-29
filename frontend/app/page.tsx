@@ -3,6 +3,18 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 
+// —— 工具函数（问题库输入清洗/选择清除） ——
+const sanitizeUrl = (s: string): string => {
+	try { const m = String(s || '').match(/https?:\/\/[^\s<>"']+/i); return m ? m[0] : '' } catch { return '' }
+}
+const removeUrls = (s: string): string => {
+	try { return String(s || '').replace(/https?:\/\/[^\s<>"']+/ig, '').trim() } catch { return s }
+}
+const titleFromUrl = (u: string): string => {
+	try { const url = new URL(u); const segs = url.pathname.split('/').filter(Boolean); const last = segs[segs.length - 1] || url.hostname; return decodeURIComponent(last) } catch { return u }
+}
+const clearSelection = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges() } catch {} };
+
 // 动态计算 API 基址
 function computeApiBase(): string {
 	if (typeof window !== 'undefined') {
@@ -1359,18 +1371,6 @@ OOM | "Out of memory"
 		</div>
 		)
 	};
-
-	// —— 工具函数（问题库输入清洗/选择清除） ——
-	const sanitizeUrl = (s: string): string => {
-		try { const m = String(s || '').match(/https?:\/\/[^\s<>"']+/i); return m ? m[0] : '' } catch { return '' }
-	}
-	const removeUrls = (s: string): string => {
-		try { return String(s || '').replace(/https?:\/\/[^\s<>"']+/ig, '').trim() } catch { return s }
-	}
-	const titleFromUrl = (u: string): string => {
-		try { const url = new URL(u); const segs = url.pathname.split('/').filter(Boolean); const last = segs[segs.length - 1] || url.hostname; return decodeURIComponent(last) } catch { return u }
-	}
-	const clearSelection = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges() } catch {} };
 
 	// render root
 	return (
