@@ -1282,8 +1282,9 @@ OOM | "Out of memory"
 	}
 
 	// 问题库页面
-	const ProblemsPage = () => (
-		<div style={{ padding: '2rem' }}>
+	const ProblemsPage = () => {
+		return (
+			<div style={{ padding: '2rem' }}>
 			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>📚 问题库</h2>
 			<div className="ui-card" style={{ padding: 16, marginBottom: 12 }}>
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
@@ -1331,19 +1332,19 @@ OOM | "Out of memory"
 					}
 					const pageItems = list.slice((problemPage-1)*PROBLEM_PAGE_SIZE, problemPage*PROBLEM_PAGE_SIZE)
 					return (
-				<div style={{ maxHeight: 480, overflow: 'auto' }}>
+						<div style={{ maxHeight: 480, overflow: 'auto' }}>
 							{pageItems.map((p) => (
 								<div id={`problem-row-${p.id}`} key={p.id} style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 2fr 1.5fr', padding: 12, borderTop: '1px solid #e5e7eb', background: (highlightProblemId===p.id?'#eef2ff':'transparent'), alignItems: 'center' }}>
 									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '500', paddingTop: 2 }} title={p.title}>{p.title}</div>
 									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', paddingTop: 2 }} title={p.url}><a href={p.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }} onMouseEnter={(e) => (e.target as HTMLElement).style.textDecoration = 'underline'} onMouseLeave={(e) => (e.target as HTMLElement).style.textDecoration = 'none'}>{p.url}</a></div>
 									<div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: '#6b7280', paddingTop: 2 }} title={p.error_type}>{p.error_type}</div>
 									<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-								<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
-								<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
-							</div>
+										<button onClick={() => openProblemEdit(p)} className="btn">编辑</button>
+										<button onClick={() => deleteProblem(p.id)} className="btn btn-danger">删除</button>
+									</div>
+								</div>
+							))}
 						</div>
-					))}
-				</div>
 					)
 				})()}
 				{/* 分页 */}
@@ -1356,7 +1357,8 @@ OOM | "Out of memory"
 				)}
 			</div>
 		</div>
-	)
+		)
+	};
 
 	// —— 工具函数（问题库输入清洗/选择清除） ——
 	const sanitizeUrl = (s: string): string => {
