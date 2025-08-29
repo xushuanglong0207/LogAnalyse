@@ -824,11 +824,12 @@ async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
         "recent_activity": []
     }
     if is_admin:
-        # 若存在持久化计数器，优先展示（避免清理历史记录影响累计数）
+        # 取“累计计数器”和“索引条目数”的较大值，避免显示偏小
         try:
-            resp["total_analysis_runs"] = int(total_analysis_runs_counter)
+            persisted = int(total_analysis_runs_counter)
         except Exception:
-            resp["total_analysis_runs"] = total_runs
+            persisted = 0
+        resp["total_analysis_runs"] = max(persisted, int(total_runs))
     return resp
 
 # 日志管理
