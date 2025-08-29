@@ -340,17 +340,7 @@ export default function Home() {
 	}, [searchRule, selectedFolderId, apiBase, currentUser, currentPage])
 
 	// —— 交互与业务辅助 ——
-	// 为确保各页面“删除”等关键操作可靠弹出确认，这里使用浏览器原生 confirm 作为兜底。
-	const askConfirm = async (text: string) => {
-		try {
-			if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-				return window.confirm(text)
-			}
-			return await openConfirm(text)
-		} catch {
-			return true
-		}
-	}
+	const askConfirm = (text: string) => openConfirm(text)
 	const parsePatterns = (s: string) => (s || '').split(/\r?\n|,|;|、/).map(v => v.trim()).filter(Boolean)
 
 	// 预览高亮渲染
