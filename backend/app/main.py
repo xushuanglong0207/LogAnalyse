@@ -312,6 +312,7 @@ DATA_DIR = os.environ.get("LOG_ANALYZER_DATA", os.path.abspath(os.path.join(os.p
 FILES_DIR = os.path.join(DATA_DIR, "uploads")
 INDEX_PATH = os.path.join(DATA_DIR, "uploads_index.json")
 ANALYSIS_INDEX_PATH = os.path.join(DATA_DIR, "analysis_results.json")
+ANALYSIS_RUNS_PATH = os.path.join(DATA_DIR, "analysis_runs.json")
 PROBLEMS_PATH = os.path.join(DATA_DIR, "problems.json")
 RULES_PATH = os.path.join(DATA_DIR, "detection_rules.json")  # 新增规则持久化路径
 USERS_PATH = os.path.join(DATA_DIR, "users.json")
@@ -337,6 +338,17 @@ try:
         analysis_results = []
 except Exception:
     analysis_results = []
+
+# 启动时加载总分析次数
+try:
+    if os.path.exists(ANALYSIS_RUNS_PATH):
+        with open(ANALYSIS_RUNS_PATH, "r", encoding="utf-8") as f:
+            _d = json.load(f)
+            total_analysis_runs_counter = int(_d.get("total", 0))
+    else:
+        total_analysis_runs_counter = 0
+except Exception:
+    total_analysis_runs_counter = 0
 
 # 启动时加载问题库
 try:
@@ -376,6 +388,13 @@ def save_analysis_index():
     try:
         with open(ANALYSIS_INDEX_PATH, "w", encoding="utf-8") as f:
             json.dump(analysis_results, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def save_analysis_runs():
+    try:
+        with open(ANALYSIS_RUNS_PATH, "w", encoding="utf-8") as f:
+            json.dump({"total": total_analysis_runs_counter}, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 
@@ -805,7 +824,11 @@ async def get_dashboard_stats(ctx: Dict[str, Any] = Depends(require_auth)):
         "recent_activity": []
     }
     if is_admin:
-        resp["total_analysis_runs"] = total_runs
+        # 若存在持久化计数器，优先展示（避免清理历史记录影响累计数）
+        try:
+            resp["total_analysis_runs"] = int(total_analysis_runs_counter)
+        except Exception:
+            resp["total_analysis_runs"] = total_runs
     return resp
 
 # 日志管理
@@ -1102,6 +1125,13 @@ def _perform_analysis(file_id: int):
     analysis_results = [r for r in analysis_results if r.get("file_id") != file_id]
     analysis_results.append(result)
     save_analysis_index()
+    # 成功完成一次分析则计数+1
+    global total_analysis_runs_counter
+    try:
+        total_analysis_runs_counter = int(total_analysis_runs_counter) + 1
+    except Exception:
+        total_analysis_runs_counter = 1
+    save_analysis_runs()
 
 @app.post("/api/logs/{file_id}/analyze")
 async def analyze_log_file(file_id: int, ctx: Dict[str, Any] = Depends(require_auth)):

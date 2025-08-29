@@ -1396,7 +1396,7 @@ OOM | "Out of memory"
 			{/* 分析详情弹窗 */}
 			<Modal
 				visible={detailVisible}
-				title={detailData?.title || '分析详情'}
+				title={<span style={{ color: '#dc2626', fontWeight: 700 }}>{detailData?.title || '分析详情'}</span>}
 				onClose={() => setDetailVisible(false)}
 				footer={[
 					<button key="close" className="btn btn-primary" onClick={() => setDetailVisible(false)}>关闭</button>
@@ -1408,17 +1408,26 @@ OOM | "Out of memory"
 							文件：{detailData.data.filename} · 共 {detailData.data?.summary?.total_issues ?? (detailData.data?.issues?.length || 0)} 个问题
 						</div>
 						<div style={{ maxHeight: 540, overflow: 'auto' }}>
-							{(detailData.data.issues || []).map((it: any, idx: number) => (
-								<div key={idx} className="ui-card" style={{ padding: 12, marginBottom: 8 }}>
-									<div style={{ fontWeight: 600 }}>
-										{it.rule_name}{it.description ? `：${it.description}` : ''}
+							{(detailData.data.issues || []).map((it: any, idx: number) => {
+								const collapsed = !!collapsedGroups[String(idx)]
+								return (
+									<div key={idx} className="ui-card" style={{ padding: 12, marginBottom: 8 }}>
+										<div
+											style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+											onClick={() => setCollapsedGroups(s => ({ ...s, [String(idx)]: !collapsed }))}
+										>
+											<div style={{ fontWeight: 700, color: '#dc2626' }}>
+												{it.rule_name}{it.description ? `：${it.description}` : ''}
+											</div>
+											<button className="btn btn-outline" style={{ padding: '4px 10px' }}>{collapsed ? '展开' : '收起'}</button>
+										</div>
+										<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>行号：{it.line_number} · 严重性：{it.severity}</div>
+										{!collapsed && it.context ? (
+											<pre style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: 8 }}>{it.context}</pre>
+										) : null}
 									</div>
-									<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>行号：{it.line_number} · 严重性：{it.severity}</div>
-									{it.context ? (
-										<pre style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: 8 }}>{it.context}</pre>
-									) : null}
-								</div>
-							))}
+								)
+							})}
 						</div>
 					</div>
 				) : (
