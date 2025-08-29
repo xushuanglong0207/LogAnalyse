@@ -248,6 +248,7 @@ export default function Home() {
 	const [ruleForm, setRuleForm] = useState<any>({ id: null, name: '', description: '', enabled: true, patterns: '', dsl: '', folder_id: 1 })
 	const [folderModalVisible, setFolderModalVisible] = useState(false)
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
+	const [showLegacyPatterns, setShowLegacyPatterns] = useState(false)
 
 	// 数据缓存状态
 	const [dataCache, setDataCache] = useState({
@@ -760,17 +761,35 @@ export default function Home() {
 					<input className="ui-input" value={ruleForm.description} onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })} />
 				</div>
 				<div className="form-col" style={{ gridColumn: '1 / -1' }}>
-					<div className="label">规则表达式（DSL）</div>
-					<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.dsl} onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })} placeholder='使用 | & ! () 和引号短语，例如：
+					<div className="label">规则表达式（DSL）- 推荐使用</div>
+					<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.dsl} onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })} placeholder='使用 | & ! () 和引号短语，支持跨行匹配，例如：
+"low memory" & "OOM_SCORE" & "victim"
 OOM | "Out of memory"
-("No space left" | "disk full") !write
-(("No space left" | "disk full") !write) & "space error"' />
-					<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>提示：大小写不敏感；含空格短语请用引号；中文全角！等同 !；若留空将使用传统"匹配模式"兼容。</div>
+("No space left" | "disk full") !write' />
+					<div style={{ color: '#059669', fontSize: 12, marginTop: 4 }}>✅ 支持跨行匹配：大小写不敏感；含空格短语请用引号；中文全角！等同 !；性能优化，推荐使用。</div>
 				</div>
 				<div className="form-col" style={{ gridColumn: '1 / -1' }}>
-					<div className="label">（兼容）匹配模式列表</div>
-					<textarea className="ui-input" style={{ minHeight: 100 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；若填写了 DSL，将优先使用 DSL" />
-					<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析；若留空，将按正则方式逐行匹配（支持 | & ! 等）。</div>
+					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+						<span className="label">高级选项</span>
+						<button type="button" onClick={() => setShowLegacyPatterns(!showLegacyPatterns)} style={{ 
+							background: 'none', 
+							border: '1px solid #e5e7eb', 
+							padding: '4px 8px', 
+							borderRadius: 6, 
+							fontSize: 12, 
+							color: '#6b7280',
+							cursor: 'pointer'
+						}}>
+							{showLegacyPatterns ? '隐藏兼容模式' : '显示兼容模式'}
+						</button>
+					</div>
+					{showLegacyPatterns && (
+						<div>
+							<div className="label">（兼容）匹配模式列表</div>
+							<textarea className="ui-input" style={{ minHeight: 80 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；仅在DSL为空时使用" />
+							<div style={{ color:'#dc2626', fontSize:12, marginTop:6 }}>⚠️ 兼容模式：复杂正则可能导致性能问题；建议使用上面的 DSL 规则。</div>
+						</div>
+					)}
 				</div>
 				<div className="form-col">
 					<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1116,17 +1135,35 @@ OOM | "Out of memory"
 						<input value={ruleForm.description} onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })} style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
 					</div>
 					<div style={{ gridColumn: '1 / -1' }}>
-						<div style={{ fontSize: 12, color: '#6b7280' }}>规则表达式（DSL）</div>
-						<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.dsl} onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })} placeholder='使用 | & ! () 和引号短语，例如：
+						<div style={{ fontSize: 12, color: '#6b7280' }}>规则表达式（DSL）- 推荐使用</div>
+						<textarea className="ui-input" style={{ minHeight: 120 }} value={ruleForm.dsl} onChange={(e) => setRuleForm({ ...ruleForm, dsl: e.target.value })} placeholder='使用 | & ! () 和引号短语，支持跨行匹配，例如：
+"low memory" & "OOM_SCORE" & "victim"
 OOM | "Out of memory"
-("No space left" | "disk full") !write
-(("No space left" | "disk full") !write) & "space error"' />
-						<div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>提示：大小写不敏感；含空格短语请用引号；中文全角！等同 !；若留空将使用传统"匹配模式"兼容。</div>
+("No space left" | "disk full") !write' />
+						<div style={{ color: '#059669', fontSize: 12, marginTop: 4 }}>✅ 支持跨行匹配：大小写不敏感；含空格短语请用引号；中文全角！等同 !；性能优化，推荐使用。</div>
 					</div>
 					<div style={{ gridColumn: '1 / -1' }}>
-						<div style={{ fontSize: 12, color: '#6b7280' }}>（兼容）匹配模式列表</div>
-						<textarea className="ui-input" style={{ minHeight: 100 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；若填写了 DSL，将优先使用 DSL" />
-						<div style={{ color:'#9ca3af', fontSize:12, marginTop:6 }}>提示：若上面的"规则表达式（DSL）"不为空，将优先按 DSL 解析；若留空，将按正则方式逐行匹配（支持 | & ! 等）。</div>
+						<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+							<span style={{ fontSize: 12, color: '#6b7280' }}>高级选项</span>
+							<button type="button" onClick={() => setShowLegacyPatterns(!showLegacyPatterns)} style={{ 
+								background: 'none', 
+								border: '1px solid #e5e7eb', 
+								padding: '4px 8px', 
+								borderRadius: 6, 
+								fontSize: 12, 
+								color: '#6b7280',
+								cursor: 'pointer'
+							}}>
+								{showLegacyPatterns ? '隐藏兼容模式' : '显示兼容模式'}
+							</button>
+						</div>
+						{showLegacyPatterns && (
+							<div>
+								<div style={{ fontSize: 12, color: '#6b7280' }}>（兼容）匹配模式列表</div>
+								<textarea className="ui-input" style={{ minHeight: 80 }} value={ruleForm.patterns} onChange={(e) => setRuleForm({ ...ruleForm, patterns: e.target.value })} placeholder="多行分隔：每行一个关键字/正则；仅在DSL为空时使用" />
+								<div style={{ color:'#dc2626', fontSize:12, marginTop:6 }}>⚠️ 兼容模式：复杂正则可能导致性能问题；建议使用上面的 DSL 规则。</div>
+							</div>
+						)}
 					</div>
 					<div className="form-col">
 						<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

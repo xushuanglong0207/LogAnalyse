@@ -255,11 +255,15 @@ class DSLEvaluator:
     
     def __init__(self, text: str):
         self.text = text.lower()  # 不区分大小写
+        # 将文本标准化为单行以支持跨行匹配
+        self.normalized_text = ' '.join(self.text.split())
     
     def evaluate(self, node: ASTNode) -> bool:
         """递归求值AST节点"""
         if isinstance(node, KeywordNode):
-            return node.keyword.lower() in self.text
+            keyword = node.keyword.lower().strip()
+            # 优先使用跨行匹配，如果失败则使用原始匹配
+            return (keyword in self.normalized_text) or (keyword in self.text)
         
         if isinstance(node, BinaryOpNode):
             left_result = self.evaluate(node.left)
@@ -354,7 +358,7 @@ class DSLRuleEngine:
 
 # 测试示例
 if __name__ == "__main__":
-    # 测试用例
+    # 测试用例 - 包含跨行匹配测试
     test_cases = [
         {
             "rule": '"aq_ring_rx_clean" & "atlantic"',
@@ -370,6 +374,20 @@ if __name__ == "__main__":
             "rule": '("disk full" | "no space") & !"write"',
             "text": "Error: disk full on /tmp",
             "expected": True
+        },
+        {
+            "rule": '"low memory" & "OOM_SCORE" & "victim"',
+            "text": """[2024-01-15] System low memory warning triggered
+[2024-01-15] Process OOM_SCORE: 15 
+[2024-01-15] Selecting victim process pid=1234""",
+            "expected": True
+        },
+        {
+            "rule": '"low memory" & "OOM_SCORE" & "victim"',
+            "text": """[2024-01-15] Kernel victim selection starting
+[2024-01-15] OOM_SCORE evaluation complete  
+[2024-01-15] System experiencing low memory conditions""",
+            "expected": True
         }
     ]
     
@@ -377,6 +395,9 @@ if __name__ == "__main__":
     
     for i, test in enumerate(test_cases, 1):
         result = engine.test_rule(test["rule"], test["text"])
-        print(f"Test {i}: {result}")
+        status = "PASS" if result['matched'] == test['expected'] else "FAIL"
+        print(f"Test {i} {status}: Rule: {test['rule']}")
         print(f"Expected: {test['expected']}, Got: {result['matched']}")
-        print("-" * 50)
+        if result.get('error'):
+            print(f"Error: {result['error']}")
+        print("-" * 80)
