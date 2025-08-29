@@ -1368,7 +1368,7 @@ OOM | "Out of memory"
 	const titleFromUrl = (u: string): string => {
 		try { const url = new URL(u); const segs = url.pathname.split('/').filter(Boolean); const last = segs[segs.length - 1] || url.hostname; return decodeURIComponent(last) } catch { return u }
 	}
-	const clearSelection = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges() } catch {} }
+	const clearSelection = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges() } catch {} };
 
 	return (
 		<div style={{ minHeight: '100vh', background: 'radial-gradient(1200px 600px at -10% -10%, #c7d2fe 0%, transparent 60%), radial-gradient(1200px 600px at 110% -10%, #bbf7d0 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)' }}>
@@ -1551,7 +1551,7 @@ OOM | "Out of memory"
 													</div>
 												))}
 												{shown.length < dedupList.length && (
-													<div style={{ textAlign: '中心', padding: 8 }}>
+													<div style={{ textAlign: 'center', padding: 8 }}>
 														<button onClick={() => setPageByGroup(v => ({ ...v, [typeKey]: (v[typeKey] || 1) + 1 }))} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>
 															加载更多（{dedupList.length - shown.length}）
 														</button>
