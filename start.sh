@@ -1,0 +1,416 @@
+#!/bin/bash
+
+# 日志分析平台 - 统一启动脚本
+echo "🚀 日志分析平台启动器"
+echo "===================="
+
+# 检查是否为root用户
+if [ "$EUID" -eq 0 ]; then
+    SUDO_CMD=""
+else
+    SUDO_CMD="sudo"
+fi
+
+# 错误处理函数
+handle_error() {
+    echo "❌ 错误: $1"
+    echo "💡 请查看错误信息并重试"
+    exit 1
+}
+
+# 成功信息函数
+success_msg() {
+    echo "✅ $1"
+}
+
+# 检查并安装系统依赖
+install_system_deps() {
+    echo "🔍 检查系统依赖..."
+    
+    # 检查Python3
+    if ! command -v python3 &> /dev/null; then
+        echo "📦 安装Python3..."
+        $SUDO_CMD apt update
+        $SUDO_CMD apt install -y python3 python3-pip python3-venv python3-full
+    fi
+    
+    # 检查Node.js
+    if ! command -v node &> /dev/null; then
+        echo "📦 安装Node.js..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | $SUDO_CMD -E bash -
+        $SUDO_CMD apt-get install -y nodejs
+    fi
+    
+    success_msg "系统依赖检查完成"
+}
+
+# 设置Python虚拟环境
+setup_python_env() {
+    echo "🐍 设置Python环境..."
+    
+    # 删除旧的虚拟环境（如果存在且有问题）
+    if [ -d "venv" ] && [ ! -f "venv/bin/activate" ]; then
+        echo "删除损坏的虚拟环境..."
+        rm -rf venv
+    fi
+    
+    # 创建虚拟环境
+    if [ ! -d "venv" ]; then
+        echo "创建Python虚拟环境..."
+        python3 -m venv venv
+        if [ $? -ne 0 ]; then
+            handle_error "创建虚拟环境失败，请检查Python3-venv是否安装"
+        fi
+    fi
+    
+    # 检查虚拟环境是否正确创建
+    if [ ! -f "venv/bin/activate" ]; then
+        handle_error "虚拟环境创建不完整，请删除venv目录后重试"
+    fi
+    
+    # 激活虚拟环境
+    source venv/bin/activate
+    if [ $? -ne 0 ]; then
+        handle_error "激活虚拟环境失败"
+    fi
+    
+    # 升级pip
+    echo "升级pip..."
+    pip install --upgrade pip
+    
+    success_msg "Python环境设置完成"
+}
+
+# 安装后端依赖
+install_backend_deps() {
+    echo "📦 安装后端依赖..."
+    
+    # 确保在虚拟环境中
+    if [ -z "$VIRTUAL_ENV" ]; then
+        source venv/bin/activate
+    fi
+    
+    cd backend
+    
+    # 在虚拟环境中安装依赖
+    echo "安装 fastapi uvicorn python-multipart..."
+    pip install fastapi uvicorn python-multipart
+    if [ $? -ne 0 ]; then
+        cd ..
+        handle_error "后端依赖安装失败"
+    fi
+    
+    cd ..
+    success_msg "后端依赖安装完成"
+}
+
+# 安装前端依赖
+install_frontend_deps() {
+    echo "🎨 安装前端依赖..."
+    
+    cd frontend
+    
+    # 检查是否需要安装依赖
+    if [ ! -d "node_modules" ]; then
+        echo "安装Node.js依赖..."
+        npm install --legacy-peer-deps
+        if [ $? -ne 0 ]; then
+            cd ..
+            handle_error "前端依赖安装失败"
+        fi
+    fi
+    
+    cd ..
+    success_msg "前端依赖安装完成"
+}
+
+# 启动后端服务
+start_backend() {
+    echo "🚀 启动后端服务..."
+    
+    # 激活虚拟环境
+    source venv/bin/activate
+    
+    cd backend
+    
+    # 启动FastAPI服务
+    echo "启动FastAPI服务在端口8001..."
+    python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload &
+    BACKEND_PID=$!
+    
+    cd ..
+    
+    # 等待后端启动
+    echo "等待后端服务启动..."
+    for i in {1..30}; do
+        if curl -s http://localhost:8001/health > /dev/null 2>&1; then
+            success_msg "后端服务启动成功 (PID: $BACKEND_PID)"
+            return 0
+        fi
+        sleep 1
+        echo -n "."
+    done
+    
+    handle_error "后端服务启动超时"
+}
+
+# 启动前端服务
+start_frontend() {
+    echo "🎨 启动前端服务..."
+    
+    cd frontend
+    
+    # 启动Next.js开发服务器
+    echo "启动Next.js服务在端口3000..."
+    npm run dev &
+    FRONTEND_PID=$!
+    
+    cd ..
+    
+    # 等待前端启动
+    echo "等待前端服务启动..."
+    for i in {1..30}; do
+        if curl -s http://localhost:3000 > /dev/null 2>&1; then
+            success_msg "前端服务启动成功 (PID: $FRONTEND_PID)"
+            return 0
+        fi
+        sleep 1
+        echo -n "."
+    done
+    
+    handle_error "前端服务启动超时"
+}
+
+# 显示访问信息
+show_info() {
+    echo ""
+    echo "🎉 日志分析平台启动完成！"
+    echo "========================="
+    
+    # 获取IP地址
+    LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
+    
+    echo "📱 前端访问:"
+    echo "   http://localhost:3000"
+    [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:3000"
+    
+    echo ""
+    echo "🔗 API文档:"
+    echo "   http://localhost:8001/docs"
+    [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:8001/docs"
+    
+    echo ""
+    echo "⏹️  停止: 按 Ctrl+C"
+    echo "========================="
+}
+
+# 清理函数
+cleanup() {
+    echo ""
+    echo "🛑 正在停止服务..."
+    
+    # 停止后端
+    if [ ! -z "$BACKEND_PID" ]; then
+        kill $BACKEND_PID 2>/dev/null || true
+    fi
+    
+    # 停止前端
+    if [ ! -z "$FRONTEND_PID" ]; then
+        kill $FRONTEND_PID 2>/dev/null || true
+    fi
+    
+    # 强制清理
+    pkill -f "uvicorn.*8001" 2>/dev/null || true
+    pkill -f "next.*3000" 2>/dev/null || true
+    
+    success_msg "服务已停止"
+    exit 0
+}
+
+# 捕获中断信号
+trap cleanup SIGINT SIGTERM
+
+# 主菜单函数
+show_menu() {
+    echo ""
+    echo "请选择操作:"
+    echo "1) 🚀 启动平台 (推荐)"
+    echo "2) 🛑 停止所有服务"
+    echo "3) 🔧 仅安装依赖"
+    echo "4) 📊 检查服务状态"
+    echo "5) 🆘 帮助信息"
+    echo "6) 🔧 重置环境"
+    echo "0) 退出"
+    echo ""
+    read -p "请输入选择 [1]: " choice
+    choice=${choice:-1}
+}
+
+# 停止所有服务
+stop_services() {
+    echo "🛑 停止所有服务..."
+    
+    # 停止端口占用的进程
+    for port in 3000 3001 8000 8001; do
+        PID=$(lsof -ti:$port 2>/dev/null)
+        if [ ! -z "$PID" ]; then
+            kill -TERM $PID 2>/dev/null
+            echo "✅ 端口 $port 已释放"
+        fi
+    done
+    
+    # 停止相关进程
+    pkill -f uvicorn 2>/dev/null || true
+    pkill -f "next.*dev" 2>/dev/null || true
+    
+    success_msg "所有服务已停止"
+}
+
+# 检查服务状态
+check_status() {
+    echo "📊 检查服务状态..."
+    echo ""
+    
+    # 检查后端
+    if curl -s http://localhost:8001/health > /dev/null 2>&1; then
+        echo "✅ 后端服务: 运行正常 (http://localhost:8001)"
+    else
+        echo "❌ 后端服务: 未运行"
+    fi
+    
+    # 检查前端
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+        echo "✅ 前端服务: 运行正常 (http://localhost:3000)"
+    else
+        echo "❌ 前端服务: 未运行"
+    fi
+    
+    echo ""
+    echo "📋 端口占用情况:"
+    for port in 3000 8001; do
+        if lsof -ti:$port &>/dev/null; then
+            echo "   端口 $port: 占用中"
+        else
+            echo "   端口 $port: 空闲"
+        fi
+    done
+    
+    echo ""
+    echo "🐍 Python环境:"
+    if [ -d "venv" ] && [ -f "venv/bin/activate" ]; then
+        echo "   虚拟环境: ✅ 正常"
+    else
+        echo "   虚拟环境: ❌ 需要重新创建"
+    fi
+}
+
+# 重置环境
+reset_environment() {
+    echo "🔧 重置开发环境..."
+    
+    # 停止所有服务
+    stop_services
+    
+    # 删除虚拟环境
+    if [ -d "venv" ]; then
+        echo "删除Python虚拟环境..."
+        rm -rf venv
+    fi
+    
+    # 删除前端node_modules
+    if [ -d "frontend/node_modules" ]; then
+        echo "删除前端依赖..."
+        rm -rf frontend/node_modules
+        rm -f frontend/package-lock.json
+    fi
+    
+    success_msg "环境重置完成！现在可以重新安装依赖"
+}
+
+# 显示帮助
+show_help() {
+    echo "🆘 日志分析平台帮助"
+    echo "=================="
+    echo ""
+    echo "快速启动:"
+    echo "  ./start.sh         # 显示菜单"
+    echo "  ./start.sh 1       # 直接启动"
+    echo "  ./start.sh 2       # 停止服务"
+    echo ""
+    echo "故障排除:"
+    echo "  1. 端口被占用 → 选择'停止所有服务'"
+    echo "  2. 依赖问题 → 选择'仅安装依赖'"
+    echo "  3. 环境问题 → 选择'重置环境'"
+    echo "  4. Python环境 → 自动创建虚拟环境"
+    echo ""
+    echo "访问地址:"
+    echo "  前端: http://localhost:3000"
+    echo "  API:  http://localhost:8001/docs"
+    echo ""
+    echo "环境要求:"
+    echo "  - Python 3.8+"
+    echo "  - Node.js 16+"
+    echo "  - 2GB+ 可用内存"
+}
+
+# 主程序入口
+main() {
+    # 如果有参数，直接执行
+    if [ ! -z "$1" ]; then
+        choice=$1
+    else
+        show_menu
+    fi
+    
+    case $choice in
+        1)
+            echo "🚀 开始启动平台..."
+            install_system_deps
+            setup_python_env
+            install_backend_deps
+            install_frontend_deps
+            start_backend
+            start_frontend
+            show_info
+            
+            # 保持运行
+            while true; do
+                sleep 60
+                if ! curl -s http://localhost:8001/health > /dev/null 2>&1; then
+                    echo "⚠️  后端服务异常，尝试重启..."
+                    start_backend
+                fi
+            done
+            ;;
+        2)
+            stop_services
+            ;;
+        3)
+            install_system_deps
+            setup_python_env
+            install_backend_deps
+            install_frontend_deps
+            echo "✅ 依赖安装完成！现在可以选择'启动平台'"
+            ;;
+        4)
+            check_status
+            ;;
+        5)
+            show_help
+            ;;
+        6)
+            reset_environment
+            ;;
+        0)
+            echo "👋 再见！"
+            exit 0
+            ;;
+        *)
+            echo "❌ 无效选择，请重新输入"
+            main
+            ;;
+    esac
+}
+
+# 执行主程序
+main $1 

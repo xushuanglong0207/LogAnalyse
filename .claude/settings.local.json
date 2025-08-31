@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo apt update)",
+      "Bash(sudo:*)",
+      "Bash(apt:*)",
+      "Read(/D:\\etc/**)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(taskkill:*)",
+      "Bash(chmod:*)",
+      "Bash(ss:*)",
+      "Bash(./docker-start.sh:*)",
+      "Bash(docker compose:*)",
+      "Bash(python:*)",
+      "Bash(docker-compose:*)",
+      "Read(/D:\\/**)",
+      "Bash(./start.sh:*)",
+      "Bash(source:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "D:\\d",
+      "D:\\"
+    ]
+  }
+}

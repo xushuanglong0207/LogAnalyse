@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 添加旋转动画 */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+} 
+
+/* Global theme tokens */
+:root{
+	--bg-gradient: radial-gradient(1400px 700px at -10% -10%, #c7d2fe 0%, transparent 60%), radial-gradient(1400px 700px at 120% -10%, #bbf7d0 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+	--card-bg: rgba(255,255,255,0.92);
+	--card-border: rgba(255,255,255,0.55);
+	--card-shadow: 0 30px 80px rgba(2,6,23,0.18);
+	--radius-lg: 16px;
+	--radius-md: 12px;
+	--radius-sm: 10px;
+	--brand: #3b82f6;
+	--brand2: #8b5cf6;
+	--text: #111827;
+	--muted: #6b7280;
+	--line: #e5e7eb;
+}
+
+html,body{height:100%;}
+body{background:var(--bg-gradient);}
+
+/* Card container */
+.ui-card{background:var(--card-bg); border:1px solid var(--card-border); box-shadow:var(--card-shadow); border-radius:var(--radius-lg);}
+
+/* Pretty inputs */
+.ui-input{width:100%; border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 12px; outline:none; transition:box-shadow .15s ease, border-color .15s ease; background:#fff}
+.ui-input:focus{border-color: var(--brand); box-shadow:0 0 0 4px rgba(59,130,246,.15)}
+
+/* Select */
+.ui-select{width:100%; border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 12px; background:#fff}
+
+/* Buttons */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; border-radius:12px; border:1px solid rgba(0,0,0,.06); font-weight:700; cursor:pointer; transition:transform .05s ease, box-shadow .2s ease}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:linear-gradient(135deg, var(--brand), var(--brand2)); color:#fff; box-shadow:0 10px 30px rgba(59,130,246,.35)}
+.btn-outline{background:#fff; color:var(--text)}
+.btn-danger{background:#ef4444; color:#fff}
+
+/* Modal base */
+.modal-body{padding:24px}
+.modal-footer{display:flex; justify-content:flex-end; gap:12px; padding:0 24px 24px}
+.modal-header{display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid var(--line)}
+.modal-title{margin:0; font-size:18px; font-weight:800; color:var(--text)}
+
+/* Form grid helpers */
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.form-col{display:flex; flex-direction:column; gap:6px}
+.label{font-size:12px; color:var(--muted)}
+
+/* Helpers */
+.stack-12{display:grid; gap:12px}
+.stack-16{display:grid; gap:16px}
+.center-page{min-height:100vh; display:grid; place-items:center} 

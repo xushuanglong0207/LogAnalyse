@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "filename": "dd-testdpeednosendemail.py",
+    "size": 128259,
+    "upload_time": "2025-08-31T14:55:20.255240",
+    "path": "/home/ugreen/log-analyse/database/uploads/1_dd-testdpeednosendemail.py",
+    "status": "uploaded",
+    "owner_id": 1
+  },
+  {
+    "id": 2,
+    "filename": "dd-testdpeednosendemail.py",
+    "size": 128259,
+    "upload_time": "2025-08-31T19:09:21.153610",
+    "path": "/home/ugreen/log-analyse/database/uploads/2_dd-testdpeednosendemail.py",
+    "status": "uploaded",
+    "owner_id": 1
+  }
+]

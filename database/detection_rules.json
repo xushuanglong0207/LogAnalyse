@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "name": "OOM Killer",
+    "description": "内存溢出检测",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "Out of memory|OOM killer"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  },
+  {
+    "id": 2,
+    "name": "Kernel Panic",
+    "description": "内核崩溃检测",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "Kernel panic|kernel BUG"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  },
+  {
+    "id": 3,
+    "name": "Segmentation Fault",
+    "description": "段错误检测",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "segfault|segmentation fault"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  },
+  {
+    "id": 4,
+    "name": "Disk Space Error",
+    "description": "磁盘空间不足",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "No space left|disk full"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  },
+  {
+    "id": 5,
+    "name": "Network Error",
+    "description": "网络连接错误",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "Network unreachable|Connection refused"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  },
+  {
+    "id": 6,
+    "name": "File System Error",
+    "description": "文件系统错误",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "I/O error|filesystem error"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  },
+  {
+    "id": 7,
+    "name": "Authentication Error",
+    "description": "认证失败检测",
+    "enabled": true,
+    "folder_id": 1,
+    "patterns": [
+      "authentication failed|login failed"
+    ],
+    "operator": "OR",
+    "is_regex": true
+  }
+]
