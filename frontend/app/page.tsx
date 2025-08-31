@@ -5,13 +5,31 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 
 // —— 工具函数（问题库输入清洗/选择清除） ——
 const sanitizeUrl = (s: string): string => {
-	try { const m = String(s || '').match(/https?:\/\/[^\s<>"']+/i); return m ? m[0] : '' } catch { return '' }
+	try { 
+		// 更强大的URL匹配，支持更多协议和格式
+		const m = String(s || '').match(/https?:\/\/[^\s<>"'，。！？]+/i); 
+		return m ? m[0] : '' 
+	} catch { return '' }
 }
 const removeUrls = (s: string): string => {
-	try { return String(s || '').replace(/https?:\/\/[^\s<>"']+/ig, '').trim() } catch { return s }
+	try { 
+		// 移除URL后清理多余空格和标点
+		return String(s || '').replace(/https?:\/\/[^\s<>"'，。！？]+/ig, '').replace(/\s+/g, ' ').trim() 
+	} catch { return s }
 }
 const titleFromUrl = (u: string): string => {
-	try { const url = new URL(u); const segs = url.pathname.split('/').filter(Boolean); const last = segs[segs.length - 1] || url.hostname; return decodeURIComponent(last) } catch { return u }
+	try { 
+		const url = new URL(u); 
+		const segs = url.pathname.split('/').filter(Boolean); 
+		let title = segs[segs.length - 1] || url.hostname;
+		// 解码URL编码的字符
+		title = decodeURIComponent(title);
+		// 移除文件扩展名
+		title = title.replace(/\.[a-zA-Z0-9]+$/, '');
+		// 将连字符和下划线替换为空格
+		title = title.replace(/[-_]/g, ' ');
+		return title || url.hostname;
+	} catch { return u }
 }
 const clearSelection = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges() } catch {} };
 
@@ -249,34 +267,26 @@ export default function Home() {
 	const [folderModalVisible, setFolderModalVisible] = useState(false)
 	const [folderForm, setFolderForm] = useState<any>({ id: null, name: '' })
 	const [showLegacyPatterns, setShowLegacyPatterns] = useState(false)
-
-	// 定时分析相关状态
-	const [nasDevices, setNasDevices] = useState<any[]>([])
-	const [monitorTasks, setMonitorTasks] = useState<any[]>([])
 	const [deviceModalVisible, setDeviceModalVisible] = useState(false)
 	const [deviceModalMode, setDeviceModalMode] = useState<'add' | 'edit'>('add')
-	const [deviceForm, setDeviceForm] = useState<any>({ 
-		id: null, name: '', ip_address: '', ssh_port: 22, ssh_username: '', ssh_password: '', description: '' 
-	})
+	const [deviceForm, setDeviceForm] = useState<any>({ id: null, name: '', ip_address: '', ssh_port: 22, ssh_username: '', ssh_password: '', description: '' })
 	const [taskModalVisible, setTaskModalVisible] = useState(false)
 	const [taskModalMode, setTaskModalMode] = useState<'add' | 'edit'>('add')
-	const [taskForm, setTaskForm] = useState<any>({ 
-		id: null, device_id: null, name: '', log_path: '', rule_ids: [], email_recipients: [], email_time: '15:00' 
-	})
-	const [selectedDevice, setSelectedDevice] = useState<any>(null)
-	const [deviceSystemInfo, setDeviceSystemInfo] = useState<any>(null)
-	const [deviceErrorLogs, setDeviceErrorLogs] = useState<any[]>([])
+	const [taskForm, setTaskForm] = useState<any>({ id: null, device_id: null, name: '', log_path: '/var/log/syslog', rule_ids: [], email_recipients: [], email_time: '15:00' })
 	const [systemInfoVisible, setSystemInfoVisible] = useState(false)
+	const [deviceSystemInfo, setDeviceSystemInfo] = useState<any>(null)
 	const [errorLogsVisible, setErrorLogsVisible] = useState(false)
+	const [deviceErrorLogs, setDeviceErrorLogs] = useState<any[]>([])
+	const [selectedDevice, setSelectedDevice] = useState<any>(null)
 	const [logContentVisible, setLogContentVisible] = useState(false)
 	const [logContent, setLogContent] = useState<any>(null)
-
-	// 邮件服务相关状态
+	const [emailTestVisible, setEmailTestVisible] = useState(false)
+	const [emailTestSending, setEmailTestSending] = useState(false)
+	const [emailTestRecipients, setEmailTestRecipients] = useState('')
+	const [nasDevices, setNasDevices] = useState<any[]>([])
+	const [monitorTasks, setMonitorTasks] = useState<any[]>([])
 	const [emailConfig, setEmailConfig] = useState<any>(null)
 	const [schedulerStatus, setSchedulerStatus] = useState<any>(null)
-	const [emailTestVisible, setEmailTestVisible] = useState(false)
-	const [emailTestRecipients, setEmailTestRecipients] = useState('')
-	const [emailTestSending, setEmailTestSending] = useState(false)
 
 	// 数据缓存状态
 	const [dataCache, setDataCache] = useState({
@@ -287,9 +297,7 @@ export default function Home() {
 		users: null,
 		analysisResults: null,
 		problems: null,
-		problemStats: null,
-		nasDevices: null,
-		monitorTasks: null
+		problemStats: null
 	})
 
 	// 状态卡
@@ -346,8 +354,8 @@ export default function Home() {
 	const fetchUsers = async () => { try { const r = await authedFetch(`${getApiBase()}/api/users`); if (r.ok) { const d = await r.json(); setUsers(d.users || []) } } catch {} }
 	const fetchMe = async () => { try { const r = await authedFetch(`${getApiBase()}/api/auth/me`); if (r.ok) { const d = await r.json(); setCurrentUser(d.user) } } catch {} }
 	const fetchAnalysisResults = async () => { try { const r = await authedFetch(`${getApiBase()}/api/analysis/results`); if (r.ok) { const d = await r.json(); setAnalysisResults(d.results || []) } } catch {} }
-	const fetchNasDevices = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices`); if (r.ok) { const d = await r.json(); setNasDevices(d || []) } } catch {} }
-	const fetchMonitorTasks = async (deviceId?: number) => { try { const params = deviceId ? `?device_id=${deviceId}` : ''; const r = await authedFetch(`${getApiBase()}/api/monitor/monitor-tasks${params}`); if (r.ok) { const d = await r.json(); setMonitorTasks(d || []) } } catch {} }
+	const fetchNasDevices = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices`); if (r.ok) { const d = await r.json(); setNasDevices(d.devices || []) } } catch {} }
+	const fetchMonitorTasks = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/monitor-tasks`); if (r.ok) { const d = await r.json(); setMonitorTasks(d.tasks || []) } } catch {} }
 
 	useEffect(() => {
 		const base = computeApiBase(); setApiBase(base)
@@ -383,14 +391,12 @@ export default function Home() {
 					fetchProblemStats(null)
 					ensureAllRulesLoaded()
 					break
-				case 'users':
-					fetchUsers()
-					break
 				case 'monitor':
 					fetchNasDevices()
 					fetchMonitorTasks()
-					fetchEmailConfig()
-					fetchSchedulerStatus()
+					break
+				case 'users':
+					fetchUsers()
 					break
 			}
 		} 
@@ -1367,6 +1373,37 @@ OOM | "Out of memory"
 		setProblemForm({ id: null, title: '', url: '', error_type: defaultType, category: '' })
 		setProblemModalVisible(true)
 	}
+
+	// 实时链接自动分离处理
+	const handleProblemTitleChange = (value: string) => {
+		const cleanedUrl = sanitizeUrl(value)
+		if (cleanedUrl) {
+			// 如果输入包含链接，自动分离
+			const cleanedTitle = removeUrls(value)
+			setProblemForm({ 
+				...problemForm, 
+				title: cleanedTitle || titleFromUrl(cleanedUrl), 
+				url: cleanedUrl 
+			})
+		} else {
+			// 正常输入，只更新标题
+			setProblemForm({ ...problemForm, title: value })
+		}
+	}
+
+	const handleProblemUrlChange = (value: string) => {
+		const cleanedUrl = sanitizeUrl(value)
+		if (cleanedUrl && !problemForm.title) {
+			// 如果输入链接且标题为空，自动生成标题
+			setProblemForm({ 
+				...problemForm, 
+				url: cleanedUrl,
+				title: titleFromUrl(cleanedUrl)
+			})
+		} else {
+			setProblemForm({ ...problemForm, url: value })
+		}
+	}
 	const openProblemEdit = (p: any) => { setProblemForm({ id: p.id, title: p.title, url: p.url, error_type: p.error_type }); setProblemModalVisible(true) }
 	const submitProblem = async () => {
 		try {
@@ -1883,12 +1920,16 @@ OOM | "Out of memory"
 			>
 				<div className="form-grid">
 					<div className="form-col">
-						<div className="label">问题名称*</div>
-						<input className="ui-input" value={problemForm.title} onChange={(e)=> setProblemForm({ ...problemForm, title: e.target.value })} />
+						<div className="label">问题名称* 
+							<span style={{ color: '#6b7280', fontSize: '12px', fontWeight: 'normal' }}>
+								💡 粘贴包含链接的文本会自动分离标题和链接
+							</span>
+						</div>
+						<input className="ui-input" value={problemForm.title} onChange={(e)=> handleProblemTitleChange(e.target.value)} placeholder="输入问题标题或粘贴包含链接的文本" />
 					</div>
 					<div className="form-col">
 						<div className="label">链接*</div>
-						<input className="ui-input" value={problemForm.url} onChange={(e)=> setProblemForm({ ...problemForm, url: e.target.value })} />
+						<input className="ui-input" value={problemForm.url} onChange={(e)=> handleProblemUrlChange(e.target.value)} placeholder="https://..." />
 					</div>
 					<div className="form-col">
 						<div className="label">错误类型*</div>

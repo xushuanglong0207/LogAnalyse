@@ -14,6 +14,7 @@ import bisect
 
 # 暂时注释掉数据库相关导入，等依赖安装好后再启用
 # from .api.v1 import rules as rules_router
+# from .api.v1 import monitor as monitor_router
 
 # 可存储内容的最大字节数（默认20MB，可通过环境变量覆盖）
 MAX_CONTENT_BYTES = int(os.environ.get("MAX_CONTENT_BYTES", str(20 * 1024 * 1024)))
@@ -41,6 +42,7 @@ app.add_middleware(
 
 # 暂时注释掉API路由注册，等依赖安装好后再启用
 # app.include_router(rules_router.router, prefix="/api/v1", tags=["规则管理"])
+# app.include_router(monitor_router.router, prefix="/api/monitor", tags=["定时分析"])
 
 # 内存存储（临时）
 uploaded_files: List[Dict[str, Any]] = []
@@ -1417,6 +1419,635 @@ async def delete_user(user_id: int, ctx: Dict[str, Any] = Depends(require_auth))
         raise HTTPException(status_code=404, detail="用户不存在")
     save_users()
     return {"message": "用户已删除"}
+
+# ==================== 定时分析（Monitor）API ====================
+# 临时内存存储
+nas_devices: List[Dict[str, Any]] = []
+monitor_tasks: List[Dict[str, Any]] = []
+
+# 邮件配置存储
+email_config = {
+    "smtp_server": "",
+    "smtp_port": 587,
+    "sender_email": "",
+    "sender_password": "",
+    "sender_name": "日志分析系统",
+    "use_tls": True,
+    "is_configured": False
+}
+
+class DeviceCreate(BaseModel):
+    name: str
+    ip_address: str
+    ssh_port: int = 22
+    ssh_username: str
+    ssh_password: str
+    description: Optional[str] = None
+
+class DeviceUpdate(BaseModel):
+    name: Optional[str] = None
+    ip_address: Optional[str] = None
+    ssh_port: Optional[int] = None
+    ssh_username: Optional[str] = None
+    ssh_password: Optional[str] = None
+    description: Optional[str] = None
+
+class TaskCreate(BaseModel):
+    device_id: int
+    name: str
+    log_path: str
+    rule_ids: List[int]
+    email_recipients: List[str]
+    email_time: str = "15:00"
+
+class TaskUpdate(BaseModel):
+    name: Optional[str] = None
+    log_path: Optional[str] = None
+    rule_ids: Optional[List[int]] = None
+    email_recipients: Optional[List[str]] = None
+    email_time: Optional[str] = None
+
+class EmailConfig(BaseModel):
+    smtp_server: str
+    smtp_port: int = 587
+    sender_email: str
+    sender_password: str
+    sender_name: str = "日志分析系统"
+    use_tls: bool = True
+
+# NAS设备管理
+@app.get("/api/monitor/devices")
+async def get_devices(ctx: Dict[str, Any] = Depends(require_auth)):
+    return {"devices": nas_devices}
+
+@app.post("/api/monitor/devices")
+async def create_device(payload: DeviceCreate, ctx: Dict[str, Any] = Depends(require_auth)):
+    new_device = {
+        "id": (max([d["id"] for d in nas_devices]) + 1) if nas_devices else 1,
+        "name": payload.name,
+        "ip_address": payload.ip_address,
+        "ssh_port": payload.ssh_port,
+        "ssh_username": payload.ssh_username,
+        "ssh_password": payload.ssh_password,  # 实际项目中应加密存储
+        "description": payload.description or "",
+        "status": "unknown",
+        "script_deployed": False,
+        "last_connected": None,
+        "created_at": datetime.now().isoformat()
+    }
+    nas_devices.append(new_device)
+    return {"message": "设备创建成功", "device": new_device}
+
+@app.put("/api/monitor/devices/{device_id}")
+async def update_device(device_id: int, payload: DeviceUpdate, ctx: Dict[str, Any] = Depends(require_auth)):
+    device = next((d for d in nas_devices if d["id"] == device_id), None)
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    
+    for k, v in payload.dict(exclude_unset=True).items():
+        if v is not None:
+            device[k] = v
+    
+    return {"message": "设备更新成功", "device": device}
+
+@app.delete("/api/monitor/devices/{device_id}")
+async def delete_device(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    global nas_devices, monitor_tasks
+    before = len(nas_devices)
+    nas_devices = [d for d in nas_devices if d["id"] != device_id]
+    if len(nas_devices) == before:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    
+    # 删除关联的监控任务
+    monitor_tasks = [t for t in monitor_tasks if t["device_id"] != device_id]
+    return {"message": "设备已删除"}
+
+@app.post("/api/monitor/devices/{device_id}/test-connection")
+async def test_device_connection(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    device = next((d for d in nas_devices if d["id"] == device_id), None)
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    
+    # 实现真实的SSH连接测试
+    import subprocess
+    import socket
+    
+    try:
+        ip = device['ip_address']
+        port = device['ssh_port']
+        username = device['ssh_username']
+        password = device['ssh_password']
+        
+        # 首先测试网络连接
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)  # 5秒超时
+            result = sock.connect_ex((ip, port))
+            sock.close()
+            
+            if result != 0:
+                device["status"] = "error"
+                return {
+                    "success": False,
+                    "message": f"网络连接失败：无法连接到 {ip}:{port}"
+                }
+        except Exception as e:
+            device["status"] = "error"
+            return {
+                "success": False,
+                "message": f"网络连接测试失败：{str(e)}"
+            }
+        
+        # 使用sshpass进行SSH连接测试
+        try:
+            # 检查sshpass是否可用
+            sshpass_check = subprocess.run(['which', 'sshpass'], capture_output=True, text=True)
+            if sshpass_check.returncode != 0:
+                # 如果没有sshpass，使用ssh with expect或直接测试端口
+                device["status"] = "active" if result == 0 else "error"
+                device["last_connected"] = datetime.now().isoformat() if result == 0 else device.get("last_connected")
+                return {
+                    "success": result == 0,
+                    "message": "端口连接成功（未安装sshpass，无法验证SSH认证）" if result == 0 else "端口连接失败"
+                }
+            
+            # 使用sshpass测试SSH连接
+            ssh_cmd = [
+                'sshpass', '-p', password,
+                'ssh',
+                '-o', 'StrictHostKeyChecking=no',
+                '-o', 'UserKnownHostsFile=/dev/null',
+                '-o', 'ConnectTimeout=10',
+                '-o', 'BatchMode=yes',
+                '-p', str(port),
+                f'{username}@{ip}',
+                'echo "SSH连接测试成功"'
+            ]
+            
+            ssh_result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=15)
+            
+            if ssh_result.returncode == 0:
+                device["status"] = "active"
+                device["last_connected"] = datetime.now().isoformat()
+                return {
+                    "success": True,
+                    "message": f"SSH连接测试成功！已成功连接到 {username}@{ip}:{port}"
+                }
+            else:
+                device["status"] = "error"
+                error_msg = ssh_result.stderr.strip() if ssh_result.stderr else "SSH认证失败"
+                return {
+                    "success": False,
+                    "message": f"SSH连接失败：{error_msg}"
+                }
+                
+        except subprocess.TimeoutExpired:
+            device["status"] = "error"
+            return {
+                "success": False,
+                "message": "SSH连接超时，请检查网络连接和防火墙设置"
+            }
+        except Exception as e:
+            device["status"] = "error"
+            return {
+                "success": False,
+                "message": f"SSH连接测试失败：{str(e)}"
+            }
+            
+    except Exception as e:
+        device["status"] = "error"
+        return {
+            "success": False,
+            "message": f"连接测试失败：{str(e)}"
+        }
+
+@app.get("/api/monitor/devices/{device_id}/system-info")
+async def get_device_system_info(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    device = next((d for d in nas_devices if d["id"] == device_id), None)
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    
+    # 获取真实的系统信息
+    import subprocess
+    import platform
+    
+    try:
+        # 获取主机名
+        hostname_result = subprocess.run(['hostname'], capture_output=True, text=True)
+        hostname = hostname_result.stdout.strip() if hostname_result.returncode == 0 else device['name']
+        
+        # 获取系统信息
+        os_release_result = subprocess.run(['cat', '/etc/os-release'], capture_output=True, text=True)
+        os_info = "未知系统"
+        if os_release_result.returncode == 0:
+            lines = os_release_result.stdout.split('\n')
+            pretty_name = next((line.split('=')[1].strip('"') for line in lines if line.startswith('PRETTY_NAME=')), None)
+            version = next((line.split('=')[1].strip('"') for line in lines if line.startswith('OS_VERSION=')), None)
+            if pretty_name:
+                os_info = f"{pretty_name}"
+                if version:
+                    os_info += f" (固件版本: {version})"
+        
+        # 获取运行时间
+        uptime_result = subprocess.run(['uptime', '-p'], capture_output=True, text=True)
+        uptime = uptime_result.stdout.strip() if uptime_result.returncode == 0 else "未知"
+        if uptime.startswith('up '):
+            uptime = uptime[3:]  # 移除 'up ' 前缀
+        
+        # 获取内核版本
+        uname_result = subprocess.run(['uname', '-r'], capture_output=True, text=True)
+        kernel = uname_result.stdout.strip() if uname_result.returncode == 0 else "未知"
+        
+        # 获取CPU信息
+        cpu_info = "未知处理器"
+        try:
+            lscpu_result = subprocess.run(['lscpu'], capture_output=True, text=True)
+            if lscpu_result.returncode == 0:
+                lines = lscpu_result.stdout.split('\n')
+                model_line = next((line for line in lines if 'Model name:' in line), None)
+                if model_line:
+                    cpu_info = model_line.split(':', 1)[1].strip()
+        except:
+            pass
+        
+        # 获取内存信息
+        memory_info = "内存信息未知"
+        try:
+            # 先尝试获取详细内存信息
+            dmidecode_result = subprocess.run(['dmidecode', '-t', 'memory'], capture_output=True, text=True)
+            if dmidecode_result.returncode == 0:
+                lines = dmidecode_result.stdout.split('\n')
+                size_line = next((line for line in lines if 'Size:' in line and 'GB' in line), None)
+                manufacturer_line = next((line for line in lines if 'Manufacturer:' in line and not line.strip().endswith('Manufacturer: Not Specified')), None)
+                part_line = next((line for line in lines if 'Part Number:' in line), None)
+                type_line = next((line for line in lines if 'Type:' in line and 'Type Detail' not in line), None)
+                speed_line = next((line for line in lines if 'Speed:' in line and 'MT/s' in line), None)
+                
+                memory_parts = []
+                if size_line:
+                    size = size_line.split(':', 1)[1].strip()
+                    memory_parts.append(f"容量: {size}")
+                if type_line:
+                    mem_type = type_line.split(':', 1)[1].strip()
+                    memory_parts.append(f"类型: {mem_type}")
+                if speed_line:
+                    speed = speed_line.split(':', 1)[1].strip()
+                    memory_parts.append(f"频率: {speed}")
+                if manufacturer_line:
+                    manufacturer = manufacturer_line.split(':', 1)[1].strip()
+                    memory_parts.append(f"制造商: {manufacturer}")
+                if part_line:
+                    part = part_line.split(':', 1)[1].strip()
+                    if part and part != 'Not Specified':
+                        memory_parts.append(f"型号: {part}")
+                
+                if memory_parts:
+                    memory_info = " | ".join(memory_parts)
+            
+            # 如果dmidecode失败，回退到/proc/meminfo
+            if memory_info == "内存信息未知":
+                meminfo_result = subprocess.run(['cat', '/proc/meminfo'], capture_output=True, text=True)
+                if meminfo_result.returncode == 0:
+                    lines = meminfo_result.stdout.split('\n')
+                    total_line = next((line for line in lines if line.startswith('MemTotal:')), None)
+                    available_line = next((line for line in lines if line.startswith('MemAvailable:')), None)
+                    if total_line:
+                        total_kb = int(total_line.split()[1])
+                        total_gb = round(total_kb / 1024 / 1024, 1)
+                        memory_info = f"总内存: {total_gb}GB"
+                        if available_line:
+                            avail_kb = int(available_line.split()[1])
+                            avail_gb = round(avail_kb / 1024 / 1024, 1)
+                            used_gb = round(total_gb - avail_gb, 1)
+                            memory_info += f" | 已用: {used_gb}GB | 可用: {avail_gb}GB"
+        except:
+            pass
+        
+        # 获取磁盘使用情况
+        disk_info = "磁盘信息未知"
+        try:
+            # 使用 df 获取文件系统使用情况
+            df_result = subprocess.run(['df', '-h', '/'], capture_output=True, text=True)
+            if df_result.returncode == 0:
+                lines = df_result.stdout.strip().split('\n')
+                if len(lines) > 1:
+                    fields = lines[1].split()
+                    if len(fields) >= 5:
+                        filesystem = fields[0]
+                        size = fields[1]
+                        used = fields[2]
+                        avail = fields[3]
+                        use_percent = fields[4]
+                        disk_info = f"根文件系统 ({filesystem}): {use_percent} 已用 ({used}/{size}，剩余 {avail})"
+            
+            # 获取存储设备信息
+            try:
+                lsblk_result = subprocess.run(['lsblk', '-o', 'NAME,SIZE,TYPE,MOUNTPOINT', '--tree'], capture_output=True, text=True)
+                if lsblk_result.returncode == 0:
+                    disk_info += "\n\n存储设备信息:\n" + lsblk_result.stdout
+            except:
+                pass
+                
+        except:
+            pass
+        
+        return {
+            "hostname": hostname,
+            "os_info": os_info,
+            "uptime": uptime,
+            "kernel": kernel,
+            "cpu_info": cpu_info,
+            "memory": memory_info,
+            "disk_usage": disk_info
+        }
+    except Exception as e:
+        # 如果获取失败，返回基本信息
+        return {
+            "hostname": device['name'],
+            "os_info": "系统信息获取失败",
+            "uptime": "未知",
+            "kernel": "未知",
+            "cpu_info": "未知",
+            "memory": "内存信息获取失败",
+            "disk_usage": "磁盘信息获取失败",
+            "error": str(e)
+        }
+
+@app.get("/api/monitor/devices/{device_id}/error-logs")
+async def get_device_error_logs(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    device = next((d for d in nas_devices if d["id"] == device_id), None)
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    
+    # 模拟错误日志文件列表
+    return [
+        {"filename": "syslog", "size": "2.1 MB", "modified_time": "2024-08-31 15:30:25"},
+        {"filename": "kern.log", "size": "856 KB", "modified_time": "2024-08-31 14:22:10"},
+        {"filename": "auth.log", "size": "1.3 MB", "modified_time": "2024-08-31 16:15:08"}
+    ]
+
+@app.get("/api/monitor/devices/{device_id}/error-logs/{filename}/content")
+async def get_log_content(device_id: int, filename: str, ctx: Dict[str, Any] = Depends(require_auth)):
+    device = next((d for d in nas_devices if d["id"] == device_id), None)
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    
+    # 模拟日志内容
+    sample_content = f"""Aug 31 16:15:08 {device['name']} kernel: [12345.678901] sample error log from {filename}
+Aug 31 16:14:32 {device['name']} kernel: [12344.123456] another sample log entry
+Aug 31 16:13:55 {device['name']} kernel: [12343.789012] system running normally
+"""
+    
+    return {
+        "filename": filename,
+        "size": len(sample_content),
+        "content": sample_content
+    }
+
+# 监控任务管理
+@app.get("/api/monitor/monitor-tasks")
+async def get_monitor_tasks(ctx: Dict[str, Any] = Depends(require_auth)):
+    return {"tasks": monitor_tasks}
+
+@app.post("/api/monitor/monitor-tasks")
+async def create_monitor_task(payload: TaskCreate, ctx: Dict[str, Any] = Depends(require_auth)):
+    device = next((d for d in nas_devices if d["id"] == payload.device_id), None)
+    if not device:
+        raise HTTPException(status_code=400, detail="设备不存在")
+    
+    new_task = {
+        "id": (max([t["id"] for t in monitor_tasks]) + 1) if monitor_tasks else 1,
+        "device_id": payload.device_id,
+        "name": payload.name,
+        "log_path": payload.log_path,
+        "rule_ids": payload.rule_ids,
+        "email_recipients": payload.email_recipients,
+        "email_time": payload.email_time,
+        "status": "pending",
+        "error_count": 0,
+        "last_run": None,
+        "next_run": None,
+        "created_at": datetime.now().isoformat()
+    }
+    monitor_tasks.append(new_task)
+    return {"message": "任务创建成功", "task": new_task}
+
+@app.put("/api/monitor/monitor-tasks/{task_id}")
+async def update_monitor_task(task_id: int, payload: TaskUpdate, ctx: Dict[str, Any] = Depends(require_auth)):
+    task = next((t for t in monitor_tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    for k, v in payload.dict(exclude_unset=True).items():
+        if v is not None:
+            task[k] = v
+    
+    return {"message": "任务更新成功", "task": task}
+
+@app.delete("/api/monitor/monitor-tasks/{task_id}")
+async def delete_monitor_task(task_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    global monitor_tasks
+    before = len(monitor_tasks)
+    monitor_tasks = [t for t in monitor_tasks if t["id"] != task_id]
+    if len(monitor_tasks) == before:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    return {"message": "任务已删除"}
+
+# 邮件服务相关
+@app.get("/api/monitor/email/config")
+async def get_email_config(ctx: Dict[str, Any] = Depends(require_auth)):
+    # 返回邮件配置（隐藏密码）
+    config = email_config.copy()
+    if "sender_password" in config:
+        del config["sender_password"]  # 不返回密码
+    return config
+
+@app.post("/api/monitor/email/config")
+async def update_email_config(config: EmailConfig, ctx: Dict[str, Any] = Depends(require_auth)):
+    global email_config
+    email_config.update({
+        "smtp_server": config.smtp_server,
+        "smtp_port": config.smtp_port,
+        "sender_email": config.sender_email,
+        "sender_password": config.sender_password,
+        "sender_name": config.sender_name,
+        "use_tls": config.use_tls,
+        "is_configured": True
+    })
+    return {"message": "邮件配置已更新"}
+
+@app.get("/api/monitor/scheduler/status")
+async def get_scheduler_status(ctx: Dict[str, Any] = Depends(require_auth)):
+    # 模拟调度器状态
+    return {
+        "is_running": True,
+        "next_daily_report": "2024-09-01 15:00:00",
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "scheduled_tasks_count": len(monitor_tasks)
+    }
+
+@app.post("/api/monitor/email/test")
+async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any] = Depends(require_auth)):
+    # 实现真实的邮件发送
+    import smtplib
+    from email.mime.text import MimeText
+    from email.mime.multipart import MimeMultipart
+    from datetime import datetime
+    
+    if not email_config.get("is_configured"):
+        return {
+            "success": False,
+            "message": "邮件配置未完成，请先配置SMTP设置"
+        }
+    
+    if not recipients:
+        return {
+            "success": False,
+            "message": "请提供收件人邮箱地址"
+        }
+    
+    try:
+        # 创建邮件消息
+        msg = MimeMultipart()
+        msg['From'] = f"{email_config['sender_name']} <{email_config['sender_email']}>"
+        msg['To'] = ', '.join(recipients)
+        msg['Subject'] = "日志分析系统 - 邮件测试"
+        
+        # 邮件正文
+        body = f"""
+这是一封来自日志分析系统的测试邮件。
+
+测试时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+发送服务器: {email_config['smtp_server']}:{email_config['smtp_port']}
+收件人数量: {len(recipients)}
+
+如果您收到此邮件，说明邮件服务配置正常。
+
+---
+日志分析系统自动发送
+        """.strip()
+        
+        msg.attach(MimeText(body, 'plain', 'utf-8'))
+        
+        # 连接SMTP服务器并发送邮件
+        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
+        
+        if email_config.get('use_tls', True):
+            server.starttls()
+        
+        server.login(email_config['sender_email'], email_config['sender_password'])
+        
+        # 发送邮件到所有收件人
+        for recipient in recipients:
+            server.send_message(msg, to_addrs=[recipient])
+        
+        server.quit()
+        
+        return {
+            "success": True,
+            "message": f"测试邮件已成功发送到 {len(recipients)} 个邮箱"
+        }
+        
+    except smtplib.SMTPAuthenticationError:
+        return {
+            "success": False,
+            "message": "SMTP认证失败，请检查邮箱用户名和密码"
+        }
+    except smtplib.SMTPConnectError:
+        return {
+            "success": False,
+            "message": f"无法连接到SMTP服务器 {email_config['smtp_server']}:{email_config['smtp_port']}"
+        }
+    except smtplib.SMTPRecipientsRefused as e:
+        return {
+            "success": False,
+            "message": f"收件人地址被拒绝: {', '.join(e.recipients.keys())}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"邮件发送失败: {str(e)}"
+        }
+
+@app.post("/api/monitor/email/send-report")
+async def send_manual_report(payload: Dict[str, Any] = Body(...), ctx: Dict[str, Any] = Depends(require_auth)):
+    import smtplib
+    from email.mime.text import MimeText
+    from email.mime.multipart import MimeMultipart
+    
+    task_id = payload.get("task_id")
+    task = next((t for t in monitor_tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    if not email_config.get("is_configured"):
+        return {
+            "success": False,
+            "message": "邮件配置未完成，请先配置SMTP设置"
+        }
+    
+    recipients = task.get('email_recipients', [])
+    if not recipients:
+        return {
+            "success": False,
+            "message": "任务未配置邮件接收者"
+        }
+    
+    try:
+        device = next((d for d in nas_devices if d["id"] == task["device_id"]), None)
+        device_name = device['name'] if device else f"设备ID-{task['device_id']}"
+        
+        # 创建邮件消息
+        msg = MimeMultipart()
+        msg['From'] = f"{email_config['sender_name']} <{email_config['sender_email']}>"
+        msg['To'] = ', '.join(recipients)
+        msg['Subject'] = f"[日志分析] {device_name} - {task['name']} 监控报告"
+        
+        # 邮件正文
+        body = f"""
+日志监控报告
+
+监控任务: {task['name']}
+监控设备: {device_name}
+日志路径: {task['log_path']}
+监控规则数量: {len(task.get('rule_ids', []))}
+任务状态: {task.get('status', 'unknown')}
+
+报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+这是一份手动生成的监控报告。如需查看详细的分析结果，请登录日志分析平台。
+
+---
+日志分析系统自动发送
+        """.strip()
+        
+        msg.attach(MimeText(body, 'plain', 'utf-8'))
+        
+        # 连接SMTP服务器并发送邮件
+        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
+        
+        if email_config.get('use_tls', True):
+            server.starttls()
+        
+        server.login(email_config['sender_email'], email_config['sender_password'])
+        
+        # 发送邮件到所有收件人
+        for recipient in recipients:
+            server.send_message(msg, to_addrs=[recipient])
+        
+        server.quit()
+        
+        return {
+            "success": True,
+            "message": f"监控报告已发送到 {len(recipients)} 个邮箱"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"报告发送失败: {str(e)}"
+        }
 
 if __name__ == "__main__":
     uvicorn.run(

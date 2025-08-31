@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "email": "1035307247@qq.com",
+    "role": "管理员",
+    "password": "admin123",
+    "position": "管理员"
+  },
+  {
+    "id": 2,
+    "username": "xushuanglong",
+    "email": "1035307247@qq.com",
+    "role": "管理员",
+    "password": "Aa123456",
+    "position": "测试"
+  }
+]
