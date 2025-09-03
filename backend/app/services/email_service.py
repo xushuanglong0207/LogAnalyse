@@ -23,15 +23,52 @@ class EmailService:
     """邮件服务类"""
     
     def __init__(self):
-        from ..config import get_settings
-        settings = get_settings()
+        self._load_config()
+    
+    def _load_config(self):
+        """从JSON文件加载邮件配置"""
+        import json
+        config_file = "/home/ugreen/log-analyse/backend/data/email_config.json"
         
-        self.smtp_server = settings.smtp_server
-        self.smtp_port = settings.smtp_port
-        self.smtp_username = settings.smtp_username
-        self.smtp_password = settings.smtp_password
-        self.sender_email = settings.sender_email or settings.smtp_username
-        self.sender_name = settings.sender_name
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    
+                self.smtp_server = config.get('smtp_server', '')
+                self.smtp_port = config.get('smtp_port', 587)
+                self.smtp_username = config.get('smtp_username', '')
+                self.smtp_password = config.get('smtp_password', '')
+                self.sender_email = config.get('sender_email', '')
+                self.sender_name = config.get('sender_name', 'NAS日志监控系统')
+                self.is_configured = config.get('is_configured', False)
+            else:
+                # 如果JSON文件不存在，尝试从环境变量加载（向后兼容）
+                from ..config import get_settings
+                settings = get_settings()
+                
+                self.smtp_server = settings.smtp_server
+                self.smtp_port = settings.smtp_port
+                self.smtp_username = settings.smtp_username
+                self.smtp_password = settings.smtp_password
+                self.sender_email = settings.sender_email or settings.smtp_username
+                self.sender_name = settings.sender_name
+                self.is_configured = bool(self.smtp_username and self.smtp_password)
+                
+        except Exception as e:
+            logger.error(f"加载邮件配置失败: {str(e)}")
+            # 设置默认值
+            self.smtp_server = ''
+            self.smtp_port = 587
+            self.smtp_username = ''
+            self.smtp_password = ''
+            self.sender_email = ''
+            self.sender_name = 'NAS日志监控系统'
+            self.is_configured = False
+    
+    def reload_config(self):
+        """重新加载配置"""
+        self._load_config()
     
     async def send_error_report(self, 
                               recipients: List[str],
@@ -315,7 +352,10 @@ class EmailService:
     
     async def _send_email(self, message: MIMEMultipart, recipients: List[str]) -> bool:
         """发送邮件"""
-        if not self.smtp_username or not self.smtp_password:
+        # 重新加载配置确保获取最新的配置
+        self.reload_config()
+        
+        if not self.is_configured or not self.smtp_username or not self.smtp_password:
             logger.error("邮件配置不完整：缺少SMTP用户名或密码")
             return False
             

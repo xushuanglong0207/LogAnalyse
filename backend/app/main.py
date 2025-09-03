@@ -1492,16 +1492,56 @@ def save_monitor_data():
 nas_devices: List[Dict[str, Any]] = []
 monitor_tasks: List[Dict[str, Any]] = []
 
-# 邮件配置存储
-email_config = {
-    "smtp_server": "",
-    "smtp_port": 587,
-    "sender_email": "",
-    "sender_password": "",
-    "sender_name": "日志分析系统",
-    "use_tls": True,
-    "is_configured": False
-}
+# 邮件配置管理函数
+def load_email_config() -> dict:
+    """从JSON文件加载邮件配置"""
+    import json
+    config_file = "/home/ugreen/log-analyse/backend/data/email_config.json"
+    
+    try:
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            # 如果JSON文件不存在，返回默认配置
+            return {
+                "smtp_server": "",
+                "smtp_port": 587,
+                "sender_email": "",
+                "sender_password": "",
+                "sender_name": "日志分析系统", 
+                "smtp_username": "",
+                "use_tls": True,
+                "is_configured": False
+            }
+    except Exception as e:
+        logger.error(f"加载邮件配置失败: {str(e)}")
+        return {
+            "smtp_server": "",
+            "smtp_port": 587,
+            "sender_email": "",
+            "sender_password": "",
+            "sender_name": "日志分析系统",
+            "smtp_username": "",
+            "use_tls": True,
+            "is_configured": False
+        }
+
+def save_email_config(config: dict) -> bool:
+    """保存邮件配置到JSON文件"""
+    import json
+    config_file = "/home/ugreen/log-analyse/backend/data/email_config.json"
+    
+    try:
+        # 确保目录存在
+        os.makedirs(os.path.dirname(config_file), exist_ok=True)
+        
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"保存邮件配置失败: {str(e)}")
+        return False
 
 class DeviceCreate(BaseModel):
     name: str
@@ -1691,8 +1731,8 @@ async def test_device_connection(device_id: int, ctx: Dict[str, Any] = Depends(r
             "message": f"连接测试失败：{str(e)}"
         }
 
-@app.get("/api/monitor/devices/{device_id}/system-info")
-async def get_device_system_info(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+@app.get("/api/monitor/devices/{device_id}/local-system-info")
+async def get_device_local_system_info(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
     device = next((d for d in nas_devices if d["id"] == device_id), None)
     if not device:
         raise HTTPException(status_code=404, detail="设备不存在")
@@ -1892,17 +1932,43 @@ async def get_log_content(device_id: int, filename: str, ctx: Dict[str, Any] = D
     if not device:
         raise HTTPException(status_code=404, detail="设备不存在")
     
-    # 模拟日志内容
-    sample_content = f"""Aug 31 16:15:08 {device['name']} kernel: [12345.678901] sample error log from {filename}
-Aug 31 16:14:32 {device['name']} kernel: [12344.123456] another sample log entry
-Aug 31 16:13:55 {device['name']} kernel: [12343.789012] system running normally
-"""
+    # 使用NAS设备管理器获取真实的日志内容
+    from .services.nas_device_manager import NASDeviceManager
     
-    return {
-        "filename": filename,
-        "size": len(sample_content),
-        "content": sample_content
-    }
+    try:
+        manager = NASDeviceManager()
+        
+        # 构造设备信息
+        device_info = {
+            'ip': device.get('ip_address', device.get('ip', '')),
+            'username': device.get('username', device.get('ssh_username', '')),
+            'password': device.get('password', device.get('ssh_password', '')),
+            'port': device.get('port', device.get('ssh_port', 22))
+        }
+        
+        # 获取日志文件内容
+        content = await manager.get_log_file_content(device_info, filename)
+        
+        if content is None:
+            # 如果文件不存在或无法读取
+            return {
+                "filename": filename,
+                "size": 0,
+                "content": "错误：无法读取日志文件。可能原因：\n1. 日志文件不存在\n2. 尚未进行日志分析\n3. SSH连接问题\n\n请先运行定时分析任务生成错误日志。"
+            }
+        
+        return {
+            "filename": filename,
+            "size": len(content),
+            "content": content
+        }
+        
+    except Exception as e:
+        return {
+            "filename": filename,
+            "size": 0,
+            "content": f"获取日志内容失败：{str(e)}\n\n请检查：\n1. 设备SSH连接配置\n2. 是否已运行日志分析任务\n3. 网络连接状态"
+        }
 
 # 监控任务管理
 @app.get("/api/monitor/monitor-tasks")
@@ -1971,17 +2037,15 @@ async def get_scheduler_status(ctx: Dict[str, Any] = Depends(require_auth)):
 @app.get("/api/monitor/email/config")
 async def get_email_config(ctx: Dict[str, Any] = Depends(require_auth)):
     """获取邮件配置"""
-    smtp_server = os.getenv('SMTP_SERVER', '')
-    smtp_username = os.getenv('SMTP_USERNAME', '')
-    smtp_password = os.getenv('SMTP_PASSWORD', '')
-    sender_name = os.getenv('SENDER_NAME', 'NAS日志监控系统')
+    config = load_email_config()
     
+    # 为了前端显示，不返回密码
     return {
-        "smtp_server": smtp_server,
-        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
-        "sender_email": smtp_username,
-        "sender_name": sender_name,
-        "is_configured": bool(smtp_username and smtp_password)
+        "smtp_server": config.get("smtp_server", ""),
+        "smtp_port": config.get("smtp_port", 587),
+        "sender_email": config.get("sender_email", ""),
+        "sender_name": config.get("sender_name", "日志分析系统"),
+        "is_configured": config.get("is_configured", False)
     }
 
 @app.put("/api/monitor/email/config")  
@@ -1995,50 +2059,33 @@ async def update_email_config(
 ):
     """更新邮件配置"""
     try:
-        # 更新.env文件
-        env_file = "/home/ugreen/log-analyse/backend/.env"
-        env_lines = []
-        
-        if os.path.exists(env_file):
-            with open(env_file, 'r') as f:
-                env_lines = f.readlines()
-        
-        # 更新或添加配置
-        config_map = {
-            "SMTP_SERVER": smtp_server,
-            "SMTP_PORT": str(smtp_port),
-            "SMTP_USERNAME": sender_email,
-            "SMTP_PASSWORD": sender_password,
-            "SENDER_EMAIL": sender_email,
-            "SENDER_NAME": sender_name
+        # 创建新的配置对象
+        config = {
+            "smtp_server": smtp_server,
+            "smtp_port": smtp_port,
+            "sender_email": sender_email,
+            "sender_name": sender_name,
+            "smtp_username": sender_email,  # 兼容性字段
+            "smtp_password": sender_password, # 统一使用这个字段名
+            "use_tls": True,
+            "is_configured": bool(sender_email and sender_password)
         }
         
-        # 更新现有配置
-        updated_keys = set()
-        for i, line in enumerate(env_lines):
-            for key, value in config_map.items():
-                if line.startswith(f"{key}="):
-                    env_lines[i] = f"{key}={value}\n"
-                    updated_keys.add(key)
-                    break
-        
-        # 添加新配置
-        for key, value in config_map.items():
-            if key not in updated_keys:
-                env_lines.append(f"{key}={value}\n")
-        
-        # 写入文件
-        with open(env_file, 'w') as f:
-            f.writelines(env_lines)
-        
-        # 更新环境变量
-        for key, value in config_map.items():
-            os.environ[key] = value
+        # 保存到JSON文件
+        if save_email_config(config):
+            # 同时更新全局邮件服务实例
+            from .services.email_service import email_service
+            email_service.reload_config()
             
-        return {
-            "success": True,
-            "message": "邮件配置已成功保存"
-        }
+            return {
+                "success": True,
+                "message": "邮件配置已成功保存"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "保存配置失败"
+            }
     except Exception as e:
         return {
             "success": False,
@@ -2064,14 +2111,7 @@ async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any]
     from datetime import datetime
     
     # 获取邮件配置
-    email_config = {
-        "smtp_server": os.getenv("SMTP_SERVER", ""),
-        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
-        "sender_email": os.getenv("SMTP_USERNAME", ""),
-        "sender_password": os.getenv("SMTP_PASSWORD", ""),
-        "sender_name": os.getenv("SENDER_NAME", "NAS日志监控系统"),
-        "is_configured": bool(os.getenv("SMTP_USERNAME") and os.getenv("SMTP_PASSWORD"))
-    }
+    email_config = load_email_config()
     
     if not email_config.get("is_configured"):
         return {
@@ -2188,12 +2228,12 @@ async def get_device_system_info(device_id: int, ctx: Dict[str, Any] = Depends(r
         # 执行系统命令获取信息
         commands = {
             'hostname': 'hostname',
-            'uptime': 'uptime',
-            'disk_usage': 'df -h | head -5',
-            'memory': 'free -h',
-            'load_average': 'cat /proc/loadavg',
-            'cpu_info': 'cat /proc/cpuinfo | grep "model name" | head -1',
-            'network': 'ip addr show | grep inet | head -5'
+            'os_info': 'cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d \'"\' || uname -s',
+            'uptime': 'uptime -p || uptime',
+            'kernel': 'uname -r',
+            'cpu_info': 'cat /proc/cpuinfo | grep "model name" | head -1 | cut -d: -f2 | xargs',
+            'memory': 'free -h | head -2 | tail -1',
+            'disk_usage': 'df -h / | tail -1'
         }
         
         system_info = {}
@@ -2201,19 +2241,14 @@ async def get_device_system_info(device_id: int, ctx: Dict[str, Any] = Depends(r
             try:
                 stdin, stdout, stderr = ssh.exec_command(cmd, timeout=10)
                 result = stdout.read().decode().strip()
-                system_info[key] = result or '获取失败'
+                system_info[key] = result if result else '获取失败'
             except Exception as e:
                 system_info[key] = f"获取失败: {str(e)}"
         
         ssh.close()
         
-        return {
-            "success": True,
-            "device_name": device['name'],
-            "ip_address": device['ip_address'],
-            "system_info": system_info,
-            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
+        # 返回扁平化的系统信息，符合前端期望的格式
+        return system_info
         
     except Exception as e:
         return {
@@ -2233,6 +2268,9 @@ async def send_manual_report(payload: Dict[str, Any] = Body(...), ctx: Dict[str,
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
+    # 获取邮件配置
+    email_config = load_email_config()
+    
     if not email_config.get("is_configured"):
         return {
             "success": False,
@@ -2250,50 +2288,22 @@ async def send_manual_report(payload: Dict[str, Any] = Body(...), ctx: Dict[str,
         device = next((d for d in nas_devices if d["id"] == task["device_id"]), None)
         device_name = device['name'] if device else f"设备ID-{task['device_id']}"
         
-        # 创建邮件消息
-        msg = MIMEMultipart()
-        msg['From'] = f"{email_config['sender_name']} <{email_config['sender_email']}>"
-        msg['To'] = ', '.join(recipients)
-        msg['Subject'] = f"[日志分析] {device_name} - {task['name']} 监控报告"
+        # 使用EmailService发送测试邮件（简化版监控报告）
+        from .services.email_service import email_service
         
-        # 邮件正文
-        body = f"""
-日志监控报告
-
-监控任务: {task['name']}
-监控设备: {device_name}
-日志路径: {task['log_path']}
-监控规则数量: {len(task.get('rule_ids', []))}
-任务状态: {task.get('status', 'unknown')}
-
-报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-这是一份手动生成的监控报告。如需查看详细的分析结果，请登录日志分析平台。
-
----
-日志分析系统自动发送
-        """.strip()
+        # 准备邮件内容作为测试邮件发送
+        success = await email_service.send_test_email(recipients)
         
-        msg.attach(MIMEText(body, 'plain', 'utf-8'))
-        
-        # 连接SMTP服务器并发送邮件
-        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
-        
-        if email_config.get('use_tls', True):
-            server.starttls()
-        
-        server.login(email_config['sender_email'], email_config['sender_password'])
-        
-        # 发送邮件到所有收件人
-        for recipient in recipients:
-            server.send_message(msg, to_addrs=[recipient])
-        
-        server.quit()
-        
-        return {
-            "success": True,
-            "message": f"监控报告已发送到 {len(recipients)} 个邮箱"
-        }
+        if success:
+            return {
+                "success": True,
+                "message": f"监控报告已发送到 {len(recipients)} 个邮箱"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "邮件发送失败，请检查邮件配置和网络连接"
+            }
         
     except Exception as e:
         return {

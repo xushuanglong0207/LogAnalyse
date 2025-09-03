@@ -5,6 +5,7 @@ NAS设备SSH连接和脚本部署服务
 
 import asyncio
 import paramiko
+import asyncssh
 import tempfile
 import os
 import logging
@@ -395,6 +396,15 @@ class NASDeviceManager:
         except Exception as e:
             logger.error(f"获取错误日志失败 {ip_address}: {str(e)}")
             return []
+    
+    async def get_log_file_content(self, device_info: Dict[str, Any], log_filename: str) -> Optional[str]:
+        """
+        获取日志文件内容（alias for download_error_log）
+        
+        Returns:
+            日志内容字符串，失败返回None
+        """
+        return await self.download_error_log(device_info, log_filename)
     
     async def download_error_log(self, device_info: Dict[str, Any], log_filename: str) -> Optional[str]:
         """
