@@ -76,21 +76,30 @@ def get_all_local_ips() -> List[str]:
 
 
 class Settings(BaseSettings):
-    # 数据库配置
-    database_url: str = os.getenv("DATABASE_URL", "postgresql://admin:password123@localhost:5432/loganalyzer")
+    # 数据库配置 - 使用SQLite替换PostgreSQL
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./loganalyzer.db")
     
-    # Redis配置
+    # Redis配置 - 可选
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+    use_redis: bool = os.getenv("USE_REDIS", "False").lower() == "true"
     
     # JWT配置
     secret_key: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # 文件上传配置
+    # 文件上传配置 - 修复100MB限制
     upload_dir: str = "uploads"
     max_file_size: int = 100 * 1024 * 1024  # 100MB
-    allowed_file_types: list = [".txt", ".json", ".log"]
+    allowed_file_types: list = [".txt", ".json", ".log", ".csv"]
+    
+    # SMTP邮件配置
+    smtp_server: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_username: str = os.getenv("SMTP_USERNAME", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    sender_email: str = os.getenv("SENDER_EMAIL", "")
+    sender_name: str = os.getenv("SENDER_NAME", "NAS日志监控系统")
     
     # 应用配置
     app_name: str = "日志分析平台"

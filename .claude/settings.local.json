@@ -16,7 +16,17 @@
       "Bash(docker-compose:*)",
       "Read(/D:\\/**)",
       "Bash(./start.sh:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(curl -I http://localhost:3000)",
+      "Bash(npm run:*)",
+      "Bash(netstat -tlnp)",
+      "Bash(kill 693903)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(uvicorn:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": [],

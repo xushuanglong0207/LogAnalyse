@@ -1,0 +1,32 @@
+{
+  "devices": [
+    {
+      "id": 1,
+      "name": "生产NAS-01",
+      "ip_address": "192.168.1.100",
+      "ssh_port": 22,
+      "ssh_username": "admin",
+      "ssh_password": "your_password_here",
+      "description": "生产环境主NAS设备",
+      "status": "active"
+    }
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "device_id": 1,
+      "name": "系统日志监控",
+      "log_path": "/var/log/syslog",
+      "rule_ids": [1, 2, 3],
+      "email_recipients": ["admin@company.com", "ops@company.com"],
+      "email_time": "15:00",
+      "is_active": true,
+      "status": "running",
+      "last_run": null,
+      "next_run": null,
+      "error_count": 0
+    }
+  ],
+  "last_updated": "2024-09-01T10:30:00",
+  "version": "1.0"
+}

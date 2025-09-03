@@ -11,6 +11,26 @@ import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 import bisect
+from dotenv import load_dotenv
+
+# 加载环境变量
+def load_env_manually():
+    """手动加载.env文件"""
+    env_file = '/home/ugreen/log-analyse/backend/.env'
+    print(f"Manually loading .env from: {env_file}")
+    
+    if os.path.exists(env_file):
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key] = value
+                    print(f"Set {key}={value}")
+
+load_env_manually()
+load_dotenv('/home/ugreen/log-analyse/backend/.env', override=True)
+print(f"Loading .env from: /home/ugreen/log-analyse/backend/.env")  # 调试输出
 
 # 暂时注释掉数据库相关导入，等依赖安装好后再启用
 # from .api.v1 import rules as rules_router
@@ -513,6 +533,7 @@ class ChangePasswordPayload(BaseModel):
 async def _startup_cleanup():
     purge_old_uploads()
     load_rules()  # 启动时加载保存的规则
+    load_monitor_data()  # 启动时加载监控设备和任务数据
 
 # 规则与文件夹模型
 class RuleCreate(BaseModel):
@@ -1421,7 +1442,53 @@ async def delete_user(user_id: int, ctx: Dict[str, Any] = Depends(require_auth))
     return {"message": "用户已删除"}
 
 # ==================== 定时分析（Monitor）API ====================
-# 临时内存存储
+# 数据文件路径
+DEVICES_FILE = "/home/ugreen/log-analyse/database/nas_devices.json"
+
+# 数据持久化函数
+def load_monitor_data():
+    """从文件加载监控设备和任务数据"""
+    global nas_devices, monitor_tasks
+    
+    try:
+        # 确保目录存在
+        os.makedirs(os.path.dirname(DEVICES_FILE), exist_ok=True)
+        
+        if os.path.exists(DEVICES_FILE):
+            with open(DEVICES_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                nas_devices = data.get('devices', [])
+                monitor_tasks = data.get('tasks', [])
+                print(f"Loaded {len(nas_devices)} devices and {len(monitor_tasks)} tasks from {DEVICES_FILE}")
+        else:
+            # 创建空文件
+            save_monitor_data()
+            print(f"Created new monitor data file: {DEVICES_FILE}")
+    except Exception as e:
+        print(f"Error loading monitor data: {e}")
+        nas_devices = []
+        monitor_tasks = []
+
+def save_monitor_data():
+    """保存监控设备和任务数据到文件"""
+    try:
+        # 确保目录存在
+        os.makedirs(os.path.dirname(DEVICES_FILE), exist_ok=True)
+        
+        data = {
+            "devices": nas_devices,
+            "tasks": monitor_tasks,
+            "last_updated": datetime.now().isoformat()
+        }
+        
+        with open(DEVICES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        
+        print(f"Saved {len(nas_devices)} devices and {len(monitor_tasks)} tasks to {DEVICES_FILE}")
+    except Exception as e:
+        print(f"Error saving monitor data: {e}")
+
+# 临时内存存储 - 将在启动时从文件加载
 nas_devices: List[Dict[str, Any]] = []
 monitor_tasks: List[Dict[str, Any]] = []
 
@@ -1496,6 +1563,7 @@ async def create_device(payload: DeviceCreate, ctx: Dict[str, Any] = Depends(req
         "created_at": datetime.now().isoformat()
     }
     nas_devices.append(new_device)
+    save_monitor_data()  # 保存到文件
     return {"message": "设备创建成功", "device": new_device}
 
 @app.put("/api/monitor/devices/{device_id}")
@@ -1508,6 +1576,7 @@ async def update_device(device_id: int, payload: DeviceUpdate, ctx: Dict[str, An
         if v is not None:
             device[k] = v
     
+    save_monitor_data()  # 保存到文件
     return {"message": "设备更新成功", "device": device}
 
 @app.delete("/api/monitor/devices/{device_id}")
@@ -1520,6 +1589,7 @@ async def delete_device(device_id: int, ctx: Dict[str, Any] = Depends(require_au
     
     # 删除关联的监控任务
     monitor_tasks = [t for t in monitor_tasks if t["device_id"] != device_id]
+    save_monitor_data()  # 保存到文件
     return {"message": "设备已删除"}
 
 @app.post("/api/monitor/devices/{device_id}/test-connection")
@@ -1779,12 +1849,42 @@ async def get_device_error_logs(device_id: int, ctx: Dict[str, Any] = Depends(re
     if not device:
         raise HTTPException(status_code=404, detail="设备不存在")
     
-    # 模拟错误日志文件列表
-    return [
-        {"filename": "syslog", "size": "2.1 MB", "modified_time": "2024-08-31 15:30:25"},
-        {"filename": "kern.log", "size": "856 KB", "modified_time": "2024-08-31 14:22:10"},
-        {"filename": "auth.log", "size": "1.3 MB", "modified_time": "2024-08-31 16:15:08"}
-    ]
+    # 使用NAS设备管理器获取真实的错误日志
+    from .services.nas_device_manager import NASDeviceManager
+    
+    try:
+        manager = NASDeviceManager()
+        
+        # 构造设备信息
+        device_info = {
+            'ip': device.get('ip_address', device.get('ip', '')),
+            'username': device.get('username', device.get('ssh_username', '')),
+            'password': device.get('password', device.get('ssh_password', '')),
+            'port': device.get('port', device.get('ssh_port', 22))
+        }
+        
+        # 获取错误日志列表
+        error_logs = await manager.get_error_logs(device_info, limit=10)
+        
+        if not error_logs:
+            # 如果没有分析生成的错误日志，返回提示信息
+            return [{
+                "filename": "暂无错误日志",
+                "size": "-",
+                "modified_time": "请先运行定时分析任务",
+                "note": "错误日志由定时分析任务生成，请确保已配置并运行分析任务"
+            }]
+        
+        return error_logs
+        
+    except Exception as e:
+        # 如果获取失败，返回错误信息
+        return [{
+            "filename": "获取失败",
+            "size": "-",
+            "modified_time": f"错误: {str(e)}",
+            "note": "请检查设备连接和SSH配置"
+        }]
 
 @app.get("/api/monitor/devices/{device_id}/error-logs/{filename}/content")
 async def get_log_content(device_id: int, filename: str, ctx: Dict[str, Any] = Depends(require_auth)):
@@ -1830,6 +1930,7 @@ async def create_monitor_task(payload: TaskCreate, ctx: Dict[str, Any] = Depends
         "created_at": datetime.now().isoformat()
     }
     monitor_tasks.append(new_task)
+    save_monitor_data()  # 保存到文件
     return {"message": "任务创建成功", "task": new_task}
 
 @app.put("/api/monitor/monitor-tasks/{task_id}")
@@ -1842,6 +1943,7 @@ async def update_monitor_task(task_id: int, payload: TaskUpdate, ctx: Dict[str, 
         if v is not None:
             task[k] = v
     
+    save_monitor_data()  # 保存到文件
     return {"message": "任务更新成功", "task": task}
 
 @app.delete("/api/monitor/monitor-tasks/{task_id}")
@@ -1852,30 +1954,8 @@ async def delete_monitor_task(task_id: int, ctx: Dict[str, Any] = Depends(requir
     if len(monitor_tasks) == before:
         raise HTTPException(status_code=404, detail="任务不存在")
     
+    save_monitor_data()  # 保存到文件
     return {"message": "任务已删除"}
-
-# 邮件服务相关
-@app.get("/api/monitor/email/config")
-async def get_email_config(ctx: Dict[str, Any] = Depends(require_auth)):
-    # 返回邮件配置（隐藏密码）
-    config = email_config.copy()
-    if "sender_password" in config:
-        del config["sender_password"]  # 不返回密码
-    return config
-
-@app.post("/api/monitor/email/config")
-async def update_email_config(config: EmailConfig, ctx: Dict[str, Any] = Depends(require_auth)):
-    global email_config
-    email_config.update({
-        "smtp_server": config.smtp_server,
-        "smtp_port": config.smtp_port,
-        "sender_email": config.sender_email,
-        "sender_password": config.sender_password,
-        "sender_name": config.sender_name,
-        "use_tls": config.use_tls,
-        "is_configured": True
-    })
-    return {"message": "邮件配置已更新"}
 
 @app.get("/api/monitor/scheduler/status")
 async def get_scheduler_status(ctx: Dict[str, Any] = Depends(require_auth)):
@@ -1887,13 +1967,111 @@ async def get_scheduler_status(ctx: Dict[str, Any] = Depends(require_auth)):
         "scheduled_tasks_count": len(monitor_tasks)
     }
 
+# —— 邮件配置相关API ——
+@app.get("/api/monitor/email/config")
+async def get_email_config(ctx: Dict[str, Any] = Depends(require_auth)):
+    """获取邮件配置"""
+    smtp_server = os.getenv('SMTP_SERVER', '')
+    smtp_username = os.getenv('SMTP_USERNAME', '')
+    smtp_password = os.getenv('SMTP_PASSWORD', '')
+    sender_name = os.getenv('SENDER_NAME', 'NAS日志监控系统')
+    
+    return {
+        "smtp_server": smtp_server,
+        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
+        "sender_email": smtp_username,
+        "sender_name": sender_name,
+        "is_configured": bool(smtp_username and smtp_password)
+    }
+
+@app.put("/api/monitor/email/config")  
+async def update_email_config(
+    smtp_server: str = Body(...),
+    smtp_port: int = Body(587),
+    sender_email: str = Body(...),
+    sender_password: str = Body(...),
+    sender_name: str = Body("NAS日志监控系统"),
+    ctx: Dict[str, Any] = Depends(require_auth)
+):
+    """更新邮件配置"""
+    try:
+        # 更新.env文件
+        env_file = "/home/ugreen/log-analyse/backend/.env"
+        env_lines = []
+        
+        if os.path.exists(env_file):
+            with open(env_file, 'r') as f:
+                env_lines = f.readlines()
+        
+        # 更新或添加配置
+        config_map = {
+            "SMTP_SERVER": smtp_server,
+            "SMTP_PORT": str(smtp_port),
+            "SMTP_USERNAME": sender_email,
+            "SMTP_PASSWORD": sender_password,
+            "SENDER_EMAIL": sender_email,
+            "SENDER_NAME": sender_name
+        }
+        
+        # 更新现有配置
+        updated_keys = set()
+        for i, line in enumerate(env_lines):
+            for key, value in config_map.items():
+                if line.startswith(f"{key}="):
+                    env_lines[i] = f"{key}={value}\n"
+                    updated_keys.add(key)
+                    break
+        
+        # 添加新配置
+        for key, value in config_map.items():
+            if key not in updated_keys:
+                env_lines.append(f"{key}={value}\n")
+        
+        # 写入文件
+        with open(env_file, 'w') as f:
+            f.writelines(env_lines)
+        
+        # 更新环境变量
+        for key, value in config_map.items():
+            os.environ[key] = value
+            
+        return {
+            "success": True,
+            "message": "邮件配置已成功保存"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"保存配置失败: {str(e)}"
+        }
+
+@app.get("/api/monitor/scheduler/status")
+async def get_scheduler_status(ctx: Dict[str, Any] = Depends(require_auth)):
+    """获取调度器状态"""
+    return {
+        "status": "running",
+        "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "next_check": (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+        "tasks_count": 0
+    }
+
 @app.post("/api/monitor/email/test")
 async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any] = Depends(require_auth)):
     # 实现真实的邮件发送
     import smtplib
-    from email.mime.text import MimeText
-    from email.mime.multipart import MimeMultipart
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
     from datetime import datetime
+    
+    # 获取邮件配置
+    email_config = {
+        "smtp_server": os.getenv("SMTP_SERVER", ""),
+        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
+        "sender_email": os.getenv("SMTP_USERNAME", ""),
+        "sender_password": os.getenv("SMTP_PASSWORD", ""),
+        "sender_name": os.getenv("SENDER_NAME", "NAS日志监控系统"),
+        "is_configured": bool(os.getenv("SMTP_USERNAME") and os.getenv("SMTP_PASSWORD"))
+    }
     
     if not email_config.get("is_configured"):
         return {
@@ -1909,10 +2087,11 @@ async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any]
     
     try:
         # 创建邮件消息
-        msg = MimeMultipart()
-        msg['From'] = f"{email_config['sender_name']} <{email_config['sender_email']}>"
+        msg = MIMEMultipart()
+        # QQ邮箱要求严格的From格式
+        msg['From'] = email_config['sender_email']
         msg['To'] = ', '.join(recipients)
-        msg['Subject'] = "日志分析系统 - 邮件测试"
+        msg['Subject'] = "=?utf-8?B?5pel5b+X5YiG5p6Q57O757uf?= - =?utf-8?B?6YKu5Lu25rWL6K+V?="  # "日志分析系统 - 邮件测试" 的UTF-8 Base64编码
         
         # 邮件正文
         body = f"""
@@ -1928,7 +2107,7 @@ async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any]
 日志分析系统自动发送
         """.strip()
         
-        msg.attach(MimeText(body, 'plain', 'utf-8'))
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
         # 连接SMTP服务器并发送邮件
         server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
@@ -1970,11 +2149,84 @@ async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any]
             "message": f"邮件发送失败: {str(e)}"
         }
 
+# —— NAS设备系统信息API ——
+@app.get("/api/monitor/devices/{device_id}/system-info")
+async def get_device_system_info(device_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    """实时获取NAS设备系统信息"""
+    try:
+        import paramiko
+        
+        # 从JSON文件加载设备信息
+        devices_file = "/home/ugreen/log-analyse/database/nas_devices.json"
+        if not os.path.exists(devices_file):
+            return {"success": False, "message": "设备配置文件不存在"}
+            
+        with open(devices_file, 'r') as f:
+            data = json.load(f)
+        
+        # 查找设备
+        device = None
+        for d in data.get('devices', []):
+            if d['id'] == device_id:
+                device = d
+                break
+                
+        if not device:
+            return {"success": False, "message": "设备不存在"}
+        
+        # SSH连接获取系统信息
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(
+            device['ip_address'], 
+            device.get('ssh_port', 22),
+            device['ssh_username'], 
+            device.get('ssh_password', ''),
+            timeout=30
+        )
+        
+        # 执行系统命令获取信息
+        commands = {
+            'hostname': 'hostname',
+            'uptime': 'uptime',
+            'disk_usage': 'df -h | head -5',
+            'memory': 'free -h',
+            'load_average': 'cat /proc/loadavg',
+            'cpu_info': 'cat /proc/cpuinfo | grep "model name" | head -1',
+            'network': 'ip addr show | grep inet | head -5'
+        }
+        
+        system_info = {}
+        for key, cmd in commands.items():
+            try:
+                stdin, stdout, stderr = ssh.exec_command(cmd, timeout=10)
+                result = stdout.read().decode().strip()
+                system_info[key] = result or '获取失败'
+            except Exception as e:
+                system_info[key] = f"获取失败: {str(e)}"
+        
+        ssh.close()
+        
+        return {
+            "success": True,
+            "device_name": device['name'],
+            "ip_address": device['ip_address'],
+            "system_info": system_info,
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取系统信息失败: {str(e)}"
+        }
+
+
 @app.post("/api/monitor/email/send-report")
 async def send_manual_report(payload: Dict[str, Any] = Body(...), ctx: Dict[str, Any] = Depends(require_auth)):
     import smtplib
-    from email.mime.text import MimeText
-    from email.mime.multipart import MimeMultipart
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
     
     task_id = payload.get("task_id")
     task = next((t for t in monitor_tasks if t["id"] == task_id), None)
@@ -1999,7 +2251,7 @@ async def send_manual_report(payload: Dict[str, Any] = Body(...), ctx: Dict[str,
         device_name = device['name'] if device else f"设备ID-{task['device_id']}"
         
         # 创建邮件消息
-        msg = MimeMultipart()
+        msg = MIMEMultipart()
         msg['From'] = f"{email_config['sender_name']} <{email_config['sender_email']}>"
         msg['To'] = ', '.join(recipients)
         msg['Subject'] = f"[日志分析] {device_name} - {task['name']} 监控报告"
@@ -2022,7 +2274,7 @@ async def send_manual_report(payload: Dict[str, Any] = Body(...), ctx: Dict[str,
 日志分析系统自动发送
         """.strip()
         
-        msg.attach(MimeText(body, 'plain', 'utf-8'))
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
         # 连接SMTP服务器并发送邮件
         server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])

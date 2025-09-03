@@ -43,23 +43,23 @@ function computeApiBase(): string {
 	return ''
 }
 
-// 简易Modal组件（美化）
+// 简易Modal组件
 function Modal({ visible, title, children, onClose, footer }: any) {
 	if (!visible) return null
 	const overlayDown = useRef(false)
 	return (
 		<div
-			style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+			style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
 			onMouseDown={(e) => { if (e.target === e.currentTarget) overlayDown.current = true }}
 			onMouseUp={(e) => { if (overlayDown.current && e.target === e.currentTarget) onClose(); overlayDown.current = false }}
 		>
-			<div className="ui-card" onMouseDown={(e) => e.stopPropagation()} onMouseUp={(e) => e.stopPropagation()} style={{ width: 'min(920px, 94vw)', maxHeight: '86vh', overflow: 'auto' }}>
-				<div className="modal-header">
-					<h3 className="modal-title">{title}</h3>
-					<button className="btn btn-outline" onClick={onClose}>×</button>
+			<div style={{ background: 'white', borderRadius: 8, width: 'min(920px, 94vw)', maxHeight: '86vh', overflow: 'auto', border: '1px solid #e5e7eb' }}>
+				<div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+					<h3 style={{ margin: 0, fontWeight: 600 }}>{title}</h3>
+					<button style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }} onClick={onClose}>×</button>
 				</div>
-				<div className="modal-body">{children}</div>
-				{footer && <div className="modal-footer">{footer}</div>}
+				<div style={{ padding: '16px' }}>{children}</div>
+				{footer && <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>{footer}</div>}
 			</div>
 		</div>
 	)
@@ -69,8 +69,8 @@ function Toasts({ toasts, remove }: any) {
 	return (
 		<div style={{ position: 'fixed', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 70 }}>
 			{toasts.map((t: any) => (
-				<div key={t.id} style={{ minWidth: 260, maxWidth: 420, padding: '10px 14px', borderRadius: 10, color: t.type === 'error' ? '#991b1b' : t.type === 'success' ? '#065f46' : '#1f2937', background: t.type === 'error' ? '#fee2e2' : t.type === 'success' ? '#d1fae5' : '#e5e7eb', boxShadow: '0 10px 30px rgba(2,6,23,0.12)' }} onClick={() => remove(t.id)}>
-					<div style={{ fontWeight: 700, marginBottom: 2 }}>{t.type === 'error' ? '错误' : t.type === 'success' ? '成功' : '提示'}</div>
+				<div key={t.id} style={{ minWidth: 260, maxWidth: 420, padding: '10px 14px', borderRadius: 6, color: t.type === 'error' ? '#991b1b' : t.type === 'success' ? '#065f46' : '#1f2937', background: t.type === 'error' ? '#fee2e2' : t.type === 'success' ? '#d1fae5' : '#e5e7eb', border: '1px solid ' + (t.type === 'error' ? '#fca5a5' : t.type === 'success' ? '#86efac' : '#d1d5db'), boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} onClick={() => remove(t.id)}>
+					<div style={{ fontWeight: 600, marginBottom: 2 }}>{t.type === 'error' ? '错误' : t.type === 'success' ? '成功' : '提示'}</div>
 					<div style={{ whiteSpace: 'pre-wrap' }}>{t.message}</div>
 				</div>
 			))}
@@ -283,6 +283,14 @@ export default function Home() {
 	const [emailTestVisible, setEmailTestVisible] = useState(false)
 	const [emailTestSending, setEmailTestSending] = useState(false)
 	const [emailTestRecipients, setEmailTestRecipients] = useState('')
+	const [emailConfigVisible, setEmailConfigVisible] = useState(false)
+	const [emailConfigForm, setEmailConfigForm] = useState({
+		smtp_server: 'smtp.gmail.com',
+		smtp_port: 587,
+		sender_email: '',
+		sender_password: '',
+		sender_name: 'NAS日志监控系统'
+	})
 	const [nasDevices, setNasDevices] = useState<any[]>([])
 	const [monitorTasks, setMonitorTasks] = useState<any[]>([])
 	const [emailConfig, setEmailConfig] = useState<any>(null)
@@ -312,7 +320,7 @@ export default function Home() {
 			if (typeof window === 'undefined') return false
 			const protocol = window.location.protocol
 			const host = window.location.hostname
-			const urlBase = base || `${protocol}//${host}:8001`
+			const urlBase = base || `${protocol}//${host}:8002`
 			const controller = new AbortController()
 			const timer = setTimeout(() => controller.abort(), 5000)
 			try {
@@ -707,44 +715,43 @@ export default function Home() {
 
 	// 顶部导航
 	const Nav = () => (
-		<nav className="ui-card" style={{ position: 'sticky', top: 0, zIndex: 40, margin: '0 0 16px', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-			<div className="flex items-center space-x-3">
-				<div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
-					<span className="text-white font-bold text-lg">📊</span>
+		<nav style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, position: 'sticky', top: 0, zIndex: 40, margin: '0 0 16px', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+			<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+				<div style={{ width: 40, height: 40, background: '#3b82f6', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+					<span style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>📊</span>
 				</div>
-				<h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #1f2937, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>日志分析平台</h1>
+				<h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: '#1f2937' }}>日志分析平台</h1>
 			</div>
 			<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 				{[
-					{ id: 'dashboard', label: '📊 仪表板', color: 'from-blue-500 to-indigo-600' },
-					{ id: 'logs', label: '📁 日志管理', color: 'from-orange-500 to-red-600' },
-					{ id: 'rules', label: '🔍 规则管理', color: 'from-emerald-500 to-teal-600' },
-					{ id: 'problems', label: '📚 问题库', color: 'from-purple-500 to-indigo-600' },
-					{ id: 'monitor', label: '⏰ 定时分析', color: 'from-cyan-500 to-blue-600' },
-					{ id: 'users', label: '👥 用户管理', color: 'from-green-500 to-emerald-600' }
+					{ id: 'dashboard', label: '📊 仪表板' },
+					{ id: 'logs', label: '📁 日志管理' },
+					{ id: 'rules', label: '🔍 规则管理' },
+					{ id: 'problems', label: '📚 问题库' },
+					{ id: 'monitor', label: '⏰ 定时分析' },
+					{ id: 'users', label: '👥 用户管理' }
 				].map(nav => (
 					<button 
 						key={nav.id} 
 						onClick={() => setCurrentPage(nav.id)} 
-						className={`relative px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${
-							currentPage === nav.id 
-								? `bg-gradient-to-r ${nav.color} text-white shadow-lg shadow-${nav.color.split('-')[1]}-500/25`
-								: 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md border border-gray-100'
-						}`}
 						style={{
-							backdropFilter: currentPage === nav.id ? 'none' : 'blur(10px)',
+							padding: '8px 16px',
+							borderRadius: 6,
+							border: currentPage === nav.id ? 'none' : '1px solid #e5e7eb',
+							background: currentPage === nav.id ? '#3b82f6' : 'white',
+							color: currentPage === nav.id ? 'white' : '#374151',
+							fontWeight: currentPage === nav.id ? 600 : 500,
+							cursor: 'pointer',
+							fontSize: '14px'
 						}}
 					>
-						<span className="relative z-10">{nav.label}</span>
-						{currentPage === nav.id && (
-							<div className="absolute inset-0 bg-gradient-to-r opacity-10 rounded-xl animate-pulse"></div>
-						)}
+						{nav.label}
 					</button>
 				))}
-				<div className="h-8 w-px bg-gray-200 mx-2"></div>
+				<div style={{ height: 24, width: 1, background: '#e5e7eb', margin: '0 8px' }}></div>
 				<button 
 					onClick={() => window.location.href = '/profile'} 
-					className="px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-white hover:shadow-md transition-all duration-200 backdrop-blur-sm"
+					style={{ padding: '8px 16px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 6, color: '#374151', fontWeight: 500, cursor: 'pointer', fontSize: '14px' }}
 				>
 					个人中心
 				</button>
@@ -862,17 +869,17 @@ OOM | "Out of memory"
 
 	// 日志管理页面
 	const LogManagement = () => (
-		<div style={{ padding: '2rem' }}>
-			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>📁 日志管理</h2>
+		<div style={{ padding: '32px' }}>
+			<h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: 16, color: '#1f2937' }}>📁 日志管理</h2>
 			<div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 24 }}>
-				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16 }}>
+				<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
 					<h3 style={{ fontWeight: 600, marginBottom: 12 }}>上传日志文件（支持任意扩展名）</h3>
 					<div 
-						style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 24, textAlign: 'center', transition: 'all 0.3s ease' }}
+						style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 24, textAlign: 'center' }}
 						onDragOver={(e) => {
 							e.preventDefault()
 							e.currentTarget.style.borderColor = '#3b82f6'
-							e.currentTarget.style.backgroundColor = '#eff6ff'
+							e.currentTarget.style.backgroundColor = '#f0f9ff'
 						}}
 						onDragLeave={(e) => {
 							e.preventDefault()
@@ -890,20 +897,17 @@ OOM | "Out of memory"
 						}}
 					>
 						<input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="fileUpload" />
-						<label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600, display: 'block' }}>
-							<div style={{ fontSize: '2rem', marginBottom: 8 }}>📎</div>
+						<label htmlFor="fileUpload" style={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 600, display: 'block' }}>
+							<div style={{ fontSize: '32px', marginBottom: 8 }}>📎</div>
 							点击选择文件或拖拽到此处
-							<div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>支持多文件同时上传</div>
+							<div style={{ fontSize: '14px', color: '#6b7280', marginTop: 4 }}>支持多文件同时上传</div>
 						</label>
 					</div>
 				</div>
 				<div style={{ 
-					background: 'rgba(255,255,255,0.75)', 
-					backdropFilter: 'blur(6px)', 
-					borderWidth: 1,
-					borderStyle: 'solid',
-					borderColor: analyzingText ? '#3b82f6' : 'rgba(255,255,255,0.35)',
-					borderRadius: 12, 
+					background: 'white', 
+					border: analyzingText ? '1px solid #3b82f6' : '1px solid #e5e7eb',
+					borderRadius: 8, 
 					padding: 16
 				}}>
 					<h3 style={{ fontWeight: 600, marginBottom: 8 }}>直接粘贴文本分析（≤ 5MB）</h3>
@@ -916,9 +920,9 @@ OOM | "Out of memory"
 							width: '100%', 
 							minHeight: 160, 
 							border: '1px solid #e5e7eb', 
-							borderRadius: 8, 
+							borderRadius: 6, 
 							padding: 12, 
-							fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+							fontFamily: 'monospace',
 							opacity: analyzingText ? 0.6 : 1,
 							backgroundColor: analyzingText ? '#f9fafb' : 'white'
 						}} 
@@ -936,9 +940,8 @@ OOM | "Out of memory"
 								<div style={{ 
 									width: `${textAnalysisProgress.progress}%`, 
 									height: '100%', 
-									background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', 
-									borderRadius: 2,
-									transition: 'width 0.3s ease'
+									background: '#3b82f6', 
+									borderRadius: 2
 								}} />
 							</div>
 							<div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{Math.round(textAnalysisProgress.progress)}% 完成</div>
@@ -950,27 +953,14 @@ OOM | "Out of memory"
 							onClick={handleAnalyzeText} 
 							disabled={analyzingText || !pasteText}
 							style={{ 
-								background: analyzingText ? '#9ca3af' : (!pasteText ? '#9ca3af' : '#2563eb'), 
+								background: (analyzingText || !pasteText) ? '#9ca3af' : '#3b82f6', 
 								color: 'white', 
 								padding: '8px 14px', 
-								borderRadius: 8, 
+								borderRadius: 6, 
 								border: 'none', 
-								cursor: (analyzingText || !pasteText) ? 'not-allowed' : 'pointer',
-								display: 'flex',
-								alignItems: 'center',
-								gap: 6
+								cursor: (analyzingText || !pasteText) ? 'not-allowed' : 'pointer'
 							}}
 						>
-							{analyzingText && (
-								<div style={{ 
-									width: 14, 
-									height: 14, 
-									border: '2px solid rgba(255,255,255,0.3)', 
-									borderTop: '2px solid white', 
-									borderRadius: '50%',
-									animation: 'spin 1s linear infinite' 
-								}} />
-							)}
 							{analyzingText ? '分析中...' : '分析文本'}
 						</button>
 					</div>
@@ -978,7 +968,7 @@ OOM | "Out of memory"
 			</div>
 
 			{uploadedFiles.length > 0 && (
-				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16, maxHeight: 360, overflow: 'auto' }}>
+				<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, maxHeight: 360, overflow: 'auto' }}>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
 						<h3 style={{ fontWeight: 600, margin: 0 }}>已上传文件 ({uploadedFiles.length})</h3>
 						<span style={{ color: '#6b7280', fontSize: 14 }}>💡 双击文件预览内容</span>
@@ -992,13 +982,11 @@ OOM | "Out of memory"
 								justifyContent: 'space-between', 
 								alignItems: 'center', 
 								padding: 12, 
-								borderWidth: 1,
-								borderStyle: 'solid',
-								borderColor: isAnalyzing ? '#3b82f6' : '#e5e7eb',
-								borderRadius: 8, 
+								border: isAnalyzing ? '1px solid #3b82f6' : '1px solid #e5e7eb',
+								borderRadius: 6, 
 								marginBottom: 8, 
-								cursor: 'zoom-in',
-								background: isAnalyzing ? '#f0f9ff' : 'transparent'
+								cursor: 'pointer',
+								background: isAnalyzing ? '#f0f9ff' : 'white'
 							}}>
 								<div style={{ flex: 1 }}>
 									<p style={{ fontWeight: 600, margin: 0 }}>{file.filename}</p>
@@ -1016,9 +1004,8 @@ OOM | "Out of memory"
 												<div style={{ 
 													width: `${progress.progress}%`, 
 													height: '100%', 
-													background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', 
-													borderRadius: 2,
-													transition: 'width 0.3s ease'
+													background: '#3b82f6', 
+													borderRadius: 2
 												}} />
 											</div>
 											<div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{Math.round(progress.progress)}% 完成</div>
@@ -1030,28 +1017,15 @@ OOM | "Out of memory"
 										onClick={() => analyzeFile(file.id)} 
 										disabled={isAnalyzing}
 										style={{ 
-											background: isAnalyzing ? '#9ca3af' : '#2563eb', 
+											background: isAnalyzing ? '#9ca3af' : '#3b82f6', 
 											color: 'white', 
 											padding: '6px 10px', 
-											borderRadius: 6, 
+											borderRadius: 4, 
 											border: 'none', 
 											cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-											opacity: isAnalyzing ? 0.6 : 1,
-											display: 'flex',
-											alignItems: 'center',
-											gap: 4
+											opacity: isAnalyzing ? 0.6 : 1
 										}}
 									>
-										{isAnalyzing && (
-											<div style={{ 
-												width: 12, 
-												height: 12, 
-												border: '2px solid rgba(255,255,255,0.3)', 
-												borderTop: '2px solid white', 
-												borderRadius: '50%',
-												animation: 'spin 1s linear infinite' 
-											}} />
-										)}
 										{isAnalyzing ? '分析中...' : '分析'}
 									</button>
 									<button 
@@ -1061,7 +1035,7 @@ OOM | "Out of memory"
 											background: isAnalyzing ? '#9ca3af' : '#ef4444', 
 											color: 'white', 
 											padding: '6px 10px', 
-											borderRadius: 6, 
+											borderRadius: 4, 
 											border: 'none', 
 											cursor: isAnalyzing ? 'not-allowed' : 'pointer',
 											opacity: isAnalyzing ? 0.6 : 1
@@ -1111,21 +1085,21 @@ OOM | "Out of memory"
 
 	// 规则管理页面
 	const RuleManagement = () => (
-		<div style={{ padding: '2rem' }}>
-			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>🔍 规则管理</h2>
+		<div style={{ padding: '32px' }}>
+			<h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: 16, color: '#1f2937' }}>🔍 规则管理</h2>
 			<div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16 }}>
-				<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 12, maxHeight: '70vh', minHeight: '40vh', overflow: 'auto' }}>
+				<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, maxHeight: '70vh', minHeight: '40vh', overflow: 'auto' }}>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
 						<h4 style={{ margin: 0 }}>规则文件夹</h4>
-						<button onClick={() => { setFolderForm({ id: null, name: '' }); setFolderModalVisible(true) }} style={{ border: 'none', background: '#2563eb', color: '#fff', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}>+ 文件夹</button>
+						<button onClick={() => { setFolderForm({ id: null, name: '' }); setFolderModalVisible(true) }} style={{ border: 'none', background: '#3b82f6', color: '#fff', padding: '6px 10px', borderRadius: 4, cursor: 'pointer' }}>+ 文件夹</button>
 					</div>
 					{ruleFolders.map((f: any) => (
-						<div key={f.id} onClick={() => setSelectedFolderId(f.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDropToFolder(f.id)} style={{ padding: 10, borderRadius: 8, cursor: 'pointer', background: selectedFolderId === f.id ? 'rgba(37,99,235,0.1)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+						<div key={f.id} onClick={() => setSelectedFolderId(f.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDropToFolder(f.id)} style={{ padding: 10, borderRadius: 6, cursor: 'pointer', background: selectedFolderId === f.id ? '#eff6ff' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: selectedFolderId === f.id ? '1px solid #3b82f6' : '1px solid transparent' }}>
 							<div>{f.name} <span style={{ color: '#6b7280' }}>({f.count})</span></div>
 							{f.id !== 1 && (
 								<div style={{ display: 'flex', gap: 6 }}>
-									<button onClick={(e) => { e.stopPropagation(); setFolderForm({ id: f.id, name: f.name }); setFolderModalVisible(true) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '2px 8px', borderRadius: 6, cursor: 'pointer' }}>重命名</button>
-									<button onClick={async (e) => { e.stopPropagation(); const ok = await askConfirm('确定删除该文件夹？规则将移至默认文件夹'); if (!ok) return; const r = await authedFetch(`${getApiBase()}/api/rule-folders/${f.id}`, { method: 'DELETE' }); if (r.ok) { await fetchRuleFolders(); await fetchDetectionRules(searchRule, selectedFolderId); showToast('文件夹已删除', 'success') } }} style={{ border: '1px solid #ef4444', color: '#ef4444', background: '#fff', padding: '2px 8px', borderRadius: 6, cursor: 'pointer' }}>删除</button>
+									<button onClick={(e) => { e.stopPropagation(); setFolderForm({ id: f.id, name: f.name }); setFolderModalVisible(true) }} style={{ border: '1px solid #e5e7eb', background: '#fff', padding: '2px 8px', borderRadius: 4, cursor: 'pointer' }}>重命名</button>
+									<button onClick={async (e) => { e.stopPropagation(); const ok = await askConfirm('确定删除该文件夹？规则将移至默认文件夹'); if (!ok) return; const r = await authedFetch(`${getApiBase()}/api/rule-folders/${f.id}`, { method: 'DELETE' }); if (r.ok) { await fetchRuleFolders(); await fetchDetectionRules(searchRule, selectedFolderId); showToast('文件夹已删除', 'success') } }} style={{ border: '1px solid #ef4444', color: '#ef4444', background: '#fff', padding: '2px 8px', borderRadius: 4, cursor: 'pointer' }}>删除</button>
 								</div>
 							)}
 						</div>
@@ -1134,13 +1108,13 @@ OOM | "Out of memory"
 
 				<div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gap: 12 }}>
 					<div style={{ display: 'flex', gap: 8 }}>
-						<input value={searchRule} onChange={(e) => setSearchRule(e.target.value)} placeholder="搜索规则名称或描述..." style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }} />
-						<button onClick={openRuleAdd} style={{ background: '#2563eb', color: 'white', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>+ 新建规则</button>
+						<input value={searchRule} onChange={(e) => setSearchRule(e.target.value)} placeholder="搜索规则名称或描述..." style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px' }} />
+						<button onClick={openRuleAdd} style={{ background: '#3b82f6', color: 'white', padding: '8px 14px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>+ 新建规则</button>
 					</div>
 
-					<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 12, maxHeight: '70vh', minHeight: '40vh', overflow: 'auto' }}>
+					<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, maxHeight: '70vh', minHeight: '40vh', overflow: 'auto' }}>
 						{detectionRules.map((rule: any) => (
-							<div key={rule.id} draggable onDragStart={() => onDragStartRule(rule.id)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+							<div key={rule.id} draggable onDragStart={() => onDragStartRule(rule.id)} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginBottom: 10 }}>
 								<div>
 									<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 										<div style={{ width: 8, height: 8, borderRadius: 999, background: rule.enabled ? '#10b981' : '#9ca3af' }} />
@@ -1150,9 +1124,9 @@ OOM | "Out of memory"
 									<div style={{ color: '#374151', fontSize: 12, marginTop: 4 }}>{(rule.dsl && rule.dsl.trim()) ? 'DSL 规则' : `模式数：${(rule.patterns || []).length} | 文件夹：${rule.folder_id}`}</div>
 								</div>
 								<div style={{ display: 'flex', gap: 8 }}>
-									<button onClick={() => toggleRule(rule.id, rule.enabled)} style={{ background: rule.enabled ? '#059669' : '#9ca3af', color: '#fff', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>{rule.enabled ? '禁用' : '启用'}</button>
-									<button onClick={() => openRuleEdit(rule)} style={{ background: '#10b981', color: '#fff', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>编辑</button>
-									<button onClick={() => deleteRule(rule.id)} style={{ background: '#ef4444', color: '#fff', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>删除</button>
+									<button onClick={() => toggleRule(rule.id, rule.enabled)} style={{ background: rule.enabled ? '#059669' : '#9ca3af', color: '#fff', padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>{rule.enabled ? '禁用' : '启用'}</button>
+									<button onClick={() => openRuleEdit(rule)} style={{ background: '#10b981', color: '#fff', padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>编辑</button>
+									<button onClick={() => deleteRule(rule.id)} style={{ background: '#ef4444', color: '#fff', padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>删除</button>
 								</div>
 							</div>
 						))}
@@ -1222,14 +1196,14 @@ OOM | "Out of memory"
 
 	// 用户管理页面
 	const UserManagement = () => (
-		<div style={{ padding: '2rem' }}>
-			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>👥 用户管理</h2>
-			<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 12, padding: 16 }}>
+		<div style={{ padding: '32px' }}>
+			<h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: 16, color: '#1f2937' }}>👥 用户管理</h2>
+			<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
 					<h3 style={{ fontWeight: 600, margin: 0 }}>用户列表</h3>
-					<button onClick={openUserAdd} style={{ background: '#2563eb', color: 'white', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>+ 添加用户</button>
+					<button onClick={openUserAdd} style={{ background: '#3b82f6', color: 'white', padding: '8px 14px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>+ 添加用户</button>
 				</div>
-				<div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', maxHeight: '60vh', minHeight: '40vh', overflowY: 'auto' }}>
+				<div style={{ border: '1px solid #e5e7eb', borderRadius: 6, overflow: 'hidden', maxHeight: '60vh', minHeight: '40vh', overflowY: 'auto' }}>
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', background: '#f9fafb', padding: 12, fontWeight: 600 }}>
 						<div>用户名</div><div>邮箱</div><div>角色</div><div>职位</div><div>操作</div>
 					</div>
@@ -1239,8 +1213,8 @@ OOM | "Out of memory"
 							<div style={{ display: 'flex', gap: 8 }}>
 								{user.username !== 'admin' ? (
 									<>
-										<button onClick={() => openUserEdit(user)} style={{ background: '#10b981', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>编辑</button>
-										<button onClick={() => confirmDeleteUser(user.id)} style={{ background: '#ef4444', color: 'white', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>删除</button>
+										<button onClick={() => openUserEdit(user)} style={{ background: '#10b981', color: 'white', padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>编辑</button>
+										<button onClick={() => confirmDeleteUser(user.id)} style={{ background: '#ef4444', color: 'white', padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>删除</button>
 									</>
 								) : (
 									<span style={{ color: '#9ca3af', fontSize: '12px', padding: '6px 10px' }}>系统管理员</span>
@@ -1295,28 +1269,28 @@ OOM | "Out of memory"
 
 	// 仪表板页面
 	const Dashboard = () => (
-		<div style={{ padding: '2rem' }}>
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-				<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>📊 系统仪表板</h2>
-				{currentUser && <div style={{ color: '#374151' }}>Hi，<span style={{ fontWeight: 700 }}>{currentUser.username}</span></div>}
+		<div style={{ padding: '32px' }}>
+			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+				<h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: '#1f2937' }}>📊 系统仪表板</h2>
+				{currentUser && <div style={{ color: '#374151' }}>Hi，<span style={{ fontWeight: 600 }}>{currentUser.username}</span></div>}
 			</div>
-			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-				{[{ color: '#059669', value: dashboardStats.uploaded_files, label: '已上传文件' }, { color: '#dc2626', value: dashboardStats.detected_issues, label: '检测到错误' }, { color: '#2563eb', value: dashboardStats.detection_rules, label: '检测规则' }, { color: '#8b5cf6', value: Object.values(problemStatsByType).reduce((a,b)=>a+b,0), label: '问题总数' }, ...(dashboardStats.total_analysis_runs !== undefined ? [{ color: '#f59e0b', value: dashboardStats.total_analysis_runs, label: '全站分析总次数' }] : [])].map((c, i) => (
-					<div key={i} style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem' }}>
-						<h3 style={{ color: c.color, fontSize: '2rem', margin: 0 }}>{c.value}</h3>
-						<p style={{ color: '#6b7280', margin: 0 }}>{c.label}</p>
+			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16, marginBottom: 32 }}>
+				{[{ color: '#059669', value: dashboardStats.uploaded_files, label: '已上传文件' }, { color: '#dc2626', value: dashboardStats.detected_issues, label: '检测到错误' }, { color: '#3b82f6', value: dashboardStats.detection_rules, label: '检测规则' }, { color: '#8b5cf6', value: Object.values(problemStatsByType).reduce((a,b)=>a+b,0), label: '问题总数' }, ...(dashboardStats.total_analysis_runs !== undefined ? [{ color: '#f59e0b', value: dashboardStats.total_analysis_runs, label: '全站分析总次数' }] : [])].map((c, i) => (
+					<div key={i} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 24 }}>
+						<h3 style={{ color: c.color, fontSize: '32px', margin: 0, fontWeight: 700 }}>{c.value}</h3>
+						<p style={{ color: '#6b7280', margin: 0, marginTop: 4 }}>{c.label}</p>
 					</div>
 				))}
 			</div>
 
-			<div style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '0.75rem', boxShadow: '0 10px 30px rgba(2,6,23,0.08)', padding: '1.5rem', maxHeight: '75vh', minHeight: '50vh', overflow: 'auto' }}>
-				<h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>最近分析结果（双击查看详情）</h3>
+			<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 24, maxHeight: '75vh', minHeight: '50vh', overflow: 'auto' }}>
+				<h3 style={{ fontWeight: 600, marginBottom: 16 }}>最近分析结果（双击查看详情）</h3>
 				{analysisResults.length > 0 ? (
 					analysisResults.slice(-20).reverse().map((result, index) => (
-						<div key={index} data-analysis-id={result.file_id} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '0.25rem', marginBottom: '0.5rem', cursor: 'zoom-in', background: highlightAnalysisId===result.file_id ? '#e8f7ee' : viewHighlightId===result.file_id ? '#fff7da' : 'transparent', transition: 'background 0.2s ease' }}>
+						<div key={index} data-analysis-id={result.file_id} onDoubleClick={() => openAnalysisDetail(result.file_id, result.filename)} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 8, cursor: 'pointer', background: highlightAnalysisId===result.file_id ? '#e8f7ee' : viewHighlightId===result.file_id ? '#fff7da' : 'white' }}>
 							<p style={{ fontWeight: 600, margin: 0 }}>{result?.filename || '未知文件'}</p>
 							{(() => { const sum = (result && result.summary) ? result.summary : { total_issues: 0 }; const ts = result?.analysis_time ? new Date(result.analysis_time).toLocaleString() : ''; return (
-								<p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>发现 {sum.total_issues || 0} 个问题{ts ? ` - ${ts}` : ''}</p>
+								<p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>发现 {sum.total_issues || 0} 个问题{ts ? ` - ${ts}` : ''}</p>
 							) })()}
 						</div>
 					))
@@ -1456,7 +1430,21 @@ OOM | "Out of memory"
 	const getDeviceSystemInfo = async (deviceId: number) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}/system-info`); if (r.ok) { const d = await r.json(); setDeviceSystemInfo(d); setSystemInfoVisible(true) } else showToast('获取系统信息失败', 'error') } catch { showToast('获取系统信息失败', 'error') } }
 
 	// —— 定时分析：任务管理 ——
-	const openTaskAdd = (device: any) => { setTaskForm({ id: null, device_id: device.id, name: `${device.name}监控任务`, log_path: '/var/log/syslog', rule_ids: [], email_recipients: [], email_time: '15:00' }); setTaskModalMode('add'); setTaskModalVisible(true) }
+	const openTaskAdd = (device: any) => { 
+		// 获取所有启用的规则ID
+		const enabledRuleIds = allDetectionRules.filter(rule => rule.enabled).map(rule => rule.id);
+		setTaskForm({ 
+			id: null, 
+			device_id: device.id, 
+			name: `${device.name}监控任务`, 
+			log_path: '/var/log/syslog', 
+			rule_ids: enabledRuleIds, // 自动加载所有启用的规则
+			email_recipients: [], 
+			email_time: '15:00' 
+		}); 
+		setTaskModalMode('add'); 
+		setTaskModalVisible(true) 
+	}
 	const openTaskEdit = (task: any) => { setTaskForm({ id: task.id, device_id: task.device_id, name: task.name, log_path: task.log_path, rule_ids: task.rule_ids || [], email_recipients: task.email_recipients || [], email_time: task.email_time || '15:00' }); setTaskModalMode('edit'); setTaskModalVisible(true) }
 	const submitTask = async () => {
 		try {
@@ -1475,8 +1463,26 @@ OOM | "Out of memory"
 	const downloadLogContent = async (deviceId: number, filename: string) => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/devices/${deviceId}/error-logs/${filename}/content`); if (r.ok) { const d = await r.json(); setLogContent(d); setLogContentVisible(true) } else showToast('下载日志内容失败', 'error') } catch { showToast('下载日志内容失败', 'error') } }
 
 	// —— 邮件服务相关函数 ——
-	const fetchEmailConfig = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/email/config`); if (r.ok) { const d = await r.json(); setEmailConfig(d) } } catch { showToast('获取邮件配置失败', 'error') } }
+	const fetchEmailConfig = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/email/config`); if (r.ok) { const d = await r.json(); setEmailConfig(d); setEmailConfigForm({smtp_server: d.smtp_server || 'smtp.gmail.com', smtp_port: d.smtp_port || 587, sender_email: d.sender_email || '', sender_password: '', sender_name: d.sender_name || 'NAS日志监控系统'}) } } catch { showToast('获取邮件配置失败', 'error') } }
 	const fetchSchedulerStatus = async () => { try { const r = await authedFetch(`${getApiBase()}/api/monitor/scheduler/status`); if (r.ok) { const d = await r.json(); setSchedulerStatus(d) } } catch { showToast('获取调度器状态失败', 'error') } }
+	const saveEmailConfig = async () => {
+		try {
+			const r = await authedFetch(`${getApiBase()}/api/monitor/email/config`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(emailConfigForm)
+			})
+			if (r.ok) {
+				setEmailConfigVisible(false)
+				await fetchEmailConfig()
+				showToast('SMTP配置保存成功', 'success')
+			} else {
+				showToast('SMTP配置保存失败', 'error')
+			}
+		} catch {
+			showToast('SMTP配置保存失败', 'error')
+		}
+	}
 	const sendTestEmail = async () => {
 		if (!emailTestRecipients.trim()) { showToast('请输入收件人邮箱', 'error'); return }
 		const recipients = emailTestRecipients.split(',').map(email => email.trim()).filter(Boolean)
@@ -1487,36 +1493,36 @@ OOM | "Out of memory"
 
 	// 定时分析管理页面
 	const MonitorManagement = () => (
-		<div style={{ padding: '2rem' }}>
-			<h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>⏰ 定时分析</h2>
+		<div style={{ padding: '32px' }}>
+			<h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: 16, color: '#1f2937' }}>⏰ 定时分析</h2>
 			
 			{/* 设备管理区域 */}
-			<div className="ui-card" style={{ padding: 16, marginBottom: 24 }}>
+			<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, marginBottom: 24 }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
 					<h3 style={{ fontWeight: 600, margin: 0, color: '#1f2937' }}>📱 NAS设备管理</h3>
-					<button className="btn btn-primary" onClick={openDeviceAdd}>+ 添加设备</button>
+					<button onClick={openDeviceAdd} style={{ background: '#3b82f6', color: 'white', padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>+ 添加设备</button>
 				</div>
 				<div style={{ maxHeight: '400px', overflow: 'auto' }}>
 					{nasDevices.length === 0 ? (
 						<div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-							<div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔌</div>
+							<div style={{ fontSize: '48px', marginBottom: 16 }}>🔌</div>
 							<p>还没有添加任何NAS设备</p>
-							<button className="btn btn-primary" onClick={openDeviceAdd}>添加第一个设备</button>
+							<button onClick={openDeviceAdd} style={{ background: '#3b82f6', color: 'white', padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>添加第一个设备</button>
 						</div>
 					) : (
 						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
 							{nasDevices.map((device: any) => (
-								<div key={device.id} className="ui-card" style={{ padding: 16, border: '1px solid #e5e7eb' }}>
+								<div key={device.id} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 6, padding: 16 }}>
 									<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
 										<div>
-											<h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#1f2937' }}>{device.name}</h4>
-											<p style={{ margin: '4px 0', color: '#6b7280', fontSize: '0.9rem' }}>{device.ip_address}:{device.ssh_port}</p>
-											{device.description && <p style={{ margin: '4px 0', color: '#9ca3af', fontSize: '0.8rem' }}>{device.description}</p>}
+											<h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#1f2937' }}>{device.name}</h4>
+											<p style={{ margin: '4px 0', color: '#6b7280', fontSize: 14 }}>{device.ip_address}:{device.ssh_port}</p>
+											{device.description && <p style={{ margin: '4px 0', color: '#9ca3af', fontSize: 12 }}>{device.description}</p>}
 										</div>
 										<div style={{ 
 											padding: '4px 8px', 
-											borderRadius: 6, 
-											fontSize: '0.75rem', 
+											borderRadius: 4, 
+											fontSize: 12, 
 											fontWeight: 600,
 											background: device.status === 'active' ? '#dcfce7' : device.status === 'error' ? '#fee2e2' : '#f3f4f6',
 											color: device.status === 'active' ? '#166534' : device.status === 'error' ? '#991b1b' : '#6b7280'
@@ -1525,51 +1531,45 @@ OOM | "Out of memory"
 										</div>
 									</div>
 									
-									<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.8rem', color: '#6b7280', marginBottom: 12 }}>
+									<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
 										<div>用户: {device.ssh_username}</div>
 										<div>脚本: {device.script_deployed ? '✅ 已部署' : '⚪ 未部署'}</div>
-										<div>最后连接: {device.last_connected ? new Date(device.last_connected).toLocaleString() : '从未'}</div>
+										<div style={{ gridColumn: '1 / -1' }}>最后连接: {device.last_connected ? new Date(device.last_connected).toLocaleString() : '从未'}</div>
 									</div>
 									
 									<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
 										<button 
-											className="btn btn-outline" 
-											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											style={{ fontSize: 12, padding: '4px 8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
 											onClick={() => testDeviceConnection(device.id)}
 										>
 											🔗 测试连接
 										</button>
 										<button 
-											className="btn btn-outline" 
-											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											style={{ fontSize: 12, padding: '4px 8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
 											onClick={() => getDeviceSystemInfo(device.id)}
 										>
 											📊 系统信息
 										</button>
 										<button 
-											className="btn btn-outline" 
-											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											style={{ fontSize: 12, padding: '4px 8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
 											onClick={() => openTaskAdd(device)}
 										>
 											⏰ 添加任务
 										</button>
 										<button 
-											className="btn btn-outline" 
-											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											style={{ fontSize: 12, padding: '4px 8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
 											onClick={() => getDeviceErrorLogs(device.id)}
 										>
 											📋 错误日志
 										</button>
 										<button 
-											className="btn" 
-											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											style={{ fontSize: 12, padding: '4px 8px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
 											onClick={() => openDeviceEdit(device)}
 										>
 											✏️ 编辑
 										</button>
 										<button 
-											className="btn btn-danger" 
-											style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+											style={{ fontSize: 12, padding: '4px 8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
 											onClick={() => deleteDevice(device.id)}
 										>
 											🗑️ 删除
@@ -1583,34 +1583,34 @@ OOM | "Out of memory"
 			</div>
 
 			{/* 监控任务区域 */}
-			<div className="ui-card" style={{ padding: 16 }}>
+			<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
 					<h3 style={{ fontWeight: 600, margin: 0, color: '#1f2937' }}>⏰ 监控任务</h3>
-					<span style={{ color: '#6b7280', fontSize: '0.9rem' }}>总计 {monitorTasks.length} 个任务</span>
+					<span style={{ color: '#6b7280', fontSize: 14 }}>总计 {monitorTasks.length} 个任务</span>
 				</div>
 				<div style={{ maxHeight: '400px', overflow: 'auto' }}>
 					{monitorTasks.length === 0 ? (
 						<div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-							<div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏰</div>
+							<div style={{ fontSize: '48px', marginBottom: 16 }}>⏰</div>
 							<p>还没有创建任何监控任务</p>
-							<p style={{ fontSize: '0.9rem', color: '#9ca3af' }}>请先添加NAS设备，然后为设备创建监控任务</p>
+							<p style={{ fontSize: 14, color: '#9ca3af' }}>请先添加NAS设备，然后为设备创建监控任务</p>
 						</div>
 					) : (
 						<div style={{ display: 'grid', gap: 12 }}>
 							{monitorTasks.map((task: any) => {
 								const device = nasDevices.find(d => d.id === task.device_id)
 								return (
-									<div key={task.id} className="ui-card" style={{ padding: 16, border: '1px solid #e5e7eb' }}>
+									<div key={task.id} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 6, padding: 16 }}>
 										<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
 											<div>
-												<h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#1f2937' }}>{task.name}</h4>
-												<p style={{ margin: '4px 0', color: '#6b7280', fontSize: '0.9rem' }}>设备: {device?.name || '未知设备'} ({device?.ip_address})</p>
-												<p style={{ margin: '4px 0', color: '#9ca3af', fontSize: '0.8rem' }}>日志路径: {task.log_path}</p>
+												<h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#1f2937' }}>{task.name}</h4>
+												<p style={{ margin: '4px 0', color: '#6b7280', fontSize: 14 }}>设备: {device?.name || '未知设备'} ({device?.ip_address})</p>
+												<p style={{ margin: '4px 0', color: '#9ca3af', fontSize: 12 }}>日志路径: {task.log_path}</p>
 											</div>
 											<div style={{ 
 												padding: '4px 8px', 
-												borderRadius: 6, 
-												fontSize: '0.75rem', 
+												borderRadius: 4, 
+												fontSize: 12, 
 												fontWeight: 600,
 												background: task.status === 'running' ? '#dcfce7' : task.status === 'error' ? '#fee2e2' : '#f3f4f6',
 												color: task.status === 'running' ? '#166534' : task.status === 'error' ? '#991b1b' : '#6b7280'
@@ -1619,7 +1619,7 @@ OOM | "Out of memory"
 											</div>
 										</div>
 										
-										<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: '0.8rem', color: '#6b7280', marginBottom: 12 }}>
+										<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
 											<div>规则数: {task.rule_ids?.length || 0}</div>
 											<div>邮件时间: {task.email_time}</div>
 											<div>接收者: {task.email_recipients?.length || 0} 人</div>
@@ -1630,23 +1630,20 @@ OOM | "Out of memory"
 										
 										<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
 											<button 
-												className="btn" 
-												style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+												style={{ fontSize: 12, padding: '4px 8px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
 												onClick={() => openTaskEdit(task)}
 											>
 												✏️ 编辑
 											</button>
 											<button 
-												className="btn btn-outline" 
-												style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+												style={{ fontSize: 12, padding: '4px 8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
 												onClick={() => sendManualReport(task.id)}
 												disabled={!task.email_recipients || task.email_recipients.length === 0}
 											>
 												📧 发送报告
 											</button>
 											<button 
-												className="btn btn-danger" 
-												style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+												style={{ fontSize: 12, padding: '4px 8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
 												onClick={() => deleteTask(task.id)}
 											>
 												🗑️ 删除
@@ -1661,12 +1658,13 @@ OOM | "Out of memory"
 			</div>
 
 			{/* 邮件服务配置区域 */}
-			<div className="ui-card" style={{ padding: 16 }}>
+			<div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
 					<h3 style={{ fontWeight: 600, margin: 0, color: '#1f2937' }}>📧 邮件服务配置</h3>
 					<div style={{ display: 'flex', gap: 8 }}>
-						<button className="btn btn-outline" onClick={() => { fetchEmailConfig(); fetchSchedulerStatus() }}>🔄 刷新状态</button>
-						<button className="btn btn-outline" onClick={() => setEmailTestVisible(true)}>📧 测试邮件</button>
+						<button onClick={() => setEmailConfigVisible(true)} style={{ background: '#3b82f6', color: 'white', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}>⚙️ 配置SMTP</button>
+						<button onClick={() => { fetchEmailConfig(); fetchSchedulerStatus() }} style={{ background: 'white', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}>🔄 刷新状态</button>
+						<button onClick={() => setEmailTestVisible(true)} style={{ background: 'white', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}>📧 测试邮件</button>
 					</div>
 				</div>
 				
@@ -2104,6 +2102,71 @@ OOM | "Out of memory"
 						</div>
 					</div>
 				)}
+			</Modal>
+
+			{/* SMTP配置弹窗 */}
+			<Modal visible={emailConfigVisible} title="⚙️ SMTP邮件配置" onClose={() => setEmailConfigVisible(false)} footer={[
+				<button key="cancel" onClick={() => setEmailConfigVisible(false)} style={{ padding: '8px 16px', border: '1px solid #ccc', borderRadius: 4, background: 'white', marginRight: 8 }}>取消</button>,
+				<button key="save" onClick={saveEmailConfig} style={{ padding: '8px 16px', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white' }}>保存配置</button>
+			]}>
+				<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+					<div>
+						<label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>SMTP服务器</label>
+						<input
+							type="text"
+							value={emailConfigForm.smtp_server}
+							onChange={(e) => setEmailConfigForm({...emailConfigForm, smtp_server: e.target.value})}
+							placeholder="例如：smtp.gmail.com"
+							style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+						/>
+					</div>
+					<div>
+						<label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>SMTP端口</label>
+						<input
+							type="number"
+							value={emailConfigForm.smtp_port}
+							onChange={(e) => setEmailConfigForm({...emailConfigForm, smtp_port: parseInt(e.target.value) || 587})}
+							placeholder="587"
+							style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+						/>
+					</div>
+					<div>
+						<label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>发送者邮箱</label>
+						<input
+							type="email"
+							value={emailConfigForm.sender_email}
+							onChange={(e) => setEmailConfigForm({...emailConfigForm, sender_email: e.target.value})}
+							placeholder="your_email@gmail.com"
+							style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+						/>
+					</div>
+					<div>
+						<label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>邮箱密码/应用专用密码</label>
+						<input
+							type="password"
+							value={emailConfigForm.sender_password}
+							onChange={(e) => setEmailConfigForm({...emailConfigForm, sender_password: e.target.value})}
+							placeholder="邮箱密码或应用专用密码"
+							style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+						/>
+					</div>
+					<div>
+						<label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>发送者显示名</label>
+						<input
+							type="text"
+							value={emailConfigForm.sender_name}
+							onChange={(e) => setEmailConfigForm({...emailConfigForm, sender_name: e.target.value})}
+							placeholder="NAS日志监控系统"
+							style={{ width: '100%', padding: '8px 12px', border: '1px solid #ccc', borderRadius: 4 }}
+						/>
+					</div>
+					<div style={{ background: '#f3f4f6', padding: 12, borderRadius: 6, fontSize: '0.9rem', color: '#4b5563' }}>
+						<strong>Gmail配置提示：</strong><br/>
+						1. 启用两步验证<br/>
+						2. 生成应用专用密码<br/>
+						3. 使用应用专用密码而不是账号密码
+					</div>
+				</div>
 			</Modal>
 
 			{/* 邮件测试弹窗 */}

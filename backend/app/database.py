@@ -7,11 +7,12 @@ from .config import get_settings
 
 settings = get_settings()
 
-# PostgreSQL 数据库连接
+# PostgreSQL/SQLite 数据库连接
 engine = create_engine(
     settings.database_url,
-    poolclass=StaticPool,
+    poolclass=StaticPool if "sqlite" in settings.database_url else None,
     echo=settings.debug,
+    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
     future=True
 )
 
@@ -19,8 +20,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Redis 连接
-redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+# Redis 连接 - 可选
+try:
+    if settings.use_redis:
+        redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+    else:
+        redis_client = None
+except Exception:
+    redis_client = None
 
 
 # 数据库依赖注入
@@ -34,4 +41,6 @@ def get_db():
 
 # Redis 依赖注入
 def get_redis():
-    return redis_client 
+    if redis_client is not None:
+        return redis_client
+    return None 

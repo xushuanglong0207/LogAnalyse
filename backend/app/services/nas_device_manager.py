@@ -4,7 +4,7 @@ NAS设备SSH连接和脚本部署服务
 """
 
 import asyncio
-import asyncssh
+import paramiko
 import tempfile
 import os
 import logging
@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from cryptography.fernet import Fernet
 from .nas_monitor_generator import NASMonitorScriptGenerator
+import io
+import socket
 
 logger = logging.getLogger(__name__)
 
@@ -59,23 +61,34 @@ class NASDeviceManager:
             (连接是否成功, 错误信息或成功信息)
         """
         try:
-            async with asyncssh.connect(
-                host=ip_address,
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            # 连接SSH
+            ssh.connect(
+                hostname=ip_address,
                 port=port,
                 username=username,
                 password=password,
-                known_hosts=None,
-                server_host_key_algs=['ssh-rsa', 'ecdsa-sha2-nistp256', 'ssh-ed25519'],
-                connect_timeout=self.connection_timeout
-            ) as conn:
-                # 执行简单命令测试连接
-                result = await conn.run('echo "Connection test successful"', timeout=10)
-                return True, f"连接成功: {result.stdout.strip()}"
+                timeout=self.connection_timeout,
+                allow_agent=False,
+                look_for_keys=False
+            )
+            
+            # 执行简单命令测试连接
+            stdin, stdout, stderr = ssh.exec_command('echo "Connection test successful"', timeout=10)
+            result = stdout.read().decode().strip()
+            ssh.close()
+            
+            return True, f"连接成功: {result}"
                 
-        except asyncssh.Error as e:
+        except paramiko.AuthenticationException as e:
+            logger.error(f"SSH身份验证失败 {ip_address}: {str(e)}")
+            return False, f"SSH身份验证失败: {str(e)}"
+        except paramiko.SSHException as e:
             logger.error(f"SSH连接失败 {ip_address}: {str(e)}")
             return False, f"SSH连接失败: {str(e)}"
-        except asyncio.TimeoutError:
+        except socket.timeout:
             logger.error(f"SSH连接超时 {ip_address}")
             return False, "连接超时"
         except Exception as e:
@@ -90,35 +103,49 @@ class NASDeviceManager:
             系统信息字典
         """
         try:
-            async with asyncssh.connect(
-                host=ip_address,
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            ssh.connect(
+                hostname=ip_address,
                 port=port,
                 username=username,
                 password=password,
-                known_hosts=None,
-                server_host_key_algs=['ssh-rsa', 'ecdsa-sha2-nistp256', 'ssh-ed25519'],
-                connect_timeout=self.connection_timeout
-            ) as conn:
-                # 获取系统信息的命令
-                commands = {
-                    'hostname': 'hostname',
-                    'os_info': 'cat /etc/os-release | head -n 2',
-                    'uptime': 'uptime',
-                    'disk_usage': 'df -h | head -n 5',
-                    'memory': 'free -h',
-                    'cpu_info': 'cat /proc/cpuinfo | grep "model name" | head -n 1 | cut -d: -f2',
-                    'kernel': 'uname -r'
-                }
-                
-                system_info = {}
-                for key, command in commands.items():
-                    try:
-                        result = await conn.run(command, timeout=15)
-                        system_info[key] = result.stdout.strip()
-                    except Exception as e:
-                        system_info[key] = f"获取失败: {str(e)}"
-                
-                return system_info
+                timeout=self.connection_timeout,
+                allow_agent=False,
+                look_for_keys=False
+            )
+            
+            # 获取系统信息的命令
+            commands = {
+                'hostname': 'hostname',
+                'os_info': 'cat /etc/os-release 2>/dev/null | head -n 2 || uname -s',
+                'uptime': 'uptime',
+                'disk_usage': 'df -h 2>/dev/null | head -n 5 || echo "无法获取磁盘信息"',
+                'memory': 'free -h 2>/dev/null || echo "无法获取内存信息"',
+                'cpu_info': 'cat /proc/cpuinfo 2>/dev/null | grep "model name" | head -n 1 | cut -d: -f2 || echo "无法获取CPU信息"',
+                'kernel': 'uname -r 2>/dev/null || echo "无法获取内核信息"'
+            }
+            
+            system_info = {}
+            for key, command in commands.items():
+                try:
+                    stdin, stdout, stderr = ssh.exec_command(command, timeout=15)
+                    result = stdout.read().decode().strip()
+                    error = stderr.read().decode().strip()
+                    
+                    if result:
+                        system_info[key] = result
+                    elif error:
+                        system_info[key] = f"获取失败: {error}"
+                    else:
+                        system_info[key] = "无数据"
+                        
+                except Exception as e:
+                    system_info[key] = f"获取失败: {str(e)}"
+            
+            ssh.close()
+            return system_info
                 
         except Exception as e:
             logger.error(f"获取系统信息失败 {ip_address}: {str(e)}")
@@ -218,8 +245,8 @@ class NASDeviceManager:
                         logger.warning(f"脚本语法检查警告: {result.stderr}")
                     
                     logger.info(f"监控脚本成功部署到 {ip_address}")
-                    return True, f"监控脚本已成功部署到 {remote_script_path}\\n" + \\
-                                f"Crontab任务已配置，每小时执行一次监控\\n" + \\
+                    return True, f"监控脚本已成功部署到 {remote_script_path}\n" + \
+                                f"Crontab任务已配置，每小时执行一次监控\n" + \
                                 f"日志文件位置: /var/log/nas-monitor.log"
                     
                 finally:

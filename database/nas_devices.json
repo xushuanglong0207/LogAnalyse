@@ -1,0 +1,39 @@
+{
+  "devices": [
+    {
+      "id": 1,
+      "name": "xsl",
+      "ip_address": "192.168.1.100",
+      "ssh_port": 22,
+      "ssh_username": "ugreen",
+      "ssh_password": "Aa123456",
+      "description": "",
+      "status": "unknown",
+      "script_deployed": false,
+      "last_connected": null,
+      "created_at": "2025-09-03T23:40:10.711655"
+    }
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "device_id": 1,
+      "name": "测试监控任务",
+      "log_path": "/var/log/syslog",
+      "rule_ids": [
+        1,
+        2
+      ],
+      "email_recipients": [
+        "test@example.com"
+      ],
+      "email_time": "09:00",
+      "status": "pending",
+      "error_count": 0,
+      "last_run": null,
+      "next_run": null,
+      "created_at": "2025-09-03T23:45:49.710464"
+    }
+  ],
+  "last_updated": "2025-09-03T23:45:49.710523"
+}

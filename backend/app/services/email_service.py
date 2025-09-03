@@ -23,12 +23,15 @@ class EmailService:
     """邮件服务类"""
     
     def __init__(self):
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_username = os.getenv("SMTP_USERNAME", "")
-        self.smtp_password = os.getenv("SMTP_PASSWORD", "")
-        self.sender_email = os.getenv("SENDER_EMAIL", self.smtp_username)
-        self.sender_name = os.getenv("SENDER_NAME", "NAS日志监控系统")
+        from ..config import get_settings
+        settings = get_settings()
+        
+        self.smtp_server = settings.smtp_server
+        self.smtp_port = settings.smtp_port
+        self.smtp_username = settings.smtp_username
+        self.smtp_password = settings.smtp_password
+        self.sender_email = settings.sender_email or settings.smtp_username
+        self.sender_name = settings.sender_name
     
     async def send_error_report(self, 
                               recipients: List[str],
@@ -312,24 +315,47 @@ class EmailService:
     
     async def _send_email(self, message: MIMEMultipart, recipients: List[str]) -> bool:
         """发送邮件"""
+        if not self.smtp_username or not self.smtp_password:
+            logger.error("邮件配置不完整：缺少SMTP用户名或密码")
+            return False
+            
         try:
             # 创建SSL上下文
             context = ssl.create_default_context()
             
+            logger.info(f"尝试连接SMTP服务器: {self.smtp_server}:{self.smtp_port}")
+            
             # 连接SMTP服务器
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
+                server.set_debuglevel(1)  # 启用调试信息
+                
+                # 启用TLS加密
+                logger.info("启用TLS加密")
                 server.starttls(context=context)
+                
+                # 登录
+                logger.info(f"登录SMTP用户: {self.smtp_username}")
                 server.login(self.smtp_username, self.smtp_password)
                 
                 # 发送邮件
                 text = message.as_string()
+                logger.info(f"发送邮件到: {', '.join(recipients)}")
                 server.sendmail(self.sender_email, recipients, text)
                 
                 logger.info(f"邮件发送成功，收件人: {', '.join(recipients)}")
                 return True
                 
-        except Exception as e:
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP身份验证失败: {str(e)}")
+            return False
+        except smtplib.SMTPServerDisconnected as e:
+            logger.error(f"SMTP服务器断开连接: {str(e)}")
+            return False
+        except smtplib.SMTPException as e:
             logger.error(f"SMTP发送邮件失败: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"发送邮件异常: {str(e)}")
             return False
     
     async def send_test_email(self, recipients: List[str]) -> bool:

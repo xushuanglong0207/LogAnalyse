@@ -82,5 +82,16 @@
     ],
     "operator": "OR",
     "is_regex": true
+  },
+  {
+    "id": 8,
+    "name": "1",
+    "description": "2",
+    "enabled": true,
+    "patterns": [],
+    "operator": "OR",
+    "is_regex": true,
+    "folder_id": 1,
+    "dsl": "2"
   }
 ]
