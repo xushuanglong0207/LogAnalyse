@@ -95,7 +95,7 @@ class EmailService:
             # 创建邮件消息
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
-            message["From"] = f"{self.sender_name} <{self.sender_email}>"
+            message["From"] = self.sender_email
             message["To"] = ", ".join(recipients)
             
             # 添加HTML内容
@@ -410,7 +410,7 @@ class EmailService:
         try:
             message = MIMEMultipart()
             message["Subject"] = "[NAS监控] 邮件服务测试"
-            message["From"] = f"{self.sender_name} <{self.sender_email}>"
+            message["From"] = self.sender_email
             message["To"] = ", ".join(recipients)
             
             body = f"""
