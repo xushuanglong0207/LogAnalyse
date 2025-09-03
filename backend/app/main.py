@@ -2104,20 +2104,8 @@ async def get_scheduler_status(ctx: Dict[str, Any] = Depends(require_auth)):
 
 @app.post("/api/monitor/email/test")
 async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any] = Depends(require_auth)):
-    # 实现真实的邮件发送
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    from datetime import datetime
-    
-    # 获取邮件配置
-    email_config = load_email_config()
-    
-    if not email_config.get("is_configured"):
-        return {
-            "success": False,
-            "message": "邮件配置未完成，请先配置SMTP设置"
-        }
+    # 使用已有的邮件服务
+    from .services.email_service import email_service
     
     if not recipients:
         return {
@@ -2126,67 +2114,24 @@ async def send_test_email(recipients: List[str] = Body(...), ctx: Dict[str, Any]
         }
     
     try:
-        # 创建邮件消息
-        msg = MIMEMultipart()
-        # QQ邮箱要求严格的From格式
-        msg['From'] = email_config['sender_email']
-        msg['To'] = ', '.join(recipients)
-        msg['Subject'] = "=?utf-8?B?5pel5b+X5YiG5p6Q57O757uf?= - =?utf-8?B?6YKu5Lu25rWL6K+V?="  # "日志分析系统 - 邮件测试" 的UTF-8 Base64编码
+        # 使用email_service发送测试邮件
+        success = await email_service.send_test_email(recipients)
         
-        # 邮件正文
-        body = f"""
-这是一封来自日志分析系统的测试邮件。
-
-测试时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-发送服务器: {email_config['smtp_server']}:{email_config['smtp_port']}
-收件人数量: {len(recipients)}
-
-如果您收到此邮件，说明邮件服务配置正常。
-
----
-日志分析系统自动发送
-        """.strip()
-        
-        msg.attach(MIMEText(body, 'plain', 'utf-8'))
-        
-        # 连接SMTP服务器并发送邮件
-        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
-        
-        if email_config.get('use_tls', True):
-            server.starttls()
-        
-        server.login(email_config['sender_email'], email_config['sender_password'])
-        
-        # 发送邮件到所有收件人
-        for recipient in recipients:
-            server.send_message(msg, to_addrs=[recipient])
-        
-        server.quit()
-        
-        return {
-            "success": True,
-            "message": f"测试邮件已成功发送到 {len(recipients)} 个邮箱"
-        }
-        
-    except smtplib.SMTPAuthenticationError:
-        return {
-            "success": False,
-            "message": "SMTP认证失败，请检查邮箱用户名和密码"
-        }
-    except smtplib.SMTPConnectError:
-        return {
-            "success": False,
-            "message": f"无法连接到SMTP服务器 {email_config['smtp_server']}:{email_config['smtp_port']}"
-        }
-    except smtplib.SMTPRecipientsRefused as e:
-        return {
-            "success": False,
-            "message": f"收件人地址被拒绝: {', '.join(e.recipients.keys())}"
-        }
+        if success:
+            return {
+                "success": True,
+                "message": f"测试邮件已成功发送到 {len(recipients)} 个邮箱"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "邮件发送失败，请检查邮件配置和网络连接"
+            }
+            
     except Exception as e:
         return {
             "success": False,
-            "message": f"邮件发送失败: {str(e)}"
+            "message": f"邮件发送异常: {str(e)}"
         }
 
 # —— NAS设备系统信息API ——

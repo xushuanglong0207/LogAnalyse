@@ -2,8 +2,9 @@
   "smtp_server": "smtp.qq.com",
   "smtp_port": 465,
   "sender_email": "3266477102@qq.com",
-  "sender_name": "日志分析平台",
+  "sender_name": "NAS日志监控系统",
   "smtp_username": "3266477102@qq.com",
-  "smtp_password": "yemvlcclkhlbdbde",
+  "smtp_password": "vzndxezocbmfcjej",
+  "use_tls": true,
   "is_configured": true
 }

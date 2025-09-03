@@ -365,13 +365,20 @@ class EmailService:
             
             logger.info(f"尝试连接SMTP服务器: {self.smtp_server}:{self.smtp_port}")
             
-            # 连接SMTP服务器
-            with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
-                server.set_debuglevel(1)  # 启用调试信息
-                
-                # 启用TLS加密
-                logger.info("启用TLS加密")
+            # 根据端口选择连接方式
+            if self.smtp_port == 465:
+                # SSL连接 (端口465)
+                logger.info("使用SSL连接 (端口465)")
+                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context, timeout=30)
+            else:
+                # 标准SMTP连接 + STARTTLS (端口587)
+                logger.info("使用SMTP + STARTTLS连接")
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30)
                 server.starttls(context=context)
+            
+            server.set_debuglevel(1)  # 启用调试信息
+            
+            with server:
                 
                 # 登录
                 logger.info(f"登录SMTP用户: {self.smtp_username}")
