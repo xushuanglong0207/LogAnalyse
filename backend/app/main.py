@@ -1496,7 +1496,8 @@ monitor_tasks: List[Dict[str, Any]] = []
 def load_email_config() -> dict:
     """从JSON文件加载邮件配置"""
     import json
-    config_file = "/home/ugreen/log-analyse/backend/data/email_config.json"
+    # 使用相对路径，适配不同操作系统
+    config_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "email_config.json")
     
     try:
         if os.path.exists(config_file):
@@ -1530,7 +1531,8 @@ def load_email_config() -> dict:
 def save_email_config(config: dict) -> bool:
     """保存邮件配置到JSON文件"""
     import json
-    config_file = "/home/ugreen/log-analyse/backend/data/email_config.json"
+    # 使用相对路径，适配不同操作系统
+    config_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "email_config.json")
     
     try:
         # 确保目录存在

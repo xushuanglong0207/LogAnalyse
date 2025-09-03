@@ -28,7 +28,9 @@ class EmailService:
     def _load_config(self):
         """从JSON文件加载邮件配置"""
         import json
-        config_file = "/home/ugreen/log-analyse/backend/data/email_config.json"
+        # 使用相对路径，适配不同操作系统
+        # __file__ 指向当前文件，需要回到backend目录再进入data目录
+        config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "email_config.json")
         
         try:
             if os.path.exists(config_file):
@@ -370,15 +372,7 @@ class EmailService:
                 # SSL连接 (端口465)
                 logger.info("使用SSL连接 (端口465)")
                 server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context, timeout=30)
-            else:
-                # 标准SMTP连接 + STARTTLS (端口587)
-                logger.info("使用SMTP + STARTTLS连接")
-                server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30)
-                server.starttls(context=context)
-            
-            server.set_debuglevel(1)  # 启用调试信息
-            
-            with server:
+                server.set_debuglevel(1)  # 启用调试信息
                 
                 # 登录
                 logger.info(f"登录SMTP用户: {self.smtp_username}")
@@ -389,8 +383,27 @@ class EmailService:
                 logger.info(f"发送邮件到: {', '.join(recipients)}")
                 server.sendmail(self.sender_email, recipients, text)
                 
+                server.quit()  # 关闭连接
                 logger.info(f"邮件发送成功，收件人: {', '.join(recipients)}")
                 return True
+            else:
+                # 标准SMTP连接 + STARTTLS (端口587)
+                logger.info("使用SMTP + STARTTLS连接")
+                with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
+                    server.starttls(context=context)
+                    server.set_debuglevel(1)  # 启用调试信息
+                    
+                    # 登录
+                    logger.info(f"登录SMTP用户: {self.smtp_username}")
+                    server.login(self.smtp_username, self.smtp_password)
+                    
+                    # 发送邮件
+                    text = message.as_string()
+                    logger.info(f"发送邮件到: {', '.join(recipients)}")
+                    server.sendmail(self.sender_email, recipients, text)
+                    
+                    logger.info(f"邮件发送成功，收件人: {', '.join(recipients)}")
+                    return True
                 
         except smtplib.SMTPAuthenticationError as e:
             logger.error(f"SMTP身份验证失败: {str(e)}")
