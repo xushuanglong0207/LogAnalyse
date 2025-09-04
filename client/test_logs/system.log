@@ -1,0 +1,10 @@
+2024-09-04 14:00:01 INFO System boot completed
+2024-09-04 14:00:05 INFO Network interface eth0 up
+2024-09-04 14:00:10 WARN Disk space low on /var partition (85% used)
+2024-09-04 14:00:15 ERROR Memory allocation failed: Out of memory
+2024-09-04 14:00:16 ERROR java.lang.OutOfMemoryError: Java heap space
+	at java.util.ArrayList.grow(ArrayList.java:267)
+	at java.util.ArrayList.add(ArrayList.java:441)
+2024-09-04 14:00:20 INFO Garbage collection completed
+2024-09-04 14:00:25 WARN CPU usage high: 95%
+2024-09-04 14:00:30 INFO System performance normalized

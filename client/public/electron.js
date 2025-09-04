@@ -7,7 +7,7 @@ const os = require('os');
 // 保持对窗口对象的全局引用，如果不这样做，当JavaScript对象被垃圾回收时，窗口将自动关闭。
 let mainWindow;
 
-function createWindow() {
+async function createWindow() {
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -26,10 +26,61 @@ function createWindow() {
   });
 
   // 加载应用
-  const startUrl = isDev 
-    ? 'http://localhost:3000' 
-    : `file://${path.join(__dirname, '../build/index.html')}`;
-  
+  let startUrl;
+
+  // 检查是否有 React 开发服务器运行
+  const checkReactServer = async () => {
+    try {
+      const http = require('http');
+      return new Promise((resolve) => {
+        const req = http.get('http://localhost:3000', (res) => {
+          resolve(true);
+        });
+        req.on('error', () => {
+          resolve(false);
+        });
+        req.setTimeout(1000, () => {
+          req.destroy();
+          resolve(false);
+        });
+      });
+    } catch (e) {
+      return false;
+    }
+  };
+
+  if (isDev) {
+    // 开发环境：检查 React 服务器是否可用
+    const reactServerAvailable = await checkReactServer();
+    if (reactServerAvailable) {
+      startUrl = 'http://localhost:3000';
+    } else {
+      // 优先使用完整应用页面
+      const fullAppPath = path.join(__dirname, '../full-app.html');
+      if (fs.existsSync(fullAppPath)) {
+        startUrl = `file://${fullAppPath}`;
+        console.log('React dev server not available, using full app HTML');
+      } else {
+        startUrl = `file://${path.join(__dirname, '../standalone.html')}`;
+        console.log('Using standalone HTML');
+      }
+    }
+  } else {
+    // 生产环境：先尝试构建版本，失败则使用完整应用页面
+    const buildPath = path.join(__dirname, '../build/index.html');
+    if (fs.existsSync(buildPath)) {
+      startUrl = `file://${buildPath}`;
+    } else {
+      const fullAppPath = path.join(__dirname, '../full-app.html');
+      if (fs.existsSync(fullAppPath)) {
+        startUrl = `file://${fullAppPath}`;
+      } else {
+        startUrl = `file://${path.join(__dirname, '../standalone.html')}`;
+      }
+    }
+  }
+
+  console.log('Loading URL:', startUrl);
   mainWindow.loadURL(startUrl);
 
   // 窗口加载完成后显示
@@ -57,6 +108,24 @@ function createWindow() {
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
 app.whenReady().then(createWindow);
 
+// IPC 处理程序
+ipcMain.handle('select-file', async (event, options) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: options.filters || [
+        { name: '日志文件', extensions: ['log', 'txt', 'out'] },
+        { name: '压缩文件', extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'] },
+        { name: '所有文件', extensions: ['*'] }
+      ]
+    });
+    return result;
+  } catch (error) {
+    console.error('文件选择失败:', error);
+    return { canceled: true, filePaths: [] };
+  }
+});
+
 // 当所有窗口都关闭时退出应用
 app.on('window-all-closed', () => {
   // 在macOS上，应用程序及其菜单栏通常保持活动状态，直到用户明确退出
@@ -72,21 +141,7 @@ app.on('activate', () => {
   }
 });
 
-// IPC通信处理
-
-// 选择文件
-ipcMain.handle('select-file', async (event, options = {}) => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [
-      { name: '日志文件', extensions: ['log', 'txt'] },
-      { name: '压缩文件', extensions: ['zip', 'rar', '7z', 'tar', 'gz'] },
-      { name: '所有文件', extensions: ['*'] }
-    ],
-    ...options
-  });
-  return result;
-});
+// IPC通信处理已在上面定义
 
 // 选择文件夹
 ipcMain.handle('select-folder', async (event, options = {}) => {
@@ -161,60 +216,6 @@ ipcMain.handle('open-external', async (event, url) => {
 function setApplicationMenu() {
   const template = [
     {
-      label: '文件',
-      submenu: [
-        {
-          label: '打开日志文件',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => {
-            mainWindow.webContents.send('menu-open-file');
-          }
-        },
-        {
-          label: '打开压缩包',
-          accelerator: 'CmdOrCtrl+Shift+O',
-          click: () => {
-            mainWindow.webContents.send('menu-open-archive');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: '导出报告',
-          accelerator: 'CmdOrCtrl+S',
-          click: () => {
-            mainWindow.webContents.send('menu-export-report');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: '退出',
-          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-          click: () => {
-            app.quit();
-          }
-        }
-      ]
-    },
-    {
-      label: '规则',
-      submenu: [
-        {
-          label: '同步规则',
-          accelerator: 'CmdOrCtrl+R',
-          click: () => {
-            mainWindow.webContents.send('menu-sync-rules');
-          }
-        },
-        {
-          label: '管理规则',
-          accelerator: 'CmdOrCtrl+M',
-          click: () => {
-            mainWindow.webContents.send('menu-manage-rules');
-          }
-        }
-      ]
-    },
-    {
       label: '视图',
       submenu: [
         { role: 'reload' },
@@ -226,17 +227,6 @@ function setApplicationMenu() {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: '帮助',
-      submenu: [
-        {
-          label: '关于',
-          click: () => {
-            mainWindow.webContents.send('menu-about');
-          }
-        }
       ]
     }
   ];

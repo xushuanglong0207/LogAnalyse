@@ -1233,6 +1233,112 @@ async def get_file_analysis_result(file_id: int, ctx: Dict[str, Any] = Depends(r
     return result
 
 # 规则管理与文件夹
+# 客户端兼容接口 - 获取规则列表 (无需认证)
+@app.get("/api/v1/rules")
+async def get_rules_v1(query: Optional[str] = None, folder_id: Optional[int] = None):
+    """客户端兼容的规则获取接口"""
+    rules = detection_rules
+    if folder_id is not None:
+        rules = [r for r in rules if r.get("folder_id") == folder_id]
+    if query:
+        q = query.lower()
+        rules = [r for r in rules if q in r["name"].lower() or q in r.get("description", "").lower()]
+
+    # 转换为客户端期望的格式
+    formatted_rules = []
+    for rule in rules:
+        formatted_rule = {
+            "id": rule.get("id"),
+            "name": rule.get("name"),
+            "description": rule.get("description", ""),
+            "rule_type": "regex" if rule.get("is_regex", True) else "keyword",
+            "pattern": "|".join(rule.get("patterns", [])) if rule.get("patterns") else rule.get("dsl", ""),
+            "problem_type": rule.get("name"),  # 使用规则名作为问题类型
+            "problem_description": rule.get("description", ""),
+            "is_active": rule.get("enabled", True),
+            "priority": rule.get("priority", 5),
+            "created_by": 1,
+            "created_at": "2024-09-04T00:00:00Z",
+            "updated_at": None
+        }
+        formatted_rules.append(formatted_rule)
+
+    return formatted_rules
+
+# 客户端分析接口
+class AnalyzeRequest(BaseModel):
+    content: str
+    filename: str
+
+@app.post("/api/analyze")
+async def analyze_log_content(request: AnalyzeRequest):
+    """客户端日志分析接口"""
+    try:
+        content = request.content
+        filename = request.filename
+
+        lines = content.split('\n')
+        issues = []
+
+        # 使用现有的规则进行分析
+        for i, line in enumerate(lines):
+            if not line.strip():
+                continue
+
+            # 应用所有启用的规则
+            for rule in detection_rules:
+                if not rule.get("enabled", True):
+                    continue
+
+                matched = False
+
+                # 检查DSL规则
+                if rule.get("dsl"):
+                    try:
+                        matches = evaluate_rule_matches(line, rule)
+                        if matches:
+                            matched = True
+                    except:
+                        pass
+
+                # 检查传统模式规则
+                if not matched and rule.get("patterns"):
+                    for pattern in rule.get("patterns", []):
+                        if rule.get("is_regex", True):
+                            try:
+                                import re
+                                if re.search(pattern, line, re.IGNORECASE):
+                                    matched = True
+                                    break
+                            except:
+                                pass
+                        else:
+                            if pattern.lower() in line.lower():
+                                matched = True
+                                break
+
+                if matched:
+                    issues.append({
+                        "rule_name": rule.get("name"),
+                        "line_number": i + 1,
+                        "content": line,
+                        "problem_type": rule.get("name"),
+                        "problem_description": rule.get("description", "检测到问题"),
+                        "severity": "high" if rule.get("priority", 5) > 7 else "medium"
+                    })
+                    break  # 每行只匹配第一个规则
+
+        return {
+            "filename": filename,
+            "total_lines": len(lines),
+            "issues_found": len(issues),
+            "issues": issues,
+            "analysis_time": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
+
 @app.get("/api/rules")
 async def get_detection_rules(query: Optional[str] = None, folder_id: Optional[int] = None, ctx: Dict[str, Any] = Depends(require_auth)):
     rules = detection_rules

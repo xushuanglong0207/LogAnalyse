@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日志分析工具</title>
+    <link rel="stylesheet" href="https://unpkg.com/antd@5.12.0/dist/reset.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 24px;
+        }
+
+        .tabs-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .tab-header {
+            display: flex;
+            background: #fafafa;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 16px 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .tab-button:hover {
+            background: #f0f0f0;
+        }
+
+        .tab-content {
+            padding: 32px;
+            min-height: 500px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .feature-desc {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin: 8px;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .upload-area {
+            border: 2px dashed #d9d9d9;
+            border-radius: 12px;
+            padding: 48px;
+            text-align: center;
+            background: #fafafa;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            color: #d9d9d9;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e8e8e8;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        /* 深色模式样式 */
+        .dark-theme {
+            background-color: #1a1a1a;
+            color: #e8e8e8;
+        }
+
+        .dark-theme .header {
+            background: #2d2d2d;
+            border-bottom-color: #404040;
+        }
+
+        .dark-theme .nav-tabs {
+            background: #2d2d2d;
+            border-bottom-color: #404040;
+        }
+
+        .dark-theme .nav-tab {
+            background: #2d2d2d;
+            color: #e8e8e8;
+            border-color: #404040;
+        }
+
+        .dark-theme .nav-tab.active {
+            background: #1a1a1a;
+            color: #1890ff;
+        }
+
+        .dark-theme .main-content {
+            background: #1a1a1a;
+        }
+
+        .dark-theme .upload-area {
+            background: #2d2d2d;
+            border-color: #404040;
+        }
+
+        .dark-theme .upload-area.dragover {
+            background: #404040;
+            border-color: #1890ff;
+        }
+
+        .dark-theme .btn {
+            background: #2d2d2d;
+            color: #e8e8e8;
+            border-color: #404040;
+        }
+
+        .dark-theme .btn:hover {
+            background: #404040;
+        }
+
+        .dark-theme .btn-primary {
+            background: #1890ff;
+            color: white;
+            border-color: #1890ff;
+        }
+
+        .dark-theme .modal-content {
+            background: #2d2d2d;
+            color: #e8e8e8;
+        }
+
+        .dark-theme .modal-header,
+        .dark-theme .modal-footer {
+            border-color: #404040;
+        }
+
+        .dark-theme .form-group input,
+        .dark-theme .form-group select,
+        .dark-theme .form-group textarea {
+            background: #1a1a1a;
+            color: #e8e8e8;
+            border-color: #404040;
+        }
+
+        .dark-theme .message {
+            background: #2d2d2d;
+            border-color: #404040;
+        }
+
+        .dark-theme .message.success {
+            background: #1f5f1f;
+            border-color: #52c41a;
+        }
+
+        .dark-theme .message.error {
+            background: #5f1f1f;
+            border-color: #ff4d4f;
+        }
+
+        .dark-theme .message.warning {
+            background: #5f4f1f;
+            border-color: #faad14;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success {
+            background: #52c41a;
+        }
+
+        .status-error {
+            background: #ff4d4f;
+        }
+
+        .status-warning {
+            background: #faad14;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <span>日志分析工具</span>
+                <span style="font-size: 12px; opacity: 0.8;">v1.0.0</span>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                🌙 深色模式
+            </button>
+        </header>
+
+        <!-- 主内容 -->
+        <main class="main-content">
+            <div class="tabs-container">
+                <!-- Tab 头部 -->
+                <div class="tab-header">
+                    <button class="tab-button active" onclick="switchTab('home')">
+                        🏠 首页
+                    </button>
+                    <button class="tab-button" onclick="switchTab('single')">
+                        📄 单个分析
+                    </button>
+                    <button class="tab-button" onclick="switchTab('bulk')">
+                        📁 全量分析
+                    </button>
+                    <button class="tab-button" onclick="switchTab('rules')">
+                        📋 规则管理
+                    </button>
+                    <button class="tab-button" onclick="switchTab('report')">
+                        📊 分析报告
+                    </button>
+                    <button class="tab-button" onclick="switchTab('settings')">
+                        ⚙️ 设置
+                    </button>
+                </div>
+
+                <!-- Tab 内容 -->
+                <div class="tab-content">
+                    <!-- 首页 -->
+                    <div id="home-page" class="tab-page">
+                        <h1 class="page-title">欢迎使用日志分析工具</h1>
+                        <p class="page-subtitle">桌面端日志分析工具 - 支持本地和服务端规则同步，压缩包全量分析</p>
+
+                        <div class="feature-grid">
+                            <div class="feature-card" onclick="switchTab('single')">
+                                <div class="feature-icon">📄</div>
+                                <div class="feature-title">单个日志分析</div>
+                                <div class="feature-desc">选择单个日志文件进行分析，快速定位问题</div>
+                            </div>
+
+                            <div class="feature-card" onclick="switchTab('bulk')">
+                                <div class="feature-icon">📁</div>
+                                <div class="feature-title">全量压缩包分析</div>
+                                <div class="feature-desc">上传日志压缩包，自动解压并分析所有日志文件</div>
+                            </div>
+
+                            <div class="feature-card" onclick="switchTab('rules')">
+                                <div class="feature-icon">📋</div>
+                                <div class="feature-title">规则管理</div>
+                                <div class="feature-desc">管理本地规则，与服务端双向同步</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 32px;">
+                            <button class="btn" onclick="switchTab('single')">开始分析</button>
+                            <button class="btn btn-secondary" onclick="switchTab('settings')">查看设置</button>
+                        </div>
+                    </div>
+
+                    <!-- 单个分析页面 -->
+                    <div id="single-page" class="tab-page hidden">
+                        <h1 class="page-title">单个日志分析</h1>
+                        <p class="page-subtitle">选择单个日志文件进行分析</p>
+
+                        <div class="upload-area" onclick="selectSingleFile()">
+                            <div class="upload-icon">📄</div>
+                            <div class="upload-text">点击选择日志文件</div>
+                            <div class="upload-hint">支持 .log, .txt 等格式</div>
+                        </div>
+
+                        <!-- 规则选择 -->
+                        <div style="margin: 20px 0; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #333;">规则选择</h3>
+                            <div style="display: flex; gap: 16px; align-items: center;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="ruleSource" value="local" checked onchange="updateRuleSource('local')">
+                                    <span>使用本地规则</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="ruleSource" value="server" onchange="updateRuleSource('server')">
+                                    <span>使用服务端规则</span>
+                                </label>
+                            </div>
+                            <div id="rule-status" style="margin-top: 8px; font-size: 12px; color: #666;">
+                                当前使用本地规则，无需连接服务端
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; text-align: center;">
+                            <button class="btn" onclick="selectSingleFile()">选择文件</button>
+                            <button class="btn btn-primary" onclick="startSingleAnalysis()" id="single-analyze-btn">开始分析</button>
+                            <button class="btn btn-secondary" onclick="stopAnalysis()" id="single-stop-btn" style="display: none;">停止分析</button>
+                        </div>
+                    </div>
+
+                    <!-- 全量分析页面 -->
+                    <div id="bulk-page" class="tab-page hidden">
+                        <h1 class="page-title">全量压缩包分析</h1>
+                        <p class="page-subtitle">上传日志压缩包，自动解压并分析所有日志文件</p>
+
+                        <div class="upload-area" onclick="selectBulkFile()">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">点击选择压缩包</div>
+                            <div class="upload-hint">支持 .zip, .tar, .gz, .tgz 等格式</div>
+                        </div>
+
+                        <!-- 规则选择 -->
+                        <div style="margin: 20px 0; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #333;">规则选择</h3>
+                            <div style="display: flex; gap: 16px; align-items: center;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="bulkRuleSource" value="local" checked onchange="updateRuleSource('local')">
+                                    <span>使用本地规则</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="bulkRuleSource" value="server" onchange="updateRuleSource('server')">
+                                    <span>使用服务端规则</span>
+                                </label>
+                            </div>
+                            <div id="bulk-rule-status" style="margin-top: 8px; font-size: 12px; color: #666;">
+                                当前使用本地规则，无需连接服务端
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; text-align: center;">
+                            <button class="btn" onclick="selectBulkFile()">选择压缩包</button>
+                            <button class="btn btn-primary" onclick="startBulkAnalysis()" id="bulk-analyze-btn">开始分析</button>
+                            <button class="btn btn-secondary" onclick="stopAnalysis()" id="bulk-stop-btn" style="display: none;">停止分析</button>
+                        </div>
+                    </div>
+
+                    <!-- 规则管理页面 -->
+                    <div id="rules-page" class="tab-page hidden">
+                        <h1 class="page-title">规则管理</h1>
+                        <p class="page-subtitle">管理本地规则，与服务端双向同步</p>
+
+                        <div style="margin-bottom: 24px;">
+                            <button class="btn" onclick="syncRules()">同步规则</button>
+                            <button class="btn btn-secondary" onclick="addRule()">添加规则</button>
+                            <button class="btn btn-secondary" onclick="exportRules()">导出规则</button>
+                        </div>
+
+                        <div style="background: #f8f9fa; padding: 24px; border-radius: 8px;">
+                            <h3>规则列表</h3>
+                            <div id="rules-list">
+                                <!-- 规则列表将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
+
+                        <!-- 规则编辑模态框 -->
+                        <div id="rule-modal" class="modal hidden">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3 id="rule-modal-title">编辑规则</h3>
+                                    <button class="modal-close" onclick="closeRuleModal()">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="rule-form">
+                                        <div class="form-group">
+                                            <label for="rule-name">规则名称:</label>
+                                            <input type="text" id="rule-name" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-description">规则描述:</label>
+                                            <textarea id="rule-description" rows="2"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-pattern">匹配模式:</label>
+                                            <input type="text" id="rule-pattern" required placeholder="ERROR|error|Error">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-type">规则类型:</label>
+                                            <select id="rule-type">
+                                                <option value="regex">正则表达式</option>
+                                                <option value="keyword">关键字</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-problem-type">问题类型:</label>
+                                            <input type="text" id="rule-problem-type" placeholder="error">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-problem-description">问题描述:</label>
+                                            <textarea id="rule-problem-description" rows="2"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>
+                                                <input type="checkbox" id="rule-active" checked>
+                                                启用规则
+                                            </label>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" onclick="closeRuleModal()">取消</button>
+                                    <button class="btn btn-primary" onclick="saveRule()">保存</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分析报告页面 -->
+                    <div id="report-page" class="tab-page hidden">
+                        <h1 class="page-title">分析报告</h1>
+                        <p class="page-subtitle">查看历史分析报告和结果</p>
+
+                        <div style="background: #f8f9fa; padding: 24px; border-radius: 8px;">
+                            <h3>最近的分析报告</h3>
+                            <p style="color: #666; margin-top: 16px;">暂无分析报告，请先进行日志分析</p>
+                        </div>
+                    </div>
+
+                    <!-- 设置页面 -->
+                    <div id="settings-page" class="tab-page hidden">
+                        <h1 class="page-title">设置</h1>
+                        <p class="page-subtitle">配置应用设置和偏好</p>
+
+                        <div style="background: #f8f9fa; padding: 24px; border-radius: 8px;">
+                            <h3>应用设置</h3>
+                            <div style="margin: 16px 0;">
+                                <label style="display: block; margin-bottom: 8px;">服务端地址:</label>
+                                <input type="text" id="serverUrl" placeholder="http://localhost:8001" style="width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px;">
+                                <small style="color: #666;">用于规则同步和远程分析</small>
+                            </div>
+                            <div style="margin: 16px 0;">
+                                <label style="display: block; margin-bottom: 8px;">
+                                    <input type="checkbox" id="autoSync" style="margin-right: 8px;">
+                                    自动同步规则
+                                </label>
+                                <small style="color: #666;">启动时自动从服务端同步规则</small>
+                            </div>
+                            <div style="margin: 16px 0;">
+                                <button class="btn" onclick="saveAppSettings()">保存设置</button>
+                                <button class="btn btn-secondary" onclick="testConnection()">测试连接</button>
+                            </div>
+                        </div>
+
+                        <div style="background: #f8f9fa; padding: 24px; border-radius: 8px; margin-top: 24px;">
+                            <h3>关于</h3>
+                            <p>日志分析工具 v1.0.0</p>
+                            <p>支持本地和服务端规则同步，压缩包全量分析</p>
+                            <div style="margin-top: 16px;">
+                                <button class="btn btn-secondary" onclick="clearAllData()">清除所有数据</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Tab 切换功能
+        function switchTab(tabName) {
+            // 隐藏所有页面
+            const pages = document.querySelectorAll('.tab-page');
+            pages.forEach(page => page.classList.add('hidden'));
+
+            // 移除所有按钮的 active 状态
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // 显示目标页面
+            const targetPage = document.getElementById(tabName + '-page');
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+            }
+
+            // 激活对应按钮
+            const targetButton = event?.target || document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+            if (targetButton) {
+                targetButton.classList.add('active');
+            }
+        }
+
+        // 主题切换
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('dark-theme');
+
+            if (isDark) {
+                body.classList.remove('dark-theme');
+                document.querySelector('.theme-toggle').textContent = '🌙 深色模式';
+            } else {
+                body.classList.add('dark-theme');
+                document.querySelector('.theme-toggle').textContent = '☀️ 浅色模式';
+            }
+        }
+
+        // 全局状态
+        let selectedFile = null;
+        let selectedBulkFile = null;
+        let currentRules = [];
+        let analysisController = null; // 用于停止分析
+        let settings = {
+            serverUrl: 'http://localhost:8001',
+            autoSync: true,
+            useLocalRules: true // 默认使用本地规则
+        };
+
+        // 规范化与修复历史设置（端口/URL等）
+        function sanitizeSettings() {
+            try {
+                if (typeof settings.serverUrl === 'string') {
+                    // 去掉尾部斜杠
+                    settings.serverUrl = settings.serverUrl.replace(/\/$/, '');
+                    // 将历史遗留的 8080 端口迁移到 8001
+                    if (settings.serverUrl.includes('localhost:8080')) {
+                        settings.serverUrl = settings.serverUrl.replace('localhost:8080', 'localhost:8001');
+                    }
+                    if (settings.serverUrl.includes('127.0.0.1:8080')) {
+                        settings.serverUrl = settings.serverUrl.replace('127.0.0.1:8080', '127.0.0.1:8001');
+                    }
+                }
+            } catch (e) {
+                console.warn('sanitizeSettings 失败:', e);
+            }
+        }
+
+        // 从界面读取当前规则源（单选框为准）
+        function getUISelectedRuleSource(forBulk = false) {
+            const name = forBulk ? 'bulkRuleSource' : 'ruleSource';
+            const checked = document.querySelector(`input[name="${name}"]:checked`);
+            return checked ? checked.value : (settings.useLocalRules ? 'local' : 'server');
+        }
+
+        // 异步让出（避免长时间阻塞UI）
+        function pause(ms = 0) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+
+
+        // 加载设置
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('logAnalyzerSettings');
+                if (saved) {
+                    settings = { ...settings, ...JSON.parse(saved) };
+                }
+                // 统一修复历史URL与端口
+                sanitizeSettings();
+                updateSettingsUI();
+            } catch (e) {
+                console.error('加载设置失败:', e);
+            }
+        }
+
+        // 保存设置
+        function saveSettings() {
+            try {
+                localStorage.setItem('logAnalyzerSettings', JSON.stringify(settings));
+                showMessage('设置已保存', 'success');
+            } catch (e) {
+                console.error('保存设置失败:', e);
+                showMessage('保存设置失败', 'error');
+            }
+        }
+
+        // 更新设置界面
+        function updateSettingsUI() {
+            const serverUrlInput = document.getElementById('serverUrl');
+            const autoSyncCheckbox = document.getElementById('autoSync');
+            if (serverUrlInput) serverUrlInput.value = settings.serverUrl;
+            if (autoSyncCheckbox) autoSyncCheckbox.checked = settings.autoSync;
+        }
+
+        // 显示消息（去重 + 单例 + 节流，防止刷屏卡顿）
+        function showMessage(message, type = 'info') {
+            try {
+                const now = Date.now();
+                const isProgress = /正在分析|开始解压|正在测试连接|正在同步规则/.test(message);
+                const duration = type === 'info' ? (isProgress ? 800 : 1500) : 3000;
+
+                // 全局单例元素
+                if (!window.__toastEl) {
+                    const el = document.createElement('div');
+                    el.id = 'global-toast';
+                    el.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        padding: 12px 24px;
+                        border-radius: 6px;
+                        color: white;
+                        font-weight: 500;
+                        z-index: 10000;
+                        max-width: 60vw;
+                        pointer-events: none;
+                        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+                    `;
+                    document.body.appendChild(el);
+                    window.__toastEl = el;
+                }
+
+                const el = window.__toastEl;
+
+                // 节流：500ms 内重复 info 提示直接更新文本不重排
+                if (type === 'info' && window.__lastToastTime && (now - window.__lastToastTime) < 500) {
+                    el.textContent = message;
+                } else {
+                    // 根据类型设置颜色
+                    switch (type) {
+                        case 'success':
+                            el.style.background = '#52c41a';
+                            break;
+                        case 'error':
+                            el.style.background = '#ff4d4f';
+                            break;
+                        case 'warning':
+                            el.style.background = '#faad14';
+                            break;
+                        default:
+                            el.style.background = '#1890ff';
+                    }
+                    el.textContent = message;
+                }
+
+                el.style.display = 'block';
+                window.__lastToastTime = now;
+
+                // 重置计时器：只保留一个定时器
+                if (window.__toastTimer) clearTimeout(window.__toastTimer);
+                window.__toastTimer = setTimeout(() => {
+                    el.style.display = 'none';
+                }, duration);
+            } catch (e) {
+                console.warn('showMessage fallback:', e);
+                alert(message);
+            }
+        }
+
+        // 文件选择功能
+        function selectSingleFile() {
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.invoke('select-file', {
+                    filters: [
+                        { name: '日志文件', extensions: ['log', 'txt', 'out', 'syslog', 'kern', 'auth', 'messages', 'dmesg', 'access', 'error'] },
+                        { name: '所有文件', extensions: ['*'] }
+                    ]
+                }).then(result => {
+                    if (!result.canceled && result.filePaths.length > 0) {
+                        selectedFile = result.filePaths[0];
+                        updateSingleFileUI();
+                        showMessage('已选择文件: ' + selectedFile.split('\\').pop(), 'success');
+                    }
+                });
+            } else {
+                showMessage('请在 Electron 环境中使用此功能', 'error');
+            }
+        }
+
+        function selectBulkFile() {
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.invoke('select-file', {
+                    filters: [
+                        { name: '压缩文件', extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'] },
+                        { name: '所有文件', extensions: ['*'] }
+                    ]
+                }).then(result => {
+                    if (!result.canceled && result.filePaths.length > 0) {
+                        selectedBulkFile = result.filePaths[0];
+                        updateBulkFileUI();
+                        showMessage('已选择压缩包: ' + selectedBulkFile.split('\\').pop(), 'success');
+                    }
+                });
+            } else {
+                showMessage('请在 Electron 环境中使用此功能', 'error');
+            }
+        }
+
+        // 更新文件选择界面
+        function updateSingleFileUI() {
+            const uploadArea = document.querySelector('#single-page .upload-area');
+            if (uploadArea && selectedFile) {
+                uploadArea.innerHTML = `
+                    <div class="upload-icon">✅</div>
+                    <div class="upload-text">已选择: ${selectedFile.split('\\').pop()}</div>
+                    <div class="upload-hint">点击重新选择文件</div>
+                `;
+            }
+        }
+
+        function updateBulkFileUI() {
+            const uploadArea = document.querySelector('#bulk-page .upload-area');
+            if (uploadArea && selectedBulkFile) {
+                uploadArea.innerHTML = `
+                    <div class="upload-icon">✅</div>
+                    <div class="upload-text">已选择: ${selectedBulkFile.split('\\').pop()}</div>
+                    <div class="upload-hint">点击重新选择压缩包</div>
+                `;
+            }
+        }
+
+        // 规则源选择
+        function updateRuleSource(source) {
+            settings.useLocalRules = (source === 'local');
+
+            // 更新状态显示
+            const statusElements = ['rule-status', 'bulk-rule-status'];
+            statusElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    if (source === 'local') {
+                        element.textContent = '当前使用本地规则，无需连接服务端';
+                        element.style.color = '#52c41a';
+                    } else {
+                        element.textContent = '当前使用服务端规则，需要网络连接';
+                        element.style.color = '#fa8c16';
+                    }
+                }
+            });
+
+            // 保存设置
+            localStorage.setItem('logAnalyzerSettings', JSON.stringify(settings));
+            showMessage(`已切换到${source === 'local' ? '本地' : '服务端'}规则`, 'success');
+        }
+
+        // 停止分析
+        function stopAnalysis() {
+            if (analysisController) {
+                analysisController.abort();
+                analysisController = null;
+            }
+
+            // 恢复按钮状态
+            const analyzeButtons = ['single-analyze-btn', 'bulk-analyze-btn'];
+            const stopButtons = ['single-stop-btn', 'bulk-stop-btn'];
+
+            analyzeButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.style.display = 'inline-block';
+                    btn.disabled = false;
+                }
+            });
+
+            stopButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.style.display = 'none';
+            });
+
+            showMessage('分析已停止', 'info');
+        }
+
+        // 分析功能
+        async function startSingleAnalysis() {
+            if (!selectedFile) {
+                showMessage('请先选择日志文件', 'warning');
+                return;
+            }
+
+            try {
+                // 创建中断控制器
+                analysisController = new AbortController();
+
+                // 更新按钮状态
+                document.getElementById('single-analyze-btn').style.display = 'none';
+                document.getElementById('single-stop-btn').style.display = 'inline-block';
+
+                showMessage('开始分析日志文件...', 'info');
+
+                // 检查 Electron 环境
+                if (!window.require) {
+                    throw new Error('请在 Electron 环境中运行此应用');
+                }
+
+                // 读取文件内容
+                const fs = window.require('fs');
+                const path = window.require('path');
+
+                console.log('读取文件:', selectedFile);
+                const content = fs.readFileSync(selectedFile, 'utf8');
+                const filename = path.basename(selectedFile);
+                console.log('文件读取成功，文件名:', filename, '内容长度:', content.length);
+
+                // 根据“界面单选框”选择分析方式，避免设置与UI不一致
+                const uiSource = getUISelectedRuleSource(false);
+                settings.useLocalRules = (uiSource === 'local');
+                console.log('使用规则源:', uiSource, 'useLocalRules:', settings.useLocalRules);
+
+                let result;
+                if (settings.useLocalRules) {
+                    console.log('使用本地规则分析');
+                    result = await analyzeLogContent(content, filename);
+                } else {
+                    console.log('使用服务端规则分析');
+                    result = await analyzeWithServerRules(content, filename);
+                }
+
+                // 检查是否被中断
+                if (analysisController.signal.aborted) {
+                    console.log('分析被中断');
+                    return;
+                }
+
+                console.log('分析结果:', result);
+
+                // 显示结果
+                showAnalysisResult(result);
+                switchTab('report');
+                showMessage('分析完成', 'success');
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showMessage('分析已被用户停止', 'info');
+                    return;
+                }
+                console.error('分析失败:', error);
+                showMessage('分析失败: ' + error.message, 'error');
+            } finally {
+                // 恢复按钮状态
+                document.getElementById('single-analyze-btn').style.display = 'inline-block';
+                document.getElementById('single-stop-btn').style.display = 'none';
+                analysisController = null;
+            }
+        }
+
+        async function startBulkAnalysis() {
+            if (!selectedBulkFile) {
+                showMessage('请先选择压缩包', 'warning');
+                return;
+            }
+
+            try {
+                // 创建中断控制器
+                analysisController = new AbortController();
+
+                // 更新按钮状态
+                document.getElementById('bulk-analyze-btn').style.display = 'none';
+                document.getElementById('bulk-stop-btn').style.display = 'inline-block';
+
+                showMessage('开始解压并分析压缩包...', 'info');
+
+                // 检查文件扩展名
+                const fileName = selectedBulkFile.toLowerCase();
+                const isSupported = fileName.endsWith('.zip') ||
+                                  fileName.endsWith('.tar') ||
+                                  fileName.endsWith('.gz') ||
+                                  fileName.endsWith('.tgz');
+
+                if (!isSupported) {
+                    showMessage('暂不支持此压缩格式，请使用 .zip, .tar, .gz, .tgz 格式', 'warning');
+                    return;
+                }
+
+                // 解压并分析（开始前以界面单选框为准）
+                const uiSourceBulk = getUISelectedRuleSource(true);
+                settings.useLocalRules = (uiSourceBulk === 'local');
+
+                const result = await extractAndAnalyzeArchive(selectedBulkFile);
+
+                // 检查是否被中断
+                if (analysisController.signal.aborted) {
+                    return;
+                }
+
+                // 显示结果
+                showAnalysisResult(result);
+                switchTab('report');
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showMessage('分析已被用户停止', 'info');
+                    return;
+                }
+                console.error('批量分析失败:', error);
+                showMessage('批量分析失败: ' + error.message, 'error');
+            } finally {
+                // 恢复按钮状态
+                document.getElementById('bulk-analyze-btn').style.display = 'inline-block';
+                document.getElementById('bulk-stop-btn').style.display = 'none';
+                analysisController = null;
+            }
+        }
+
+        // 解压并分析压缩包
+        async function extractAndAnalyzeArchive(archivePath) {
+            const path = window.require('path');
+            const fs = window.require('fs');
+            const os = window.require('os');
+            const { spawn } = window.require('child_process');
+
+            // 创建临时目录
+            const tempDir = path.join(os.tmpdir(), 'log_analyzer_' + Date.now());
+            fs.mkdirSync(tempDir, { recursive: true });
+
+            try {
+                // 解压文件
+                await extractArchive(archivePath, tempDir);
+
+                // 查找所有日志文件
+                const logFiles = findLogFiles(tempDir);
+
+                if (logFiles.length === 0) {
+                    throw new Error('压缩包中未找到日志文件');
+                }
+
+                showMessage(`找到 ${logFiles.length} 个日志文件，开始分析...`, 'info');
+
+                // 分析所有日志文件
+                const allIssues = [];
+                let totalLines = 0;
+
+                for (let i = 0; i < logFiles.length; i++) {
+                    const logFile = logFiles[i];
+                    try {
+                        // 显示文件级别的进度
+                        const fileProgress = Math.round(((i + 1) / logFiles.length) * 100);
+                        showMessage(`正在分析文件 ${i + 1}/${logFiles.length} (${fileProgress}%)`, 'info');
+
+                        const content = fs.readFileSync(logFile, 'utf8');
+                        const fileName = path.relative(tempDir, logFile);
+
+                        const result = await analyzeLogContent(content, fileName);
+                        totalLines += result.total_lines;
+
+                        // 为每个问题添加文件信息
+                        result.issues.forEach(issue => {
+                            issue.source_file = fileName;
+                            allIssues.push(issue);
+                        });
+
+                        // 检查是否被中断
+                        if (analysisController?.signal.aborted) {
+                            throw new DOMException('分析被中断', 'AbortError');
+                        }
+
+                        // 每处理完一个文件，让出一次，避免长时间阻塞
+                        await pause(0);
+
+                    } catch (e) {
+                        if (e.name === 'AbortError') {
+                            throw e;
+                        }
+                        console.warn(`分析文件 ${logFile} 失败:`, e);
+                    }
+                }
+
+                return {
+                    filename: path.basename(archivePath),
+                    total_lines: totalLines,
+                    issues_found: allIssues.length,
+                    issues: allIssues,
+                    analysis_time: new Date().toISOString(),
+                    files_analyzed: logFiles.length
+                };
+
+            } finally {
+                // 清理临时目录
+                try {
+                    fs.rmSync(tempDir, { recursive: true, force: true });
+                } catch (e) {
+                    console.warn('清理临时目录失败:', e);
+                }
+            }
+        }
+
+        // 解压文件
+        function extractArchive(archivePath, outputDir) {
+            return new Promise((resolve, reject) => {
+                const path = window.require('path');
+                const { spawn } = window.require('child_process');
+
+                const fileName = archivePath.toLowerCase();
+                let command, args;
+
+                if (fileName.endsWith('.zip')) {
+                    // 使用PowerShell解压ZIP文件
+                    command = 'powershell';
+                    args = ['-Command', `Expand-Archive -Path "${archivePath}" -DestinationPath "${outputDir}" -Force`];
+                } else if (fileName.endsWith('.tar') || fileName.endsWith('.tgz') || fileName.endsWith('.tar.gz')) {
+                    // 使用tar解压
+                    command = 'tar';
+                    args = ['-xf', archivePath, '-C', outputDir];
+                } else {
+                    reject(new Error('不支持的压缩格式'));
+                    return;
+                }
+
+                const process = spawn(command, args);
+
+                process.on('close', (code) => {
+                    if (code === 0) {
+                        resolve();
+                    } else {
+                        reject(new Error(`解压失败，退出码: ${code}`));
+                    }
+                });
+
+                process.on('error', (error) => {
+                    reject(new Error(`解压命令执行失败: ${error.message}`));
+                });
+            });
+        }
+
+        // 查找日志文件
+        function findLogFiles(dir) {
+            const fs = window.require('fs');
+            const path = window.require('path');
+
+            const logFiles = [];
+            const logExtensions = ['.log', '.txt', '.out', '.err'];
+
+            function scanDirectory(currentDir) {
+                try {
+                    const items = fs.readdirSync(currentDir);
+
+                    for (const item of items) {
+                        const fullPath = path.join(currentDir, item);
+                        const stat = fs.statSync(fullPath);
+
+                        if (stat.isDirectory()) {
+                            scanDirectory(fullPath);
+                        } else if (stat.isFile()) {
+                            const ext = path.extname(item).toLowerCase();
+                            if (logExtensions.includes(ext) || item.toLowerCase().includes('log')) {
+                                logFiles.push(fullPath);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`扫描目录 ${currentDir} 失败:`, e);
+                }
+            }
+
+            scanDirectory(dir);
+            return logFiles;
+        }
+
+        // 服务端规则分析
+        async function analyzeWithServerRules(content, filename) {
+            try {
+                const response = await fetch(`${settings.serverUrl}/api/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        filename: filename
+                    }),
+                    signal: analysisController?.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`服务端分析失败: ${response.status}`);
+                }
+
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw error;
+                }
+                console.error('服务端分析失败，回退到本地分析:', error);
+                showMessage('服务端连接失败，使用本地规则分析', 'warning');
+                return await analyzeLogContent(content, filename);
+            }
+        }
+
+        // 本地日志分析逻辑（基于服务端逻辑）
+        async function analyzeLogContent(content, filename) {
+            try {
+                console.log('开始分析文件:', filename, '内容长度:', content.length);
+
+                if (!content || content.length === 0) {
+                    throw new Error('文件内容为空');
+                }
+
+                const lines = content.split('\n');
+                const issues = [];
+                console.log('总行数:', lines.length);
+
+                // 获取当前规则
+                const rules = await getCurrentRules();
+                console.log('获取到规则数量:', rules.length);
+
+                if (!rules || rules.length === 0) {
+                    console.warn('没有可用的规则');
+                    return {
+                        filename: filename,
+                        total_lines: lines.length,
+                        issues_found: 0,
+                        issues: [],
+                        analysis_time: new Date().toISOString()
+                    };
+                }
+
+                // 逐行分析
+                for (let i = 0; i < lines.length; i++) {
+                    // 检查是否被中断
+                    if (analysisController?.signal.aborted) {
+                        throw new DOMException('分析被中断', 'AbortError');
+                    }
+
+                    const line = lines[i];
+                    if (!line.trim()) continue;
+
+                    // 应用规则检测
+                    for (const rule of rules) {
+                        if (rule.is_active !== false && applyRule(line, rule)) {
+                            issues.push({
+                                line_number: i + 1,
+                                content: line,
+                                rule_name: rule.name,
+                                problem_type: rule.problem_type,
+                                problem_description: rule.problem_description || rule.description,
+                                severity: rule.priority > 5 ? 'high' : 'medium'
+                            });
+                            break; // 只应用第一个匹配的规则
+                        }
+                    }
+
+                    // 每处理1000行显示一次进度，避免频繁更新
+                    if (i % 1000 === 0 && i > 0) {
+                        const progress = Math.round((i / lines.length) * 100);
+                        showMessage(`正在分析... ${progress}%`, 'info');
+                        // 让出控制权，避免阻塞UI（缩短时延提升流畅度）
+                        await pause(0);
+                    }
+                }
+
+                console.log('分析完成，发现问题:', issues.length);
+                return {
+                    filename: filename,
+                    total_lines: lines.length,
+                    issues_found: issues.length,
+                    issues: issues,
+                    analysis_time: new Date().toISOString()
+                };
+            } catch (error) {
+                console.error('analyzeLogContent 错误:', error);
+                throw error;
+            }
+        }
+
+        // 规则应用逻辑
+        function applyRule(content, rule) {
+            try {
+                const pattern = rule.pattern;
+                const ruleType = rule.rule_type || 'regex';
+
+                switch (ruleType) {
+                    case 'regex':
+                        return new RegExp(pattern, 'i').test(content);
+                    case 'keyword':
+                        return content.toLowerCase().includes(pattern.toLowerCase());
+                    default:
+                        return false;
+                }
+            } catch (e) {
+                console.error('规则应用失败:', e);
+                return false;
+            }
+        }
+
+        // 获取当前规则
+        async function getCurrentRules() {
+            // 根据用户选择决定使用哪种规则
+            if (settings.useLocalRules) {
+                // 使用本地规则，不连接服务端
+                console.log('使用本地规则');
+                return getLocalRules();
+            } else {
+                // 使用服务端规则
+                try {
+                    console.log('尝试获取服务端规则');
+                    const rules = await fetchRulesFromServer();
+                    if (rules && rules.length > 0) {
+                        currentRules = rules;
+                        return rules;
+                    }
+                } catch (e) {
+                    console.log('服务端规则获取失败，回退到本地规则');
+                    showMessage('服务端连接失败，使用本地规则', 'warning');
+                }
+
+                // 回退到本地规则
+                return getLocalRules();
+            }
+        }
+
+        // 从服务端获取规则
+        async function fetchRulesFromServer() {
+            try {
+                // 先使用规范化后的 serverUrl
+                sanitizeSettings();
+                let url = `${settings.serverUrl}/api/v1/rules`;
+                console.log('尝试获取服务端规则:', url);
+
+                try {
+                    const response = await fetch(url);
+                    console.log('服务端响应状态:', response.status);
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('服务端返回数据:', data);
+
+                        // 处理不同的返回格式
+                        let rules;
+                        if (Array.isArray(data)) {
+                            rules = data;
+                        } else if (data.rules && Array.isArray(data.rules)) {
+                            rules = data.rules;
+                        } else {
+                            console.error('服务端返回数据格式错误:', data);
+                            return null;
+                        }
+
+                        // 移除服务端规则中的 priority 字段，因为客户端不使用
+                        rules = rules.map(rule => {
+                            const { priority, ...ruleWithoutPriority } = rule;
+                            return ruleWithoutPriority;
+                        });
+
+                        console.log('获取到服务端规则:', rules.length, '条');
+                        return rules;
+                    } else {
+                        console.error('服务端响应错误:', response.status, response.statusText);
+                    }
+                } catch (e1) {
+                    console.warn('首次请求失败，尝试端口回退:', e1);
+                    // 如果仍然有 8080 的历史地址，回退到 8001 再试一次
+                    const fallbackUrl = url.replace('localhost:8080', 'localhost:8001').replace('127.0.0.1:8080', '127.0.0.1:8001');
+                    if (fallbackUrl !== url) {
+                        console.log('尝试回退URL:', fallbackUrl);
+                        const resp2 = await fetch(fallbackUrl);
+                        if (resp2.ok) {
+                            const rules = await resp2.json();
+                            console.log('回退URL成功，获取到规则:', rules.length, '条');
+                            return rules;
+                        }
+                    }
+                    throw e1;
+                }
+            } catch (e) {
+                console.error('服务端规则获取失败:', e);
+            }
+            return null;
+        }
+
+        // 获取本地规则
+        function getLocalRules() {
+            try {
+                const saved = localStorage.getItem('logAnalyzerRules');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('本地规则加载失败:', e);
+            }
+
+            // 返回默认规则（与服务端字段保持一致）
+            return [
+                {
+                    id: 1,
+                    name: '错误日志规则',
+                    description: '匹配 ERROR 级别日志',
+                    pattern: 'ERROR|error|Error',
+                    rule_type: 'regex',
+                    problem_type: 'error',
+                    problem_description: '匹配 ERROR 级别日志',
+                    priority: 8,
+                    is_active: true,
+                    created_by: 1,
+                    created_at: new Date().toISOString(),
+                    updated_at: null
+                },
+                {
+                    id: 2,
+                    name: '警告日志规则',
+                    description: '匹配 WARN 级别日志',
+                    pattern: 'WARN|warn|Warning|WARNING',
+                    rule_type: 'regex',
+                    problem_type: 'warning',
+                    problem_description: '匹配 WARN 级别日志',
+                    priority: 5,
+                    is_active: true,
+                    created_by: 1,
+                    created_at: new Date().toISOString(),
+                    updated_at: null
+                },
+                {
+                    id: 3,
+                    name: '异常堆栈规则',
+                    description: '匹配异常堆栈信息',
+                    pattern: 'Exception|exception|Traceback|traceback',
+                    rule_type: 'regex',
+                    problem_type: 'exception',
+                    problem_description: '匹配异常堆栈信息',
+                    priority: 9,
+                    is_active: true,
+                    created_by: 1,
+                    created_at: new Date().toISOString(),
+                    updated_at: null
+                }
+            ];
+        }
+
+        // 保存本地规则
+        function saveLocalRules(rules) {
+            try {
+                localStorage.setItem('logAnalyzerRules', JSON.stringify(rules));
+                currentRules = rules;
+                updateRulesUI();
+            } catch (e) {
+                console.error('本地规则保存失败:', e);
+            }
+        }
+
+        // 规则管理功能
+        async function syncRules() {
+            try {
+                showMessage('正在同步规则...', 'info');
+                console.log('开始同步规则，当前服务端地址:', settings.serverUrl);
+
+                if (!settings.serverUrl) {
+                    showMessage('请先配置服务端地址', 'warning');
+                    return;
+                }
+
+                const serverRules = await fetchRulesFromServer();
+                console.log('服务端规则获取结果:', serverRules);
+
+                if (serverRules && Array.isArray(serverRules) && serverRules.length > 0) {
+                    console.log('保存服务端规则到本地:', serverRules);
+                    saveLocalRules(serverRules);
+
+                    // 验证保存是否成功
+                    const savedRules = getLocalRules();
+                    console.log('保存后本地规则数量:', savedRules.length);
+
+                    showMessage(`成功同步 ${serverRules.length} 条规则`, 'success');
+                } else {
+                    console.warn('服务端规则为空或格式错误:', serverRules);
+                    showMessage('服务端连接失败或无可用规则', 'error');
+                }
+
+            } catch (error) {
+                console.error('规则同步失败:', error);
+                showMessage('规则同步失败: ' + error.message, 'error');
+            }
+        }
+
+
+
+        function exportRules() {
+            try {
+                const rules = getLocalRules();
+                const dataStr = JSON.stringify(rules, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = 'log_analyzer_rules.json';
+                link.click();
+
+                showMessage('规则导出成功', 'success');
+            } catch (error) {
+                console.error('规则导出失败:', error);
+                showMessage('规则导出失败', 'error');
+            }
+        }
+
+        // 更新规则界面
+        function updateRulesUI() {
+            const rulesList = document.getElementById('rules-list');
+            if (!rulesList) return;
+
+            const rules = getLocalRules();
+            rulesList.innerHTML = '';
+
+            rules.forEach(rule => {
+                const ruleEl = document.createElement('div');
+                ruleEl.style.cssText = 'padding: 16px; border-bottom: 1px solid #e8e8e8; display: flex; justify-content: space-between; align-items: center;';
+
+                const statusClass = rule.is_active ? 'status-success' : 'status-error';
+
+                ruleEl.innerHTML = `
+                    <div>
+                        <span class="status-indicator ${statusClass}"></span>
+                        <strong>${rule.name}</strong> - ${rule.problem_description || rule.description || ''}
+                        <br><small style="color: #666;">模式: ${rule.pattern}</small>
+                        ${rule.priority !== undefined ? `<br><small style="color: #666;">优先级: ${rule.priority}</small>` : ''}
+                    </div>
+                    <div>
+                        <button onclick="editRule(${rule.id})" style="margin-right: 8px; padding: 4px 8px; border: 1px solid #1890ff; background: white; color: #1890ff; border-radius: 4px; cursor: pointer;">
+                            编辑
+                        </button>
+                        <button onclick="toggleRule(${rule.id})" style="margin-right: 8px; padding: 4px 8px; border: 1px solid #d9d9d9; background: white; border-radius: 4px; cursor: pointer;">
+                            ${rule.is_active ? '禁用' : '启用'}
+                        </button>
+                        <button onclick="deleteRule(${rule.id})" style="padding: 4px 8px; border: 1px solid #ff4d4f; background: #ff4d4f; color: white; border-radius: 4px; cursor: pointer;">
+                            删除
+                        </button>
+                    </div>
+                `;
+
+                rulesList.appendChild(ruleEl);
+            });
+        }
+
+        // 规则操作
+        function toggleRule(ruleId) {
+            const rules = getLocalRules();
+            const rule = rules.find(r => r.id === ruleId);
+            if (rule) {
+                rule.is_active = !rule.is_active;
+                saveLocalRules(rules);
+                showMessage(`规则 "${rule.name}" 已${rule.is_active ? '启用' : '禁用'}`, 'success');
+            }
+        }
+
+        function deleteRule(ruleId) {
+            if (!confirm('确定要删除这条规则吗？')) return;
+
+            const rules = getLocalRules();
+            const filteredRules = rules.filter(r => r.id !== ruleId);
+            saveLocalRules(filteredRules);
+            showMessage('规则删除成功', 'success');
+        }
+
+        // 规则编辑功能
+        let currentEditingRule = null;
+
+        function addRule() {
+            currentEditingRule = null;
+            document.getElementById('rule-modal-title').textContent = '添加规则';
+            clearRuleForm();
+            showRuleModal();
+        }
+
+        function editRule(ruleId) {
+            const rules = getLocalRules();
+            const rule = rules.find(r => r.id === ruleId);
+            if (!rule) return;
+
+            currentEditingRule = rule;
+            document.getElementById('rule-modal-title').textContent = '编辑规则';
+            fillRuleForm(rule);
+            showRuleModal();
+        }
+
+        function showRuleModal() {
+            console.log('显示规则模态框');
+            console.trace('showRuleModal 调用堆栈');
+            const modal = document.getElementById('rule-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                console.log('模态框已显示');
+            }
+        }
+
+        function closeRuleModal() {
+            console.log('关闭规则模态框');
+            const modal = document.getElementById('rule-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                console.log('模态框已隐藏');
+            } else {
+                console.error('找不到规则模态框元素');
+            }
+            currentEditingRule = null;
+            clearRuleForm();
+        }
+
+        function clearRuleForm() {
+            document.getElementById('rule-name').value = '';
+            document.getElementById('rule-description').value = '';
+            document.getElementById('rule-pattern').value = '';
+            document.getElementById('rule-type').value = 'regex';
+            document.getElementById('rule-problem-type').value = '';
+            document.getElementById('rule-problem-description').value = '';
+            document.getElementById('rule-active').checked = true;
+        }
+
+        function fillRuleForm(rule) {
+            document.getElementById('rule-name').value = rule.name || '';
+            document.getElementById('rule-description').value = rule.description || '';
+            document.getElementById('rule-pattern').value = rule.pattern || '';
+            document.getElementById('rule-type').value = rule.rule_type || 'regex';
+            document.getElementById('rule-problem-type').value = rule.problem_type || '';
+            document.getElementById('rule-problem-description').value = rule.problem_description || '';
+            document.getElementById('rule-active').checked = rule.is_active !== false;
+        }
+
+        function saveRule() {
+            try {
+                const name = document.getElementById('rule-name').value.trim();
+                const description = document.getElementById('rule-description').value.trim();
+                const pattern = document.getElementById('rule-pattern').value.trim();
+                const ruleType = document.getElementById('rule-type').value;
+                const problemType = document.getElementById('rule-problem-type').value.trim();
+                const problemDescription = document.getElementById('rule-problem-description').value.trim();
+                const isActive = document.getElementById('rule-active').checked;
+
+                if (!name || !pattern) {
+                    showMessage('请填写规则名称和匹配模式', 'warning');
+                    return;
+                }
+
+                // 验证正则表达式
+                if (ruleType === 'regex') {
+                    try {
+                        new RegExp(pattern);
+                    } catch (e) {
+                        showMessage('正则表达式格式错误: ' + e.message, 'error');
+                        return;
+                    }
+                }
+
+                const rules = getLocalRules();
+
+                if (currentEditingRule) {
+                    // 编辑现有规则
+                    const index = rules.findIndex(r => r.id === currentEditingRule.id);
+                    if (index !== -1) {
+                        rules[index] = {
+                            ...rules[index],
+                            name,
+                            description,
+                            pattern,
+                            rule_type: ruleType,
+                            problem_type: problemType,
+                            problem_description: problemDescription,
+                            is_active: isActive,
+                            updated_at: new Date().toISOString()
+                        };
+                    }
+                } else {
+                    // 添加新规则
+                    const newId = Math.max(...rules.map(r => r.id), 0) + 1;
+                    const newRule = {
+                        id: newId,
+                        name,
+                        description,
+                        pattern,
+                        rule_type: ruleType,
+                        problem_type: problemType,
+                        problem_description: problemDescription,
+                        is_active: isActive,
+                        created_by: 1,
+                        created_at: new Date().toISOString(),
+                        updated_at: null
+                    };
+                    rules.push(newRule);
+                }
+
+                saveLocalRules(rules);
+                closeRuleModal();
+                showMessage(currentEditingRule ? '规则更新成功' : '规则添加成功', 'success');
+            } catch (error) {
+                console.error('保存规则时出错:', error);
+                showMessage('保存规则失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示分析结果
+        function showAnalysisResult(result) {
+            const reportPage = document.getElementById('report-page');
+            if (!reportPage) return;
+
+            reportPage.innerHTML = `
+                <h1 class="page-title">分析报告</h1>
+                <p class="page-subtitle">文件: ${result.filename}</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: #f0f2ff; padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: 600; color: #667eea;">${result.total_lines}</div>
+                        <div style="color: #666;">总行数</div>
+                    </div>
+                    <div style="background: #fff2e8; padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: 600; color: #fa8c16;">${result.issues_found}</div>
+                        <div style="color: #666;">发现问题</div>
+                    </div>
+                    <div style="background: #f6ffed; padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: 600; color: #52c41a;">${(result.issues || []).filter(i => i.severity === 'high').length}</div>
+                        <div style="color: #666;">高危问题</div>
+                    </div>
+                    ${result.files_analyzed ? `
+                    <div style="background: #e6f7ff; padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: 600; color: #1890ff;">${result.files_analyzed}</div>
+                        <div style="color: #666;">分析文件</div>
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div style="background: white; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="margin-bottom: 16px;">问题详情</h3>
+                    <div id="issues-list">
+                        <p style="color: #666; text-align: center; padding: 16px; margin: 0;">${(result.issues || []).length} 条问题，将分批渲染以避免卡顿...</p>
+                    </div>
+                    <div style="text-align:center; margin-top: 12px;">
+                        <button id="load-more-btn" class="btn btn-secondary" type="button">加载更多</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn" onclick="exportReport()">导出报告</button>
+                    <button class="btn btn-secondary" onclick="switchTab('home')">返回首页</button>
+                </div>
+            `;
+
+            // 分批渲染 issues，避免一次性生成巨大 innerHTML
+            renderIssuesIncrementally(result.issues || [], 200);
+
+
+            // 保存最新报告（进行体积裁剪，避免 localStorage 过大导致 RangeError）
+            try {
+                const slim = {
+                    filename: result.filename,
+                    total_lines: result.total_lines,
+                    issues_found: result.issues_found,
+                    analysis_time: result.analysis_time,
+                    files_analyzed: result.files_analyzed,
+                    // 只保存问题的关键字段，限制最多 500 条
+                    issues: (result.issues || []).slice(0, 500).map(it => ({
+                        type: it.type,
+                        severity: it.severity,
+                        file: it.file || it.source_file,
+                        line: it.line,
+                        message: (it.message || '').slice(0, 500)
+                    }))
+                };
+                localStorage.setItem('lastAnalysisResult', JSON.stringify(slim));
+            } catch (e) {
+                console.warn('保存分析报告到本地失败:', e);
+            }
+        }
+
+        // 导出报告
+        function exportReport() {
+            try {
+                const result = JSON.parse(localStorage.getItem('lastAnalysisResult') || '{}');
+                if (!result.filename) {
+                    showMessage('没有可导出的报告', 'warning');
+                    return;
+                }
+
+                const reportText = generateReportText(result);
+                const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `analysis_report_${result.filename}_${new Date().toISOString().slice(0, 10)}.txt`;
+                link.click();
+
+
+
+
+                showMessage('报告导出成功', 'success');
+            } catch (error) {
+                console.error('报告导出失败:', error);
+                showMessage('报告导出失败', 'error');
+            }
+        }
+
+        // 生成报告文本
+        function generateReportText(result) {
+            let text = `日志分析报告\n`;
+            text += `================\n\n`;
+            text += `文件名: ${result.filename || '-'}\n`;
+            text += `分析时间: ${(result.analysis_time ? new Date(result.analysis_time).toLocaleString() : new Date().toLocaleString())}\n`;
+            text += `总行数: ${result.total_lines || 0}\n`;
+            text += `发现问题: ${result.issues_found || (result.issues ? result.issues.length : 0)}\n\n`;
+
+            const issues = result.issues || [];
+            if (issues.length > 0) {
+                text += `问题详情:\n`;
+                text += `--------\n\n`;
+
+                issues.forEach((issue, index) => {
+                    const ln = issue.line_number || issue.line || '-';
+                    text += `${index + 1}. ${issue.rule_name || issue.type || '规则命中'} (第 ${ln} 行)\n`;
+                    text += `   严重程度: ${issue.severity || '-'}\n`;
+                    if (issue.problem_type) text += `   问题类型: ${issue.problem_type}\n`;
+                    if (issue.problem_description) text += `   问题描述: ${issue.problem_description}\n`;
+                    if (issue.file || issue.source_file) text += `   文件: ${issue.file || issue.source_file}\n`;
+                    if (issue.content || issue.message) text += `   日志内容: ${(issue.content || issue.message)}\n`;
+                    text += `\n`;
+                });
+            } else {
+                text += `未发现问题。\n`;
+            }
+
+            return text;
+        }
+
+        // 设置功能
+        function saveAppSettings() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const autoSync = document.getElementById('autoSync').checked;
+
+            if (serverUrl && !serverUrl.startsWith('http')) {
+                showMessage('服务端地址必须以 http:// 或 https:// 开头', 'warning');
+                return;
+            }
+
+            settings.serverUrl = serverUrl || 'http://172.17.20.117:8001';
+            settings.autoSync = autoSync;
+
+            saveSettings();
+        }
+
+        async function testConnection() {
+            const serverUrl = document.getElementById('serverUrl').value.trim() || settings.serverUrl;
+
+            if (!serverUrl) {
+                showMessage('请先输入服务端地址', 'warning');
+                return;
+            }
+
+            try {
+                showMessage('正在测试连接...', 'info');
+
+                const response = await fetch(`${serverUrl}/api/v1/rules`, {
+                    method: 'GET',
+                    timeout: 5000
+                });
+
+                if (response.ok) {
+                    showMessage('连接成功！', 'success');
+                } else {
+                    showMessage(`连接失败: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                console.error('连接测试失败:', error);
+                showMessage('连接失败: ' + error.message, 'error');
+            }
+        }
+
+        function clearAllData() {
+            if (!confirm('确定要清除所有本地数据吗？这将删除所有规则和设置。')) {
+                return;
+            }
+
+            try {
+                localStorage.removeItem('logAnalyzerSettings');
+                localStorage.removeItem('logAnalyzerRules');
+                localStorage.removeItem('lastAnalysisResult');
+
+                // 重置状态
+                settings = {
+                    serverUrl: 'http://localhost:8001',
+                    autoSync: true,
+                    useLocalRules: true
+                };
+                currentRules = [];
+                selectedFile = null;
+                selectedBulkFile = null;
+
+                // 更新界面
+                updateSettingsUI();
+                updateRulesUI();
+
+                showMessage('所有数据已清除', 'success');
+            } catch (error) {
+                console.error('清除数据失败:', error);
+                showMessage('清除数据失败', 'error');
+            }
+        }
+
+        // 初始化应用
+        function initApp() {
+            // 加载设置
+            loadSettings();
+
+            // 确保模态框是隐藏的
+            const modal = document.getElementById('rule-modal');
+            if (modal) {
+                console.log('初始化前模态框类名:', modal.className);
+                modal.classList.add('hidden');
+                console.log('初始化后模态框类名:', modal.className);
+                console.log('模态框是否隐藏:', modal.classList.contains('hidden'));
+            } else {
+                console.error('找不到规则模态框元素');
+            }
+
+            // 更新规则界面
+            updateRulesUI();
+
+            // 初始化规则选择状态
+            initializeRuleSourceUI();
+
+            // 如果启用自动同步，尝试同步规则
+            // 仅当选择服务端规则时才自动同步，避免本地规则模式触发网络请求
+            if (settings.autoSync && !settings.useLocalRules) {
+                setTimeout(() => {
+                    syncRules();
+                }, 1000);
+            }
+
+            // 添加CSS动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // 初始化规则选择界面
+        function initializeRuleSourceUI() {
+            // 设置单个分析页面的规则选择
+            const singleRadios = document.querySelectorAll('input[name="ruleSource"]');
+            singleRadios.forEach(radio => {
+                if (radio.value === (settings.useLocalRules ? 'local' : 'server')) {
+                    radio.checked = true;
+                }
+            });
+
+            // 设置全量分析页面的规则选择
+            const bulkRadios = document.querySelectorAll('input[name="bulkRuleSource"]');
+            bulkRadios.forEach(radio => {
+                if (radio.value === (settings.useLocalRules ? 'local' : 'server')) {
+                    radio.checked = true;
+                }
+            });
+
+            // 更新状态显示
+            updateRuleSource(settings.useLocalRules ? 'local' : 'server');
+        }
+
+        // 页面加载完成后初始化
+
+        // 分批渲染函数：每批 batchSize 条，点击“加载更多”或自动首批
+        function renderIssuesIncrementally(allIssues, batchSize = 200) {
+            try {
+                const container = document.getElementById('issues-list');
+                const loadMoreBtn = document.getElementById('load-more-btn');
+                if (!container) return;
+
+                let index = 0;
+                function renderBatch() {
+                    const end = Math.min(index + batchSize, allIssues.length);
+                    const frag = document.createDocumentFragment();
+                    for (let i = index; i < end; i++) {
+                        const issue = allIssues[i] || {};
+                        const div = document.createElement('div');
+                        div.style.borderBottom = '1px solid #f0f0f0';
+                        div.style.padding = '16px 0';
+                        div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                                <strong style="color: ${issue.severity === 'high' ? '#ff4d4f' : '#fa8c16'};">${issue.rule_name || issue.type || '规则命中'}</strong>
+                                <div style="text-align:right;">
+                                    ${issue.source_file ? `<div style="background:#f0f0f0; color:#666; padding:2px 8px; border-radius:4px; font-size:11px; margin-bottom:4px;">${issue.source_file}</div>` : ''}
+                                    <span style="background:${issue.severity === 'high' ? '#ff4d4f' : '#fa8c16'}; color:white; padding:2px 8px; border-radius:4px; font-size:12px;">第 ${issue.line_number || issue.line || '-'} 行</span>
+                                </div>
+                            </div>
+                            <div style="color:#666; margin-bottom:8px;">${issue.problem_description || ''}</div>
+                            <div style="background:#f8f8f8; padding:8px; border-radius:4px; font-family:monospace; font-size:12px; overflow-x:auto;">${issue.content || issue.message || ''}</div>
+                        `;
+                        frag.appendChild(div);
+                    }
+                    if (index === 0) container.innerHTML = '';
+                    container.appendChild(frag);
+                    index = end;
+                    if (loadMoreBtn) loadMoreBtn.style.display = index < allIssues.length ? 'inline-block' : 'none';
+                }
+
+                // 初次渲染
+                renderBatch();
+                if (loadMoreBtn) loadMoreBtn.onclick = renderBatch;
+            } catch (e) {
+                console.error('renderIssuesIncrementally error:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 立即隐藏模态框
+            const modal = document.getElementById('rule-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                console.log('DOMContentLoaded: 强制隐藏模态框');
+            }
+
+            // 然后初始化应用
+            initApp();
+        });
+
+        // 添加模态框点击外部关闭功能
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('rule-modal');
+            if (event.target === modal) {
+                closeRuleModal();
+            }
+        });
+
+        // 添加键盘事件监听器，支持 ESC 键关闭模态框
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('rule-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeRuleModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

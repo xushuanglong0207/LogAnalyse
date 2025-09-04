@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日志分析工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .title {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .status-ok {
+            color: #28a745;
+        }
+        
+        .status-error {
+            color: #dc3545;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📊</div>
+        <h1 class="title">日志分析工具</h1>
+        <p class="subtitle">桌面端日志分析工具 - 支持本地和服务端规则同步</p>
+        
+        <div class="status">
+            <h3>系统状态检查</h3>
+            <div class="status-item">
+                <span>Electron 环境</span>
+                <span id="electron-status" class="status-error">❌ 未检测到</span>
+            </div>
+            <div class="status-item">
+                <span>React 组件</span>
+                <span id="react-status" class="status-ok">✅ 已加载</span>
+            </div>
+            <div class="status-item">
+                <span>文件系统访问</span>
+                <span id="fs-status" class="status-error">❌ 受限</span>
+            </div>
+        </div>
+        
+        <div id="message-area"></div>
+        
+        <div class="actions">
+            <button class="btn" onclick="testFileAccess()">测试文件访问</button>
+            <button class="btn" onclick="openDevTools()">打开开发工具</button>
+            <button class="btn" onclick="showAbout()">关于</button>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 14px;">
+                如果您看到此页面，说明基本的 HTML/CSS/JS 环境正常工作。<br>
+                请检查 React 和 Electron 依赖是否正确安装。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 检查 Electron 环境
+        function checkElectronEnvironment() {
+            if (typeof window !== 'undefined' && window.require) {
+                document.getElementById('electron-status').innerHTML = '✅ 已检测到';
+                document.getElementById('electron-status').className = 'status-ok';
+                
+                try {
+                    const { ipcRenderer } = window.require('electron');
+                    document.getElementById('fs-status').innerHTML = '✅ 可用';
+                    document.getElementById('fs-status').className = 'status-ok';
+                } catch (e) {
+                    console.log('IPC 不可用:', e);
+                }
+            }
+        }
+        
+        function showMessage(message, type = 'info') {
+            const messageArea = document.getElementById('message-area');
+            const className = type === 'error' ? 'error-message' : 'success-message';
+            messageArea.innerHTML = `<div class="${className}">${message}</div>`;
+            
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+        
+        function testFileAccess() {
+            if (typeof window !== 'undefined' && window.require) {
+                try {
+                    const fs = window.require('fs');
+                    const path = window.require('path');
+                    const testFile = path.join(__dirname, 'test.txt');
+                    
+                    fs.writeFileSync(testFile, 'Test file content');
+                    const content = fs.readFileSync(testFile, 'utf8');
+                    fs.unlinkSync(testFile);
+                    
+                    showMessage('文件系统访问测试成功！', 'success');
+                } catch (e) {
+                    showMessage('文件系统访问测试失败: ' + e.message, 'error');
+                }
+            } else {
+                showMessage('Electron 环境不可用，无法测试文件访问', 'error');
+            }
+        }
+        
+        function openDevTools() {
+            if (typeof window !== 'undefined' && window.require) {
+                try {
+                    const { remote } = window.require('electron');
+                    remote.getCurrentWindow().webContents.openDevTools();
+                } catch (e) {
+                    showMessage('无法打开开发工具: ' + e.message, 'error');
+                }
+            } else {
+                showMessage('Electron 环境不可用', 'error');
+            }
+        }
+        
+        function showAbout() {
+            showMessage('日志分析工具 v1.0.0<br>基于 Electron + React 构建<br>支持本地和服务端规则同步', 'success');
+        }
+        
+        // 页面加载时检查环境
+        window.addEventListener('DOMContentLoaded', () => {
+            checkElectronEnvironment();
+        });
+    </script>
+</body>
+</html>
