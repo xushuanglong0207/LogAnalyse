@@ -4,6 +4,15 @@
 echo "🚀 日志分析平台启动器"
 echo "===================="
 
+# 获取脚本所在目录，确保使用相对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
+echo "📁 项目根目录: $PROJECT_ROOT"
+
+# 切换到项目根目录
+cd "$PROJECT_ROOT"
+
 # 检查是否为root用户
 if [ "$EUID" -eq 0 ]; then
     SUDO_CMD=""
@@ -103,7 +112,12 @@ install_backend_deps() {
     if [ -z "$VIRTUAL_ENV" ]; then
         source venv/bin/activate
     fi
-    
+
+    # 检查backend目录是否存在
+    if [ ! -d "backend" ]; then
+        handle_error "backend目录不存在"
+    fi
+
     cd backend
     
     # 在虚拟环境中安装依赖
@@ -119,33 +133,38 @@ install_backend_deps() {
         # 检查关键依赖是否安装成功
         python -c "import fastapi, uvicorn" 2>/dev/null
         if [ $? -ne 0 ]; then
-            cd ..
+            cd "$PROJECT_ROOT"
             handle_error "关键后端依赖安装失败"
         fi
         echo "✅ 基础依赖安装完成（部分可选依赖可能失败）"
     fi
-    
-    cd ..
+
+    cd "$PROJECT_ROOT"
     success_msg "后端依赖安装完成"
 }
 
 # 安装前端依赖
 install_frontend_deps() {
     echo "🎨 安装前端依赖..."
-    
-    cd frontend
-    
+
+    # 检查client目录是否存在
+    if [ ! -d "client" ]; then
+        handle_error "client目录不存在"
+    fi
+
+    cd client
+
     # 检查是否需要安装依赖
     if [ ! -d "node_modules" ]; then
         echo "安装Node.js依赖..."
         npm install --legacy-peer-deps
         if [ $? -ne 0 ]; then
-            cd ..
+            cd "$PROJECT_ROOT"
             handle_error "前端依赖安装失败"
         fi
     fi
-    
-    cd ..
+
+    cd "$PROJECT_ROOT"
     success_msg "前端依赖安装完成"
 }
 
@@ -155,15 +174,20 @@ start_backend() {
     
     # 激活虚拟环境
     source venv/bin/activate
-    
+
+    # 检查backend目录是否存在
+    if [ ! -d "backend" ]; then
+        handle_error "backend目录不存在"
+    fi
+
     cd backend
-    
+
     # 启动FastAPI服务
     echo "启动FastAPI服务在端口8001..."
     python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload &
     BACKEND_PID=$!
-    
-    cd ..
+
+    cd "$PROJECT_ROOT"
     
     # 等待后端启动
     echo "等待后端服务启动..."
@@ -187,31 +211,34 @@ start_backend() {
     echo "📋 请检查日志输出以获取更多信息"
 }
 
-# 启动前端服务
+# 启动客户端应用
 start_frontend() {
-    echo "🎨 启动前端服务..."
-    
-    cd frontend
-    
-    # 启动Next.js开发服务器
-    echo "启动Next.js服务在端口3000..."
-    npm run dev &
+    echo "🎨 启动客户端应用..."
+
+    # 检查client目录是否存在
+    if [ ! -d "client" ]; then
+        handle_error "client目录不存在"
+    fi
+
+    cd client
+
+    # 启动Electron应用
+    echo "启动Electron客户端应用..."
+    npx electron . &
     FRONTEND_PID=$!
-    
-    cd ..
-    
-    # 等待前端启动
-    echo "等待前端服务启动..."
-    for i in {1..30}; do
-        if curl -s http://localhost:3000 > /dev/null 2>&1; then
-            success_msg "前端服务启动成功 (PID: $FRONTEND_PID)"
-            return 0
-        fi
-        sleep 1
-        echo -n "."
-    done
-    
-    handle_error "前端服务启动超时"
+
+    cd "$PROJECT_ROOT"
+
+    # 等待应用启动
+    echo "等待客户端应用启动..."
+    sleep 3
+
+    if ps -p $FRONTEND_PID > /dev/null 2>&1; then
+        success_msg "客户端应用启动成功 (PID: $FRONTEND_PID)"
+        return 0
+    else
+        handle_error "客户端应用启动失败"
+    fi
 }
 
 # 显示访问信息
@@ -350,7 +377,14 @@ reset_environment() {
         rm -rf venv
     fi
     
-    # 删除前端node_modules
+    # 删除客户端node_modules
+    if [ -d "client/node_modules" ]; then
+        echo "删除客户端依赖..."
+        rm -rf client/node_modules
+        rm -f client/package-lock.json
+    fi
+
+    # 删除前端node_modules (如果存在)
     if [ -d "frontend/node_modules" ]; then
         echo "删除前端依赖..."
         rm -rf frontend/node_modules

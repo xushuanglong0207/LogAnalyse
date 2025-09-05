@@ -6,6 +6,15 @@ rem 日志分析平台 - Windows启动脚本
 echo 🚀 日志分析平台启动器 (Windows)
 echo ============================
 
+rem 获取脚本所在目录，确保使用相对路径
+set "PROJECT_ROOT=%~dp0"
+set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
+
+echo 📁 项目根目录: %PROJECT_ROOT%
+
+rem 切换到项目根目录
+cd /d "%PROJECT_ROOT%"
+
 rem 设置颜色代码
 set "GREEN=[32m"
 set "RED=[31m"
@@ -123,41 +132,55 @@ echo 📦 安装后端依赖...
 rem 激活虚拟环境
 call venv\Scripts\activate.bat
 
+rem 检查backend目录是否存在
+if not exist backend (
+    echo ❌ 错误: backend目录不存在
+    pause
+    exit /b 1
+)
+
 cd backend
 
 rem 安装依赖
 echo 安装 fastapi uvicorn python-multipart...
 pip install fastapi uvicorn python-multipart
 if !errorlevel! neq 0 (
-    cd ..
+    cd "%PROJECT_ROOT%"
     echo ❌ 错误: 后端依赖安装失败
     pause
     exit /b 1
 )
 
-cd ..
+cd "%PROJECT_ROOT%"
 echo ✅ 后端依赖安装完成
 exit /b 0
 
 :install_frontend_deps
-echo 🎨 安装前端依赖...
+echo 🎨 安装客户端依赖...
 
-cd frontend
+rem 检查client目录是否存在
+if not exist client (
+    echo ❌ 错误: client目录不存在
+    pause
+    exit /b 1
+)
+
+cd client
 
 rem 检查是否需要安装依赖
 if not exist node_modules (
     echo 安装Node.js依赖...
     npm install --legacy-peer-deps
     if !errorlevel! neq 0 (
-        cd ..
-        echo ❌ 错误: 前端依赖安装失败
+        cd "%PROJECT_ROOT%"
+        echo ❌ 错误: 客户端依赖安装失败
         pause
         exit /b 1
     )
 )
 
-cd ..
-echo ✅ 前端依赖安装完成
+cd "%PROJECT_ROOT%"
+echo ✅ 客户端依赖安装完成
 exit /b 0
 
 :start_backend
@@ -166,13 +189,20 @@ echo 🚀 启动后端服务...
 rem 激活虚拟环境
 call venv\Scripts\activate.bat
 
+rem 检查backend目录是否存在
+if not exist backend (
+    echo ❌ 错误: backend目录不存在
+    pause
+    exit /b 1
+)
+
 cd backend
 
 rem 启动FastAPI服务
 echo 启动FastAPI服务在端口8001...
 start /b python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
-cd ..
+cd "%PROJECT_ROOT%"
 
 rem 等待后端启动
 echo 等待后端服务启动...
@@ -194,15 +224,22 @@ exit /b 1
 exit /b 0
 
 :start_frontend
-echo 🎨 启动前端服务...
+echo 🎨 启动客户端应用...
 
-cd frontend
+rem 检查client目录是否存在
+if not exist client (
+    echo ❌ 错误: client目录不存在
+    pause
+    exit /b 1
+)
 
-rem 启动Next.js开发服务器
-echo 启动Next.js服务在端口3000...
-start /b npm run dev
+cd client
 
-cd ..
+rem 启动Electron应用
+echo 启动Electron客户端应用...
+start /b npx electron .
+
+cd "%PROJECT_ROOT%"
 
 rem 等待前端启动
 echo 等待前端服务启动...

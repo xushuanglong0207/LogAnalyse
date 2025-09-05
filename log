@@ -1,0 +1,189 @@
+6) 🔧 重置环境
+0) 退出
+
+请输入选择 [1]: 1
+🚀 开始启动平台...
+🔍 检查系统依赖...
+🔧 修复系统包依赖...
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages were automatically installed and are no longer required:
+  iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
+Use 'apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
+Hit:1 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm InRelease
+Get:2 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-updates InRelease [55.4 kB]
+Get:3 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-backports InRelease [59.4 kB]
+Hit:4 https://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security InRelease
+Fetched 115 kB in 1s (98.6 kB/s)
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+104 packages can be upgraded. Run 'apt list --upgradable' to see them.
+📦 确保Python虚拟环境支持...
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+python3-venv is already the newest version (3.11.2-1+b1).
+python3-full is already the newest version (3.11.2-1+b1).
+The following packages were automatically installed and are no longer required:
+  iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
+Use 'apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
+✅ 系统依赖检查完成
+🐍 设置Python环境...
+创建Python虚拟环境...
+升级pip...
+Requirement already satisfied: pip in ./venv/lib/python3.11/site-packages (23.0.1)
+Collecting pip
+  Using cached pip-25.2-py3-none-any.whl (1.8 MB)
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 23.0.1
+    Uninstalling pip-23.0.1:
+      Successfully uninstalled pip-23.0.1
+Successfully installed pip-25.2
+验证虚拟环境...
+Python路径: /volume7/log-analysev3/venv/bin/python
+Pip路径: /volume7/log-analysev3/venv/bin/pip
+虚拟环境: /volume7/log-analysev3/venv
+✅ Python环境设置完成
+📦 安装后端依赖...
+安装 fastapi uvicorn python-multipart...
+Collecting fastapi
+  Using cached fastapi-0.116.1-py3-none-any.whl.metadata (28 kB)
+Collecting uvicorn
+  Using cached uvicorn-0.35.0-py3-none-any.whl.metadata (6.5 kB)
+Collecting python-multipart
+  Using cached python_multipart-0.0.20-py3-none-any.whl.metadata (1.8 kB)
+Collecting python-dotenv
+  Downloading python_dotenv-1.1.1-py3-none-any.whl.metadata (24 kB)
+Collecting starlette<0.48.0,>=0.40.0 (from fastapi)
+  Using cached starlette-0.47.3-py3-none-any.whl.metadata (6.2 kB)
+Collecting pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 (from fastapi)
+  Using cached pydantic-2.11.7-py3-none-any.whl.metadata (67 kB)
+Collecting typing-extensions>=4.8.0 (from fastapi)
+  Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting annotated-types>=0.6.0 (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi)
+  Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.33.2 (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi)
+  Using cached pydantic_core-2.33.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
+Collecting typing-inspection>=0.4.0 (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi)
+  Using cached typing_inspection-0.4.1-py3-none-any.whl.metadata (2.6 kB)
+Collecting anyio<5,>=3.6.2 (from starlette<0.48.0,>=0.40.0->fastapi)
+  Using cached anyio-4.10.0-py3-none-any.whl.metadata (4.0 kB)
+Collecting idna>=2.8 (from anyio<5,>=3.6.2->starlette<0.48.0,>=0.40.0->fastapi)
+  Using cached idna-3.10-py3-none-any.whl.metadata (10 kB)
+Collecting sniffio>=1.1 (from anyio<5,>=3.6.2->starlette<0.48.0,>=0.40.0->fastapi)
+  Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting click>=7.0 (from uvicorn)
+  Using cached click-8.2.1-py3-none-any.whl.metadata (2.5 kB)
+Collecting h11>=0.8 (from uvicorn)
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Using cached fastapi-0.116.1-py3-none-any.whl (95 kB)
+Using cached pydantic-2.11.7-py3-none-any.whl (444 kB)
+Using cached pydantic_core-2.33.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.0 MB)
+Using cached starlette-0.47.3-py3-none-any.whl (72 kB)
+Using cached anyio-4.10.0-py3-none-any.whl (107 kB)
+Using cached uvicorn-0.35.0-py3-none-any.whl (66 kB)
+Using cached python_multipart-0.0.20-py3-none-any.whl (24 kB)
+Downloading python_dotenv-1.1.1-py3-none-any.whl (20 kB)
+Using cached annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Using cached click-8.2.1-py3-none-any.whl (102 kB)
+Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+Using cached idna-3.10-py3-none-any.whl (70 kB)
+Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Using cached typing_inspection-0.4.1-py3-none-any.whl (14 kB)
+Installing collected packages: typing-extensions, sniffio, python-multipart, python-dotenv, idna, h11, click, annotated-types, uvicorn, typing-inspection, pydantic-core, anyio, starlette, pydantic, fastapi
+Successfully installed annotated-types-0.7.0 anyio-4.10.0 click-8.2.1 fastapi-0.116.1 h11-0.16.0 idna-3.10 pydantic-2.11.7 pydantic-core-2.33.2 python-dotenv-1.1.1 python-multipart-0.0.20 sniffio-1.3.1 starlette-0.47.3 typing-extensions-4.15.0 typing-inspection-0.4.1 uvicorn-0.35.0
+✅ 后端依赖安装完成
+🎨 安装前端依赖...
+./start.sh: line 136: cd: frontend: No such file or directory
+安装Node.js依赖...
+npm ERR! code ENOENT
+npm ERR! syscall open
+npm ERR! path /volume7/log-analysev3/package.json
+npm ERR! errno -2
+npm ERR! enoent ENOENT: no such file or directory, open '/volume7/log-analysev3/package.json'
+npm ERR! enoent This is related to npm not being able to find a file.
+npm ERR! enoent
+
+npm ERR! A complete log of this run can be found in:
+npm ERR!     /root/.npm/_logs/2025-09-05T02_05_48_484Z-debug-0.log
+❌ 错误: 前端依赖安装失败
+💡 请查看错误信息并重试
+(venv) root@DXP8800PRO-120B:/volume7/log-analysev3#
+(venv) root@DXP8800PRO-120B:/volume7/log-analysev3# ./start.sh 3
+🚀 日志分析平台启动器
+====================
+🔍 检查系统依赖...
+🔧 修复系统包依赖...
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages were automatically installed and are no longer required:
+  iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
+Use 'apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
+Hit:1 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm InRelease
+Hit:2 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-updates InRelease
+Hit:3 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-backports InRelease
+Hit:4 https://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security InRelease
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+104 packages can be upgraded. Run 'apt list --upgradable' to see them.
+📦 确保Python虚拟环境支持...
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+python3-venv is already the newest version (3.11.2-1+b1).
+python3-full is already the newest version (3.11.2-1+b1).
+The following packages were automatically installed and are no longer required:
+  iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
+Use 'apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
+✅ 系统依赖检查完成
+🐍 设置Python环境...
+升级pip...
+Requirement already satisfied: pip in ./venv/lib/python3.11/site-packages (25.2)
+验证虚拟环境...
+Python路径: /volume7/log-analysev3/venv/bin/python
+Pip路径: /volume7/log-analysev3/venv/bin/pip
+虚拟环境: /volume7/log-analysev3/venv
+✅ Python环境设置完成
+📦 安装后端依赖...
+安装 fastapi uvicorn python-multipart...
+Requirement already satisfied: fastapi in /volume7/log-analysev3/venv/lib/python3.11/site-packages (0.116.1)
+Requirement already satisfied: uvicorn in /volume7/log-analysev3/venv/lib/python3.11/site-packages (0.35.0)
+Requirement already satisfied: python-multipart in /volume7/log-analysev3/venv/lib/python3.11/site-packages (0.0.20)
+Requirement already satisfied: python-dotenv in /volume7/log-analysev3/venv/lib/python3.11/site-packages (1.1.1)
+Requirement already satisfied: starlette<0.48.0,>=0.40.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from fastapi) (0.47.3)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from fastapi) (2.11.7)
+Requirement already satisfied: typing-extensions>=4.8.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from fastapi) (4.15.0)
+Requirement already satisfied: annotated-types>=0.6.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.7.0)
+Requirement already satisfied: pydantic-core==2.33.2 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (2.33.2)
+Requirement already satisfied: typing-inspection>=0.4.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.4.1)
+Requirement already satisfied: anyio<5,>=3.6.2 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from starlette<0.48.0,>=0.40.0->fastapi) (4.10.0)
+Requirement already satisfied: idna>=2.8 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from anyio<5,>=3.6.2->starlette<0.48.0,>=0.40.0->fastapi) (3.10)
+Requirement already satisfied: sniffio>=1.1 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from anyio<5,>=3.6.2->starlette<0.48.0,>=0.40.0->fastapi) (1.3.1)
+Requirement already satisfied: click>=7.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from uvicorn) (8.2.1)
+Requirement already satisfied: h11>=0.8 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from uvicorn) (0.16.0)
+✅ 后端依赖安装完成
+🎨 安装前端依赖...
+./start.sh: line 136: cd: frontend: No such file or directory
+安装Node.js依赖...
+npm ERR! code ENOENT
+npm ERR! syscall open
+npm ERR! path /volume7/log-analysev3/package.json
+npm ERR! errno -2
+npm ERR! enoent ENOENT: no such file or directory, open '/volume7/log-analysev3/package.json'
+npm ERR! enoent This is related to npm not being able to find a file.
+npm ERR! enoent
+
+npm ERR! A complete log of this run can be found in:
+npm ERR!     /root/.npm/_logs/2025-09-05T02_06_24_048Z-debug-0.log
+❌ 错误: 前端依赖安装失败
+💡 请查看错误信息并重试
