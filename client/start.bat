@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul 2>&1
 echo 正在启动日志分析工具客户端...
 echo.
 
@@ -24,13 +25,11 @@ if not exist "node_modules" (
 
 REM 启动应用
 echo 正在启动应用...
-start "React Dev Server" cmd /k "npm start"
 
-REM 等待React服务器启动
-timeout /t 5 /nobreak >nul
-
-REM 启动Electron
+REM 直接启动Electron（使用full-app.html）
 echo 正在启动Electron...
-npm run electron
+npx electron .
 
-pause 
+echo.
+echo 应用已启动完成！
+pause

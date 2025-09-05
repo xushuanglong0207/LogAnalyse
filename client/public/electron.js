@@ -90,10 +90,10 @@ async function createWindow() {
     // 设置中文右键菜单
     setupContextMenu();
 
-    // 开发环境下自动打开DevTools
-    if (isDev) {
-      mainWindow.webContents.openDevTools();
-    }
+    // 开发环境下自动打开DevTools（已禁用，需要时可手动打开）
+    // if (isDev) {
+    //   mainWindow.webContents.openDevTools();
+    // }
   });
 
   // 当窗口关闭时触发
@@ -160,11 +160,13 @@ function setupContextMenu() {
     },
     {
       label: '缩小',
-      accelerator: 'CmdOrCtrl+-',
+      accelerator: 'CmdOrCtrl+Shift+-',
       click: () => {
         if (mainWindow) {
           const currentZoom = mainWindow.webContents.getZoomLevel();
-          mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+          console.log('右键菜单-缩小前缩放级别:', currentZoom);
+          mainWindow.webContents.setZoomLevel(currentZoom - 0.2);
+          console.log('右键菜单-缩小后缩放级别:', currentZoom - 0.2);
         }
       }
     },
@@ -329,15 +331,77 @@ function setApplicationMenu() {
     {
       label: '视图',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        {
+          label: '重新加载',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.reload();
+            }
+          }
+        },
+        {
+          label: '强制重新加载',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.reloadIgnoringCache();
+            }
+          }
+        },
+        {
+          label: '切换开发者工具',
+          accelerator: process.platform === 'darwin' ? 'Alt+Cmd+I' : 'Ctrl+Shift+I',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.toggleDevTools();
+            }
+          }
+        },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        {
+          label: '实际大小',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.setZoomLevel(0);
+            }
+          }
+        },
+        {
+          label: '放大',
+          accelerator: 'CmdOrCtrl+=',
+          click: () => {
+            if (mainWindow) {
+              const currentZoom = mainWindow.webContents.getZoomLevel();
+              console.log('放大前缩放级别:', currentZoom);
+              mainWindow.webContents.setZoomLevel(currentZoom + 0.2);
+              console.log('放大后缩放级别:', currentZoom + 0.2);
+            }
+          }
+        },
+        {
+          label: '缩小',
+          accelerator: 'CmdOrCtrl+Shift+-',
+          click: () => {
+            if (mainWindow) {
+              const currentZoom = mainWindow.webContents.getZoomLevel();
+              console.log('缩小前缩放级别:', currentZoom);
+              mainWindow.webContents.setZoomLevel(currentZoom - 0.2);
+              console.log('缩小后缩放级别:', currentZoom - 0.2);
+            }
+          }
+        },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
+        {
+          label: '切换全屏',
+          accelerator: process.platform === 'darwin' ? 'Ctrl+Cmd+F' : 'F11',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.setFullScreen(!mainWindow.isFullScreen());
+            }
+          }
+        }
       ]
     }
   ];
@@ -347,15 +411,36 @@ function setApplicationMenu() {
     template.unshift({
       label: app.getName(),
       submenu: [
-        { role: 'about' },
+        {
+          label: '关于 ' + app.getName(),
+          role: 'about'
+        },
         { type: 'separator' },
-        { role: 'services' },
+        {
+          label: '服务',
+          role: 'services'
+        },
         { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
+        {
+          label: '隐藏 ' + app.getName(),
+          accelerator: 'Command+H',
+          role: 'hide'
+        },
+        {
+          label: '隐藏其他',
+          accelerator: 'Command+Shift+H',
+          role: 'hideOthers'
+        },
+        {
+          label: '显示全部',
+          role: 'unhide'
+        },
         { type: 'separator' },
-        { role: 'quit' }
+        {
+          label: '退出',
+          accelerator: 'Command+Q',
+          role: 'quit'
+        }
       ]
     });
   }

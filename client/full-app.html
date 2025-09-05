@@ -2117,51 +2117,8 @@
                 console.error('本地规则加载失败:', e);
             }
 
-            // 返回默认规则（与服务端字段保持一致）
-            return [
-                {
-                    id: 1,
-                    name: '错误日志规则',
-                    description: '匹配 ERROR 级别日志',
-                    pattern: 'ERROR|error|Error',
-                    rule_type: 'regex',
-                    problem_type: 'error',
-                    problem_description: '匹配 ERROR 级别日志',
-                    priority: 8,
-                    is_active: true,
-                    created_by: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: null
-                },
-                {
-                    id: 2,
-                    name: '警告日志规则',
-                    description: '匹配 WARN 级别日志',
-                    pattern: 'WARN|warn|Warning|WARNING',
-                    rule_type: 'regex',
-                    problem_type: 'warning',
-                    problem_description: '匹配 WARN 级别日志',
-                    priority: 5,
-                    is_active: true,
-                    created_by: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: null
-                },
-                {
-                    id: 3,
-                    name: '异常堆栈规则',
-                    description: '匹配异常堆栈信息',
-                    pattern: 'Exception|exception|Traceback|traceback',
-                    rule_type: 'regex',
-                    problem_type: 'exception',
-                    problem_description: '匹配异常堆栈信息',
-                    priority: 9,
-                    is_active: true,
-                    created_by: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: null
-                }
-            ];
+            // 返回空规则列表，用户需要自定义添加
+            return [];
         }
 
         // 保存本地规则
@@ -3051,6 +3008,20 @@
             } catch (error) {
                 console.error('清除数据失败:', error);
                 showMessage('清除数据失败', 'error');
+            }
+        }
+
+        // 清除默认规则（一次性操作）
+        function clearDefaultRules() {
+            try {
+                localStorage.removeItem('logAnalyzerRules');
+                currentRules = [];
+                updateRulesUI();
+                showMessage('默认规则已清除', 'success');
+                console.log('默认规则已清除，现在规则列表为空');
+            } catch (error) {
+                console.error('清除默认规则失败:', error);
+                showMessage('清除默认规则失败', 'error');
             }
         }
 

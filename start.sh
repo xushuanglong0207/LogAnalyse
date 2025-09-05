@@ -158,8 +158,10 @@ install_frontend_deps() {
     if [ ! -d "node_modules" ]; then
         echo "设置npm镜像源..."
         npm config set registry https://registry.npmmirror.com
-        npm config set electron_mirror https://npmmirror.com/mirrors/electron/
-        npm config set electron_builder_binaries_mirror https://npmmirror.com/mirrors/electron-builder-binaries/
+
+        echo "设置Electron镜像源..."
+        export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+        export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
 
         echo "安装Node.js依赖..."
         npm install --legacy-peer-deps

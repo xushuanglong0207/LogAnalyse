@@ -469,14 +469,14 @@ def load_rules():
     try:
         if os.path.exists(RULES_PATH):
             with open(RULES_PATH, "r", encoding="utf-8") as f:
-                loaded_rules = json.load(f)
-                # 合并内置规则和用户规则，避免重复
-                builtin_ids = {r["id"] for r in detection_rules}
-                for rule in loaded_rules:
-                    if rule["id"] not in builtin_ids:
-                        detection_rules.append(rule)
+                detection_rules = json.load(f)
+                print(f"成功加载 {len(detection_rules)} 条规则")
+        else:
+            print("规则文件不存在，使用空规则列表")
+            detection_rules = []
     except Exception as e:
         print(f"加载规则失败: {e}")
+        detection_rules = []
 
 def purge_old_uploads():
     """清理超过保留期的日志文件及分析结果"""
@@ -564,22 +564,8 @@ rule_folders: List[Dict[str, Any]] = [
     {"id": 1, "name": "默认"}
 ]
 
-# 基础内置规则（将自动扩展为patterns+operator+folder_id）
-detection_rules = [
-    {"id": 1, "name": "OOM Killer", "description": "内存溢出检测", "enabled": True, "pattern": "Out of memory|OOM killer"},
-    {"id": 2, "name": "Kernel Panic", "description": "内核崩溃检测", "enabled": True, "pattern": "Kernel panic|kernel BUG"},
-    {"id": 3, "name": "Segmentation Fault", "description": "段错误检测", "enabled": True, "pattern": "segfault|segmentation fault"},
-    {"id": 4, "name": "Disk Space Error", "description": "磁盘空间不足", "enabled": True, "pattern": "No space left|disk full"},
-    {"id": 5, "name": "Network Error", "description": "网络连接错误", "enabled": True, "pattern": "Network unreachable|Connection refused"},
-    {"id": 6, "name": "File System Error", "description": "文件系统错误", "enabled": True, "pattern": "I/O error|filesystem error"},
-    {"id": 7, "name": "Authentication Error", "description": "认证失败检测", "enabled": True, "pattern": "authentication failed|login failed"}
-]
-# 扩展内置规则结构
-for r in detection_rules:
-    r["folder_id"] = 1
-    r["patterns"] = [r.pop("pattern")] if "pattern" in r else []
-    r["operator"] = "OR"
-    r["is_regex"] = True
+# 检测规则列表（初始为空，用户可自定义添加）
+detection_rules = []
 
 # 规范化问题类型：将各种写法映射为规则名
 def normalize_error_type(et: str) -> str:
@@ -1079,6 +1065,23 @@ async def upload_archive(file: UploadFile = File(...), ctx: Dict[str, Any] = Dep
         if len(content) > MAX_CONTENT_BYTES * 5:  # 压缩包允许更大
             raise HTTPException(status_code=400, detail=f"压缩包过大，最大支持 {int(MAX_CONTENT_BYTES*5/1024/1024)}MB")
 
+        # 检查是否已经分析过相同的压缩包（基于文件名和大小）
+        file_size = len(content)
+        existing_analysis = None
+        for result in analysis_results:
+            if (result.get("summary", {}).get("archive_name") == file.filename and
+                result.get("file_size") == file_size):
+                existing_analysis = result
+                break
+
+        if existing_analysis:
+            return {
+                "message": "该压缩包已分析过，返回之前的结果",
+                "archive_id": existing_analysis["id"],
+                "summary": existing_analysis["summary"],
+                "is_cached": True
+            }
+
         # 保存压缩包
         archive_id = (max([f["id"] for f in uploaded_files]) + 1) if uploaded_files else 1
         archive_path = os.path.join(FILES_DIR, f"{archive_id}_{file.filename}")
@@ -1086,8 +1089,16 @@ async def upload_archive(file: UploadFile = File(...), ctx: Dict[str, Any] = Dep
         with open(archive_path, "wb") as f:
             f.write(content)
 
-        # 创建临时解压目录
-        extract_dir = tempfile.mkdtemp(prefix=f"extract_{archive_id}_")
+        # 创建持久化解压目录（避免重复解压）
+        extract_dir_name = f"extracted_{archive_id}_{file.filename.replace('.', '_')}"
+        extract_dir = os.path.join(FILES_DIR, extract_dir_name)
+
+        # 如果解压目录已存在且不为空，直接使用
+        if os.path.exists(extract_dir) and os.listdir(extract_dir):
+            print(f"使用已存在的解压目录: {extract_dir}")
+        else:
+            # 创建新的解压目录
+            os.makedirs(extract_dir, exist_ok=True)
 
         try:
             # 解压并分析
@@ -1149,13 +1160,12 @@ async def upload_archive(file: UploadFile = File(...), ctx: Dict[str, Any] = Dep
                     "analyzed_files": len(file_results),
                     "total_issues": total_issues,
                     "files_with_issues": files_with_issues
-                }
+                },
+                "file_size": file_size  # 添加文件大小用于缓存判断
             }
 
         finally:
-            # 清理临时目录
-            shutil.rmtree(extract_dir, ignore_errors=True)
-            # 删除压缩包文件（已分析完成）
+            # 保留解压目录以便重复使用，只删除压缩包文件
             try:
                 os.remove(archive_path)
             except:
