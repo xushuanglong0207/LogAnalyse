@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>规则同步测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .btn { padding: 8px 16px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+        textarea { width: 100%; height: 100px; margin: 5px 0; }
+        input { width: 100%; margin: 5px 0; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>规则同步功能测试</h1>
+        
+        <div class="section">
+            <h3>服务端配置</h3>
+            <input type="text" id="serverUrl" placeholder="服务端地址" value="http://localhost:8001">
+            <button class="btn" onclick="testConnection()">测试连接</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+
+        <div class="section">
+            <h3>本地规则</h3>
+            <textarea id="localRules" placeholder="本地规则JSON"></textarea>
+            <button class="btn" onclick="loadLocalRules()">加载本地规则</button>
+            <button class="btn" onclick="saveLocalRules()">保存本地规则</button>
+        </div>
+
+        <div class="section">
+            <h3>服务端规则</h3>
+            <textarea id="serverRules" placeholder="服务端规则JSON" readonly></textarea>
+            <button class="btn" onclick="fetchServerRules()">获取服务端规则</button>
+        </div>
+
+        <div class="section">
+            <h3>双向同步</h3>
+            <button class="btn" onclick="performBidirectionalSync()">执行双向同步</button>
+            <div id="syncResult" class="result"></div>
+        </div>
+
+        <div class="section">
+            <h3>同步后结果</h3>
+            <textarea id="mergedRules" placeholder="合并后的规则" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        // 测试连接
+        async function testConnection() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const resultDiv = document.getElementById('connectionResult');
+            
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/rules`);
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = '连接成功！';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `连接失败: ${response.status}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `连接错误: ${error.message}`;
+            }
+        }
+
+        // 加载本地规则
+        function loadLocalRules() {
+            const localRules = localStorage.getItem('logAnalyzerRules');
+            document.getElementById('localRules').value = localRules || '[]';
+        }
+
+        // 保存本地规则
+        function saveLocalRules() {
+            const rulesText = document.getElementById('localRules').value;
+            try {
+                const rules = JSON.parse(rulesText);
+                localStorage.setItem('logAnalyzerRules', JSON.stringify(rules));
+                alert('本地规则保存成功！');
+            } catch (error) {
+                alert('JSON格式错误: ' + error.message);
+            }
+        }
+
+        // 获取服务端规则
+        async function fetchServerRules() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            try {
+                const response = await fetch(`${serverUrl}/api/v1/rules`);
+                if (response.ok) {
+                    const rules = await response.json();
+                    document.getElementById('serverRules').value = JSON.stringify(rules, null, 2);
+                } else {
+                    alert('获取服务端规则失败: ' + response.status);
+                }
+            } catch (error) {
+                alert('获取服务端规则错误: ' + error.message);
+            }
+        }
+
+        // 执行双向同步
+        async function performBidirectionalSync() {
+            const resultDiv = document.getElementById('syncResult');
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            try {
+                resultDiv.textContent = '正在执行双向同步...';
+                
+                // 1. 获取本地规则
+                const localRulesText = document.getElementById('localRules').value;
+                const localRules = localRulesText ? JSON.parse(localRulesText) : [];
+                
+                // 2. 获取服务端规则
+                const response = await fetch(`${serverUrl}/api/v1/rules`);
+                const serverRules = response.ok ? await response.json() : [];
+                
+                // 3. 执行双向合并
+                const mergedRules = mergeRulesBidirectional(localRules, serverRules);
+                
+                // 4. 显示结果
+                document.getElementById('mergedRules').value = JSON.stringify(mergedRules, null, 2);
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    双向同步完成！<br>
+                    本地规则: ${localRules.length} 条<br>
+                    服务端规则: ${serverRules.length} 条<br>
+                    合并后: ${mergedRules.length} 条
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '同步失败: ' + error.message;
+            }
+        }
+
+        // 双向合并规则
+        function mergeRulesBidirectional(localRules, serverRules) {
+            const mergedRules = [];
+            const processedIds = new Set();
+
+            // 1. 添加服务端规则（优先级高）
+            serverRules.forEach(serverRule => {
+                if (serverRule.id && !processedIds.has(serverRule.id)) {
+                    mergedRules.push({
+                        ...serverRule,
+                        synced_from_server: true,
+                        last_sync: new Date().toISOString()
+                    });
+                    processedIds.add(serverRule.id);
+                }
+            });
+
+            // 2. 添加本地独有的规则
+            localRules.forEach(localRule => {
+                if (localRule.id && !processedIds.has(localRule.id)) {
+                    mergedRules.push({
+                        ...localRule,
+                        local_only: true,
+                        needs_upload: true
+                    });
+                    processedIds.add(localRule.id);
+                }
+            });
+
+            return mergedRules;
+        }
+
+        // 页面加载时自动加载本地规则
+        window.onload = function() {
+            loadLocalRules();
+        };
+    </script>
+</body>
+</html>

@@ -1049,12 +1049,6 @@
                                 <h3>规则列表</h3>
                                 <div style="display: flex; gap: 8px;">
                                     <button class="btn btn-secondary" onclick="toggleViewMode()" id="view-mode-btn">列表视图</button>
-                                    <select id="sort-rules" onchange="updateRulesUI()" style="padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 4px;">
-                                        <option value="name">按名称排序</option>
-                                        <option value="type">按类型排序</option>
-                                        <option value="priority">按优先级排序</option>
-                                        <option value="created">按创建时间排序</option>
-                                    </select>
                                 </div>
                             </div>
                             <div id="rules-list">
@@ -1081,13 +1075,19 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="rule-pattern">匹配模式:</label>
-                                            <input type="text" id="rule-pattern" required placeholder="ERROR|error|Error">
+                                            <textarea id="rule-pattern" required placeholder="ERROR|error|Error" rows="3"></textarea>
+                                            <div id="dsl-help" style="display: none; margin-top: 8px; padding: 8px; background: #f0f8ff; border-radius: 4px; font-size: 12px;">
+                                                <strong>DSL语法示例：</strong><br>
+                                                • 使用 | & ! () 和引号：<code>"low memory" & "OOM_SCORE" & "victim" OOM | "Out of memory" ("No space left" | "disk full") write</code><br>
+                                                • 支持中文全角！等同：<code>性能化、推荐使用。</code>
+                                            </div>
                                         </div>
                                         <div class="form-group">
                                             <label for="rule-type">规则类型:</label>
-                                            <select id="rule-type">
+                                            <select id="rule-type" onchange="onRuleTypeChange()">
                                                 <option value="regex">正则表达式</option>
                                                 <option value="keyword">关键字</option>
+                                                <option value="dsl">DSL表达式</option>
                                             </select>
                                         </div>
                                         <div class="form-group">
@@ -2132,37 +2132,150 @@
             }
         }
 
-        // 规则管理功能
+        // 双向同步规则功能
         async function syncRules() {
             try {
-                showMessage('正在同步规则...', 'info');
-                console.log('开始同步规则，当前服务端地址:', settings.serverUrl);
+                showMessage('正在双向同步规则...', 'info');
+                console.log('开始双向同步规则，当前服务端地址:', settings.serverUrl);
 
                 if (!settings.serverUrl) {
                     showMessage('请先配置服务端地址', 'warning');
                     return;
                 }
 
+                // 1. 获取本地规则
+                const localRules = getLocalRules();
+                console.log('本地规则数量:', localRules.length);
+
+                // 2. 获取服务端规则
                 const serverRules = await fetchRulesFromServer();
-                console.log('服务端规则获取结果:', serverRules);
+                console.log('服务端规则数量:', serverRules ? serverRules.length : 0);
 
-                if (serverRules && Array.isArray(serverRules) && serverRules.length > 0) {
-                    console.log('保存服务端规则到本地:', serverRules);
-                    saveLocalRules(serverRules);
-
-                    // 验证保存是否成功
-                    const savedRules = getLocalRules();
-                    console.log('保存后本地规则数量:', savedRules.length);
-
-                    showMessage(`成功同步 ${serverRules.length} 条规则`, 'success');
-                } else {
-                    console.warn('服务端规则为空或格式错误:', serverRules);
-                    showMessage('服务端连接失败或无可用规则', 'error');
+                if (!serverRules || !Array.isArray(serverRules)) {
+                    console.warn('服务端规则获取失败或格式错误:', serverRules);
+                    showMessage('服务端连接失败，无法同步', 'error');
+                    return;
                 }
+
+                // 3. 双向合并规则
+                const mergedRules = await mergeRulesBidirectional(localRules, serverRules);
+                console.log('合并后规则数量:', mergedRules.length);
+
+                // 4. 保存合并后的规则到本地
+                saveLocalRules(mergedRules);
+
+                // 5. 上传本地独有的规则到服务端
+                await uploadLocalRulesToServer(mergedRules, serverRules);
+
+                showMessage(`双向同步完成！本地: ${localRules.length} → ${mergedRules.length} 条规则`, 'success');
 
             } catch (error) {
                 console.error('规则同步失败:', error);
                 showMessage('规则同步失败: ' + error.message, 'error');
+            }
+        }
+
+        // 双向合并规则
+        async function mergeRulesBidirectional(localRules, serverRules) {
+            const mergedRules = [];
+            const processedIds = new Set();
+
+            // 1. 添加服务端规则（优先级高）
+            serverRules.forEach(serverRule => {
+                if (serverRule.id && !processedIds.has(serverRule.id)) {
+                    mergedRules.push({
+                        ...serverRule,
+                        synced_from_server: true,
+                        last_sync: new Date().toISOString()
+                    });
+                    processedIds.add(serverRule.id);
+                }
+            });
+
+            // 2. 添加本地独有的规则（保留本地规则）
+            localRules.forEach(localRule => {
+                if (localRule.id && !processedIds.has(localRule.id)) {
+                    mergedRules.push({
+                        ...localRule,
+                        local_only: true,
+                        needs_upload: true
+                    });
+                    processedIds.add(localRule.id);
+                }
+            });
+
+            return mergedRules;
+        }
+
+        // 上传本地独有规则到服务端
+        async function uploadLocalRulesToServer(mergedRules, serverRules) {
+            const localOnlyRules = mergedRules.filter(rule => rule.local_only && rule.needs_upload);
+
+            if (localOnlyRules.length === 0) {
+                console.log('没有需要上传的本地规则');
+                return;
+            }
+
+            console.log(`准备上传 ${localOnlyRules.length} 条本地规则到服务端`);
+
+            for (const rule of localOnlyRules) {
+                try {
+                    // 转换为服务端格式
+                    const serverRule = convertToServerFormat(rule);
+
+                    // 上传到服务端
+                    const response = await fetch(`${settings.serverUrl}/api/rules`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${settings.authToken || ''}`
+                        },
+                        body: JSON.stringify(serverRule)
+                    });
+
+                    if (response.ok) {
+                        console.log(`规则 "${rule.name}" 上传成功`);
+                        // 标记为已上传
+                        rule.needs_upload = false;
+                        rule.uploaded_to_server = true;
+                    } else {
+                        console.warn(`规则 "${rule.name}" 上传失败:`, response.status);
+                    }
+                } catch (error) {
+                    console.error(`上传规则 "${rule.name}" 时出错:`, error);
+                }
+            }
+        }
+
+        // 转换规则格式为服务端格式
+        function convertToServerFormat(clientRule) {
+            return {
+                name: clientRule.name,
+                description: clientRule.description || '',
+                enabled: clientRule.is_active !== false,
+                patterns: clientRule.pattern ? [clientRule.pattern] : [],
+                is_regex: clientRule.rule_type === 'regex',
+                folder_id: 1, // 默认文件夹
+                dsl: clientRule.rule_type === 'dsl' ? clientRule.pattern : null
+            };
+        }
+
+        // 规则类型变化处理
+        function onRuleTypeChange() {
+            const ruleType = document.getElementById('rule-type').value;
+            const dslHelp = document.getElementById('dsl-help');
+            const patternInput = document.getElementById('rule-pattern');
+
+            if (ruleType === 'dsl') {
+                dslHelp.style.display = 'block';
+                patternInput.placeholder = '使用 | & ! () 和引号，支持中文全角！等同：性能化、推荐使用。';
+            } else {
+                dslHelp.style.display = 'none';
+                if (ruleType === 'regex') {
+                    patternInput.placeholder = 'ERROR|error|Error';
+                } else {
+                    patternInput.placeholder = 'error';
+                }
             }
         }
 
@@ -2195,7 +2308,6 @@
 
             const allRules = getLocalRules();
             const folders = getFolders();
-            const sortBy = document.getElementById('sort-rules').value;
 
             rulesList.innerHTML = '';
 
@@ -2232,20 +2344,9 @@
             // 显示当前文件夹下的规则
             let rules = allRules.filter(rule => (rule.folder || '/') === currentFolder);
 
-            // 排序
+            // 默认按创建时间倒序排序（最新的在前）
             rules.sort((a, b) => {
-                switch (sortBy) {
-                    case 'name':
-                        return a.name.localeCompare(b.name);
-                    case 'type':
-                        return (a.rule_type || '').localeCompare(b.rule_type || '');
-                    case 'priority':
-                        return (b.priority || 0) - (a.priority || 0);
-                    case 'created':
-                        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-                    default:
-                        return 0;
-                }
+                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
             });
 
             rules.forEach(rule => {
@@ -2259,7 +2360,6 @@
                         <span class="status-indicator ${statusClass}"></span>
                         <strong>${rule.name}</strong> - ${rule.problem_description || rule.description || ''}
                         <br><small style="color: #666;">模式: ${rule.pattern}</small>
-                        <br><small style="color: #999;">类型: ${rule.rule_type} | 文件夹: ${rule.folder || '/'}</small>
                     </div>
                     <div>
                         <button onclick="editRule(${rule.id})" style="margin-right: 8px; padding: 4px 8px; border: 1px solid #1890ff; background: white; color: #1890ff; border-radius: 4px; cursor: pointer;">
@@ -2694,12 +2794,18 @@
                     return;
                 }
 
-                // 验证正则表达式
+                // 验证规则格式
                 if (ruleType === 'regex') {
                     try {
                         new RegExp(pattern);
                     } catch (e) {
                         showMessage('正则表达式格式错误: ' + e.message, 'error');
+                        return;
+                    }
+                } else if (ruleType === 'dsl') {
+                    // DSL规则基本验证（可以扩展）
+                    if (!pattern.trim()) {
+                        showMessage('DSL表达式不能为空', 'error');
                         return;
                     }
                 }
