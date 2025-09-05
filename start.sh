@@ -227,6 +227,21 @@ start_backend() {
 start_frontend() {
     echo "🎨 启动客户端应用..."
 
+    # 检查是否为root用户
+    if [ "$EUID" -eq 0 ]; then
+        echo "⚠️  检测到root用户，Electron无法以root权限运行"
+        echo "🔧 在Linux服务器环境下，建议只启动后端服务"
+        echo "📱 客户端请在桌面环境下单独启动"
+        echo ""
+        echo "💡 客户端启动方法："
+        echo "   1. 在有桌面环境的机器上运行"
+        echo "   2. 或使用非root用户运行"
+        echo "   3. 或直接访问Web界面: http://localhost:3000"
+        echo ""
+        echo "⏭️  跳过客户端启动，继续运行后端服务..."
+        return 0
+    fi
+
     # 检查client目录是否存在
     if [ ! -d "client" ]; then
         handle_error "client目录不存在"
@@ -258,19 +273,28 @@ show_info() {
     echo ""
     echo "🎉 日志分析平台启动完成！"
     echo "========================="
-    
+
     # 获取IP地址
     LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
-    
-    echo "📱 前端访问:"
-    echo "   http://localhost:3000"
-    [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:3000"
-    
+
+    echo "🔗 后端API服务:"
+    echo "   http://localhost:8001"
+    [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:8001"
+
     echo ""
-    echo "🔗 API文档:"
+    echo "📚 API文档:"
     echo "   http://localhost:8001/docs"
     [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:8001/docs"
-    
+
+    echo ""
+    echo "📱 客户端应用:"
+    if [ "$EUID" -eq 0 ]; then
+        echo "   ⚠️  需要在桌面环境下单独启动"
+        echo "   💻 或访问Web界面 (如果有前端服务)"
+    else
+        echo "   🖥️  Electron应用已启动"
+    fi
+
     echo ""
     echo "⏹️  停止: 按 Ctrl+C"
     echo "========================="
