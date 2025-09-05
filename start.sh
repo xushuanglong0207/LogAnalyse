@@ -156,11 +156,21 @@ install_frontend_deps() {
 
     # 检查是否需要安装依赖
     if [ ! -d "node_modules" ]; then
+        echo "设置npm镜像源..."
+        npm config set registry https://registry.npmmirror.com
+        npm config set electron_mirror https://npmmirror.com/mirrors/electron/
+        npm config set electron_builder_binaries_mirror https://npmmirror.com/mirrors/electron-builder-binaries/
+
         echo "安装Node.js依赖..."
         npm install --legacy-peer-deps
         if [ $? -ne 0 ]; then
-            cd "$PROJECT_ROOT"
-            handle_error "前端依赖安装失败"
+            echo "⚠️  尝试清理缓存后重新安装..."
+            npm cache clean --force
+            npm install --legacy-peer-deps
+            if [ $? -ne 0 ]; then
+                cd "$PROJECT_ROOT"
+                handle_error "前端依赖安装失败"
+            fi
         fi
     fi
 

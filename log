@@ -1,85 +1,18 @@
-Please commit your changes or stash them before you merge.
-Aborting
-(venv) root@DXP8800PRO-120B:/volume7/log-analysev3# ./start.sh 3
+(venv) root@DXP8800PRO-120B:/volume7/log-analysev3# ./start.sh
 🚀 日志分析平台启动器
 ====================
-🔍 检查系统依赖...
-🔧 修复系统包依赖...
-Reading package lists... Done
-Building dependency tree... Done
-Reading state information... Done
-The following packages were automatically installed and are no longer required:
-  iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
-Use 'apt autoremove' to remove them.
-0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
-Hit:1 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm InRelease
-Hit:2 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-updates InRelease
-Hit:3 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-backports InRelease
-Hit:4 https://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security InRelease
-Reading package lists... Done
-Building dependency tree... Done
-Reading state information... Done
-104 packages can be upgraded. Run 'apt list --upgradable' to see them.
-📦 确保Python虚拟环境支持...
-Reading package lists... Done
-Building dependency tree... Done
-Reading state information... Done
-python3-venv is already the newest version (3.11.2-1+b1).
-python3-full is already the newest version (3.11.2-1+b1).
-The following packages were automatically installed and are no longer required:
-  iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
-Use 'apt autoremove' to remove them.
-0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
-✅ 系统依赖检查完成
-🐍 设置Python环境...
-升级pip...
-Requirement already satisfied: pip in ./venv/lib/python3.11/site-packages (25.2)
-验证虚拟环境...
-Python路径: /volume7/log-analysev3/venv/bin/python
-Pip路径: /volume7/log-analysev3/venv/bin/pip
-虚拟环境: /volume7/log-analysev3/venv
-✅ Python环境设置完成
-📦 安装后端依赖...
-安装 fastapi uvicorn python-multipart...
-Requirement already satisfied: fastapi in /volume7/log-analysev3/venv/lib/python3.11/site-packages (0.116.1)
-Requirement already satisfied: uvicorn in /volume7/log-analysev3/venv/lib/python3.11/site-packages (0.35.0)
-Requirement already satisfied: python-multipart in /volume7/log-analysev3/venv/lib/python3.11/site-packages (0.0.20)
-Requirement already satisfied: python-dotenv in /volume7/log-analysev3/venv/lib/python3.11/site-packages (1.1.1)
-Requirement already satisfied: starlette<0.48.0,>=0.40.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from fastapi) (0.47.3)
-Requirement already satisfied: pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from fastapi) (2.11.7)
-Requirement already satisfied: typing-extensions>=4.8.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from fastapi) (4.15.0)
-Requirement already satisfied: annotated-types>=0.6.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.7.0)
-Requirement already satisfied: pydantic-core==2.33.2 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (2.33.2)
-Requirement already satisfied: typing-inspection>=0.4.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.4.1)
-Requirement already satisfied: anyio<5,>=3.6.2 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from starlette<0.48.0,>=0.40.0->fastapi) (4.10.0)
-Requirement already satisfied: idna>=2.8 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from anyio<5,>=3.6.2->starlette<0.48.0,>=0.40.0->fastapi) (3.10)
-Requirement already satisfied: sniffio>=1.1 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from anyio<5,>=3.6.2->starlette<0.48.0,>=0.40.0->fastapi) (1.3.1)
-Requirement already satisfied: click>=7.0 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from uvicorn) (8.2.1)
-Requirement already satisfied: h11>=0.8 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from uvicorn) (0.16.0)
-✅ 后端依赖安装完成
-🎨 安装前端依赖...
-./start.sh: line 136: cd: frontend: No such file or directory
-安装Node.js依赖...
-npm ERR! code ENOENT
-npm ERR! syscall open
-npm ERR! path /volume7/log-analysev3/package.json
-npm ERR! errno -2
-npm ERR! enoent ENOENT: no such file or directory, open '/volume7/log-analysev3/package.json'
-npm ERR! enoent This is related to npm not being able to find a file.
-npm ERR! enoent
+📁 项目根目录: /volume7/log-analysev3
 
-npm ERR! A complete log of this run can be found in:
-npm ERR!     /root/.npm/_logs/2025-09-05T02_40_24_248Z-debug-0.log
-❌ 错误: 前端依赖安装失败
-💡 请查看错误信息并重试
-(venv) root@DXP8800PRO-120B:/volume7/log-analysev3# ./start.sh 2
-🚀 日志分析平台启动器
-====================
-🛑 停止所有服务...
-✅ 所有服务已停止
-(venv) root@DXP8800PRO-120B:/volume7/log-analysev3# ./start.sh 1
-🚀 日志分析平台启动器
-====================
+请选择操作:
+1) 🚀 启动平台 (推荐)
+2) 🛑 停止所有服务
+3) 🔧 仅安装依赖
+4) 📊 检查服务状态
+5) 🆘 帮助信息
+6) 🔧 重置环境
+0) 退出
+
+请输入选择 [1]: 1
 🚀 开始启动平台...
 🔍 检查系统依赖...
 🔧 修复系统包依赖...
@@ -90,6 +23,24 @@ The following packages were automatically installed and are no longer required:
   iucode-tool libabsl20220623 libavif15 libc-dev-bin libc-devtools libcrypt-dev libgav1-1 libgd3 libjs-sphinxdoc libnsl-dev libtirpc-dev libyuv0 linux-libc-dev rpcsvc-proto
 Use 'apt autoremove' to remove them.
 0 upgraded, 0 newly installed, 0 to remove and 104 not upgraded.
+
+
+
+0% [Working]
+
+
+
+
+
+
+
+
+
+
+
+
+
+0% [Waiting for headers]
 Hit:1 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm InRelease
 Hit:2 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-updates InRelease
 Hit:3 https://mirrors.tuna.tsinghua.edu.cn/debian bookworm-backports InRelease
@@ -136,17 +87,52 @@ Requirement already satisfied: click>=7.0 in /volume7/log-analysev3/venv/lib/pyt
 Requirement already satisfied: h11>=0.8 in /volume7/log-analysev3/venv/lib/python3.11/site-packages (from uvicorn) (0.16.0)
 ✅ 后端依赖安装完成
 🎨 安装前端依赖...
-./start.sh: line 136: cd: frontend: No such file or directory
 安装Node.js依赖...
-npm ERR! code ENOENT
-npm ERR! syscall open
-npm ERR! path /volume7/log-analysev3/package.json
-npm ERR! errno -2
-npm ERR! enoent ENOENT: no such file or directory, open '/volume7/log-analysev3/package.json'
-npm ERR! enoent This is related to npm not being able to find a file.
-npm ERR! enoent
+npm WARN deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+npm WARN deprecated @babel/plugin-proposal-private-methods@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-methods instead.
+npm WARN deprecated @babel/plugin-proposal-numeric-separator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-numeric-separator instead.
+npm WARN deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+npm WARN deprecated @babel/plugin-proposal-nullish-coalescing-operator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
+npm WARN deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm WARN deprecated rollup-plugin-terser@7.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-terser
+npm WARN deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm WARN deprecated abab@2.0.6: Use your platform's native atob() and btoa() methods instead
+npm WARN deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm WARN deprecated @babel/plugin-proposal-optional-chaining@7.21.0: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
+npm WARN deprecated @babel/plugin-proposal-private-property-in-object@7.21.11: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-property-in-object instead.
+npm WARN deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm WARN deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm WARN deprecated domexception@2.0.1: Use your platform's native DOMException instead
+npm WARN deprecated w3c-hr-time@1.0.2: Use your platform's native performance.now() and performance.timeOrigin.
+npm WARN deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+npm WARN deprecated q@1.5.1: You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+npm WARN deprecated
+npm WARN deprecated (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
+npm WARN deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm WARN deprecated workbox-cacheable-response@6.6.0: workbox-background-sync@6.6.0
+npm WARN deprecated source-map@0.8.0-beta.0: The work that was done in this beta branch won't be included in future versions
+npm WARN deprecated workbox-google-analytics@6.6.0: It is not compatible with newer versions of GA starting with v4, as long as you are using GAv3 it should be ok, but the package is not longer being maintained
+npm WARN deprecated svgo@1.3.2: This SVGO version is no longer supported. Upgrade to v2.x.x.
+npm WARN deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+npm ERR! code 1
+npm ERR! path /volume7/log-analysev3/client/node_modules/electron
+npm ERR! command failed
+npm ERR! command sh -c node install.js
+npm ERR! RequestError: socket hang up
+npm ERR!     at ClientRequest.<anonymous> (/volume7/log-analysev3/client/node_modules/got/dist/source/core/index.js:970:111)
+npm ERR!     at Object.onceWrapper (node:events:632:26)
+npm ERR!     at ClientRequest.emit (node:events:529:35)
+npm ERR!     at origin.emit (/volume7/log-analysev3/client/node_modules/@szmarczak/http-timer/dist/source/index.js:43:20)
+npm ERR!     at TLSSocket.socketOnEnd (node:_http_client:525:9)
+npm ERR!     at TLSSocket.emit (node:events:529:35)
+npm ERR!     at endReadableNT (node:internal/streams/readable:1400:12)
+npm ERR!     at connResetException (node:internal/errors:720:14)
+npm ERR!     at TLSSocket.socketOnEnd (node:_http_client:525:23)
+npm ERR!     at TLSSocket.emit (node:events:529:35)
+npm ERR!     at endReadableNT (node:internal/streams/readable:1400:12)
+npm ERR!     at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
 
 npm ERR! A complete log of this run can be found in:
-npm ERR!     /root/.npm/_logs/2025-09-05T02_40_45_091Z-debug-0.log
+npm ERR!     /root/.npm/_logs/2025-09-05T03_30_36_549Z-debug-0.log
 ❌ 错误: 前端依赖安装失败
 💡 请查看错误信息并重试
