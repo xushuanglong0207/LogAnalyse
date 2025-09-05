@@ -147,36 +147,58 @@ install_backend_deps() {
 install_frontend_deps() {
     echo "🎨 安装前端依赖..."
 
-    # 检查client目录是否存在
-    if [ ! -d "client" ]; then
-        handle_error "client目录不存在"
-    fi
+    # 安装Web前端依赖 (Next.js)
+    if [ -d "frontend" ]; then
+        echo "安装Web前端依赖..."
+        cd frontend
 
-    cd client
+        if [ ! -d "node_modules" ]; then
+            echo "设置npm镜像源..."
+            npm config set registry https://registry.npmmirror.com
 
-    # 检查是否需要安装依赖
-    if [ ! -d "node_modules" ]; then
-        echo "设置npm镜像源..."
-        npm config set registry https://registry.npmmirror.com
-
-        echo "设置Electron镜像源..."
-        export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
-        export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
-
-        echo "安装Node.js依赖..."
-        npm install --legacy-peer-deps
-        if [ $? -ne 0 ]; then
-            echo "⚠️  尝试清理缓存后重新安装..."
-            npm cache clean --force
+            echo "安装Next.js依赖..."
             npm install --legacy-peer-deps
             if [ $? -ne 0 ]; then
-                cd "$PROJECT_ROOT"
-                handle_error "前端依赖安装失败"
+                echo "⚠️  尝试清理缓存后重新安装..."
+                npm cache clean --force
+                npm install --legacy-peer-deps
+                if [ $? -ne 0 ]; then
+                    cd "$PROJECT_ROOT"
+                    handle_error "Web前端依赖安装失败"
+                fi
             fi
         fi
+        cd "$PROJECT_ROOT"
     fi
 
-    cd "$PROJECT_ROOT"
+    # 安装客户端依赖 (Electron)
+    if [ -d "client" ]; then
+        echo "安装客户端依赖..."
+        cd client
+
+        if [ ! -d "node_modules" ]; then
+            echo "设置npm镜像源..."
+            npm config set registry https://registry.npmmirror.com
+
+            echo "设置Electron镜像源..."
+            export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+            export ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+
+            echo "安装Electron依赖..."
+            npm install --legacy-peer-deps
+            if [ $? -ne 0 ]; then
+                echo "⚠️  尝试清理缓存后重新安装..."
+                npm cache clean --force
+                npm install --legacy-peer-deps
+                if [ $? -ne 0 ]; then
+                    cd "$PROJECT_ROOT"
+                    handle_error "客户端依赖安装失败"
+                fi
+            fi
+        fi
+        cd "$PROJECT_ROOT"
+    fi
+
     success_msg "前端依赖安装完成"
 }
 
@@ -223,28 +245,62 @@ start_backend() {
     echo "📋 请检查日志输出以获取更多信息"
 }
 
+# 启动Web前端服务
+start_web_frontend() {
+    echo "🌐 启动Web前端服务..."
+
+    # 检查frontend目录是否存在
+    if [ ! -d "frontend" ]; then
+        echo "⚠️  frontend目录不存在，跳过Web前端启动"
+        return 0
+    fi
+
+    cd frontend
+
+    # 启动Next.js开发服务器
+    echo "启动Next.js开发服务器在端口3000..."
+    npm run dev &
+    WEB_FRONTEND_PID=$!
+
+    cd "$PROJECT_ROOT"
+
+    # 等待Web前端启动
+    echo "等待Web前端服务启动..."
+    for i in {1..30}; do
+        if curl -s http://localhost:3000 > /dev/null 2>&1; then
+            success_msg "Web前端服务启动成功 (PID: $WEB_FRONTEND_PID)"
+            return 0
+        fi
+        sleep 1
+        echo -n "."
+    done
+
+    echo ""
+    echo "⚠️  Web前端服务启动超时，但进程可能仍在启动中..."
+}
+
 # 启动客户端应用
-start_frontend() {
+start_client() {
     echo "🎨 启动客户端应用..."
 
     # 检查是否为root用户
     if [ "$EUID" -eq 0 ]; then
         echo "⚠️  检测到root用户，Electron无法以root权限运行"
-        echo "🔧 在Linux服务器环境下，建议只启动后端服务"
-        echo "📱 客户端请在桌面环境下单独启动"
+        echo "🔧 在Linux服务器环境下，建议只启动Web前端"
+        echo "📱 Electron客户端请在桌面环境下单独启动"
         echo ""
         echo "💡 客户端启动方法："
         echo "   1. 在有桌面环境的机器上运行"
         echo "   2. 或使用非root用户运行"
-        echo "   3. 或直接访问Web界面: http://localhost:3000"
         echo ""
-        echo "⏭️  跳过客户端启动，继续运行后端服务..."
+        echo "⏭️  跳过Electron客户端启动..."
         return 0
     fi
 
     # 检查client目录是否存在
     if [ ! -d "client" ]; then
-        handle_error "client目录不存在"
+        echo "⚠️  client目录不存在，跳过Electron客户端启动"
+        return 0
     fi
 
     cd client
@@ -252,7 +308,7 @@ start_frontend() {
     # 启动Electron应用
     echo "启动Electron客户端应用..."
     npx electron . &
-    FRONTEND_PID=$!
+    CLIENT_PID=$!
 
     cd "$PROJECT_ROOT"
 
@@ -260,11 +316,12 @@ start_frontend() {
     echo "等待客户端应用启动..."
     sleep 3
 
-    if ps -p $FRONTEND_PID > /dev/null 2>&1; then
-        success_msg "客户端应用启动成功 (PID: $FRONTEND_PID)"
+    if ps -p $CLIENT_PID > /dev/null 2>&1; then
+        success_msg "Electron客户端启动成功 (PID: $CLIENT_PID)"
         return 0
     else
-        handle_error "客户端应用启动失败"
+        echo "⚠️  Electron客户端启动失败"
+        return 1
     fi
 }
 
@@ -277,6 +334,11 @@ show_info() {
     # 获取IP地址
     LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
 
+    echo "🌐 Web前端界面:"
+    echo "   http://localhost:3000"
+    [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:3000"
+
+    echo ""
     echo "🔗 后端API服务:"
     echo "   http://localhost:8001"
     [ "$LOCAL_IP" != "localhost" ] && echo "   http://$LOCAL_IP:8001"
@@ -289,10 +351,11 @@ show_info() {
     echo ""
     echo "📱 客户端应用:"
     if [ "$EUID" -eq 0 ]; then
-        echo "   ⚠️  需要在桌面环境下单独启动"
-        echo "   💻 或访问Web界面 (如果有前端服务)"
+        echo "   ⚠️  Electron需要在桌面环境下单独启动"
+        echo "   💻 推荐使用Web界面: http://localhost:3000"
     else
-        echo "   🖥️  Electron应用已启动"
+        echo "   🖥️  Electron应用 (如果启动成功)"
+        echo "   💻 Web界面: http://localhost:3000"
     fi
 
     echo ""
@@ -304,21 +367,27 @@ show_info() {
 cleanup() {
     echo ""
     echo "🛑 正在停止服务..."
-    
+
     # 停止后端
     if [ ! -z "$BACKEND_PID" ]; then
         kill $BACKEND_PID 2>/dev/null || true
     fi
-    
-    # 停止前端
-    if [ ! -z "$FRONTEND_PID" ]; then
-        kill $FRONTEND_PID 2>/dev/null || true
+
+    # 停止Web前端
+    if [ ! -z "$WEB_FRONTEND_PID" ]; then
+        kill $WEB_FRONTEND_PID 2>/dev/null || true
     fi
-    
+
+    # 停止Electron客户端
+    if [ ! -z "$CLIENT_PID" ]; then
+        kill $CLIENT_PID 2>/dev/null || true
+    fi
+
     # 强制清理
     pkill -f "uvicorn.*8001" 2>/dev/null || true
     pkill -f "next.*3000" 2>/dev/null || true
-    
+    pkill -f "electron" 2>/dev/null || true
+
     success_msg "服务已停止"
     exit 0
 }
@@ -473,15 +542,22 @@ main() {
             install_backend_deps
             install_frontend_deps
             start_backend
-            start_frontend
+            start_web_frontend
+            start_client
             show_info
-            
+
             # 保持运行
             while true; do
                 sleep 60
+                # 检查后端服务
                 if ! curl -s http://localhost:8001/health > /dev/null 2>&1; then
                     echo "⚠️  后端服务异常，尝试重启..."
                     start_backend
+                fi
+                # 检查Web前端服务
+                if [ -d "frontend" ] && ! curl -s http://localhost:3000 > /dev/null 2>&1; then
+                    echo "⚠️  Web前端服务异常，尝试重启..."
+                    start_web_frontend
                 fi
             done
             ;;
