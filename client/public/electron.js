@@ -86,7 +86,10 @@ async function createWindow() {
   // 窗口加载完成后显示
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
+
+    // 设置中文右键菜单
+    setupContextMenu();
+
     // 开发环境下自动打开DevTools
     if (isDev) {
       mainWindow.webContents.openDevTools();
@@ -105,8 +108,115 @@ async function createWindow() {
   });
 }
 
+// 设置中文右键菜单
+function setupContextMenu() {
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '重新加载',
+      accelerator: 'CmdOrCtrl+R',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.reload();
+        }
+      }
+    },
+    {
+      label: '强制重新加载',
+      accelerator: 'CmdOrCtrl+Shift+R',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.webContents.reloadIgnoringCache();
+        }
+      }
+    },
+    {
+      label: '切换开发者工具',
+      accelerator: 'CmdOrCtrl+Shift+I',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.webContents.toggleDevTools();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '实际大小',
+      accelerator: 'CmdOrCtrl+0',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.webContents.setZoomLevel(0);
+        }
+      }
+    },
+    {
+      label: '放大',
+      accelerator: 'CmdOrCtrl+Plus',
+      click: () => {
+        if (mainWindow) {
+          const currentZoom = mainWindow.webContents.getZoomLevel();
+          mainWindow.webContents.setZoomLevel(currentZoom + 0.5);
+        }
+      }
+    },
+    {
+      label: '缩小',
+      accelerator: 'CmdOrCtrl+-',
+      click: () => {
+        if (mainWindow) {
+          const currentZoom = mainWindow.webContents.getZoomLevel();
+          mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '切换全屏',
+      accelerator: 'F11',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.setFullScreen(!mainWindow.isFullScreen());
+        }
+      }
+    }
+  ]);
+
+  // 设置右键菜单 - 强制覆盖默认菜单
+  if (mainWindow && mainWindow.webContents) {
+    console.log('设置中文右键菜单...');
+
+    // 移除所有现有的 context-menu 监听器
+    mainWindow.webContents.removeAllListeners('context-menu');
+
+    // 添加新的右键菜单监听器
+    mainWindow.webContents.on('context-menu', (event, params) => {
+      event.preventDefault();
+      contextMenu.popup({
+        window: mainWindow,
+        x: params.x,
+        y: params.y
+      });
+    });
+
+    // 禁用默认的右键菜单
+    mainWindow.webContents.on('dom-ready', () => {
+      mainWindow.webContents.executeJavaScript(`
+        document.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          return false;
+        }, true);
+      `);
+    });
+
+    console.log('中文右键菜单设置完成');
+  } else {
+    console.error('mainWindow 或 webContents 未初始化');
+  }
+}
+
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+});
 
 // IPC 处理程序
 ipcMain.handle('select-file', async (event, options) => {
@@ -114,10 +224,11 @@ ipcMain.handle('select-file', async (event, options) => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: options.filters || [
+        { name: '所有文件', extensions: ['*'] },
         { name: '日志文件', extensions: ['log', 'txt', 'out'] },
-        { name: '压缩文件', extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'] },
-        { name: '所有文件', extensions: ['*'] }
-      ]
+        { name: '压缩文件', extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'] }
+      ],
+      filterIndex: 0  // 默认选择第一个（所有文件）
     });
     return result;
   } catch (error) {

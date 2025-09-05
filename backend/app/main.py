@@ -12,6 +12,10 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 import bisect
 from dotenv import load_dotenv
+import zipfile
+import tarfile
+import tempfile
+import shutil
 
 # 加载环境变量
 def load_env_manually():
@@ -1022,6 +1026,14 @@ class AnalyzeTextPayload(BaseModel):
     text: str
     filename: Optional[str] = "pasted.log"
 
+class ArchiveAnalysisResult(BaseModel):
+    archive_name: str
+    total_files: int
+    analyzed_files: int
+    total_issues: int
+    files_with_issues: int
+    file_results: List[Dict[str, Any]]
+
 @app.post("/api/logs/analyze_text")
 async def analyze_text(payload: AnalyzeTextPayload, ctx: Dict[str, Any] = Depends(require_auth)):
     text_bytes = len(payload.text.encode("utf-8"))
@@ -1048,8 +1060,252 @@ async def analyze_text(payload: AnalyzeTextPayload, ctx: Dict[str, Any] = Depend
     EXECUTOR.submit(_task)
     return JSONResponse(status_code=202, content={"status": "accepted", "file_id": file_info["id"]})
 
+@app.post("/api/logs/upload_archive")
+async def upload_archive(file: UploadFile = File(...), ctx: Dict[str, Any] = Depends(require_auth)):
+    """上传并分析压缩包"""
+    try:
+        # 检查文件类型
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="文件名不能为空")
+
+        filename_lower = file.filename.lower()
+        if not (filename_lower.endswith('.zip') or filename_lower.endswith('.tar') or
+                filename_lower.endswith('.tar.gz') or filename_lower.endswith('.tgz') or
+                filename_lower.endswith('.tar.bz2')):
+            raise HTTPException(status_code=400, detail="仅支持 ZIP、TAR、TAR.GZ、TGZ、TAR.BZ2 格式")
+
+        # 读取文件内容
+        content = await file.read()
+        if len(content) > MAX_CONTENT_BYTES * 5:  # 压缩包允许更大
+            raise HTTPException(status_code=400, detail=f"压缩包过大，最大支持 {int(MAX_CONTENT_BYTES*5/1024/1024)}MB")
+
+        # 保存压缩包
+        archive_id = (max([f["id"] for f in uploaded_files]) + 1) if uploaded_files else 1
+        archive_path = os.path.join(FILES_DIR, f"{archive_id}_{file.filename}")
+
+        with open(archive_path, "wb") as f:
+            f.write(content)
+
+        # 创建临时解压目录
+        extract_dir = tempfile.mkdtemp(prefix=f"extract_{archive_id}_")
+
+        try:
+            # 解压并分析
+            log_files = extract_archive(archive_path, extract_dir)
+
+            if not log_files:
+                shutil.rmtree(extract_dir, ignore_errors=True)
+                os.remove(archive_path)
+                raise HTTPException(status_code=400, detail="压缩包中未找到日志文件")
+
+            # 分析每个日志文件
+            file_results = []
+            total_issues = 0
+            files_with_issues = 0
+
+            for log_file_path in log_files:
+                # 计算相对路径
+                relative_path = os.path.relpath(log_file_path, extract_dir)
+
+                # 分析文件
+                result = analyze_log_file_content(log_file_path, relative_path)
+                file_results.append(result)
+
+                if result.get("issues_count", 0) > 0:
+                    total_issues += result["issues_count"]
+                    files_with_issues += 1
+
+            # 保存分析结果
+            analysis_result = {
+                "id": archive_id,
+                "archive_name": file.filename,
+                "total_files": len(log_files),
+                "analyzed_files": len(file_results),
+                "total_issues": total_issues,
+                "files_with_issues": files_with_issues,
+                "file_results": file_results,
+                "analysis_time": datetime.now().isoformat(),
+                "owner_id": ctx["user"]["id"]
+            }
+
+            # 添加到分析结果列表
+            analysis_results.append(analysis_result)
+            save_analysis_index()
+
+            # 更新分析计数
+            global total_analysis_runs_counter
+            try:
+                total_analysis_runs_counter = int(total_analysis_runs_counter) + 1
+            except Exception:
+                total_analysis_runs_counter = 1
+            save_analysis_runs()
+
+            return {
+                "message": "压缩包分析完成",
+                "archive_id": archive_id,
+                "summary": {
+                    "archive_name": file.filename,
+                    "total_files": len(log_files),
+                    "analyzed_files": len(file_results),
+                    "total_issues": total_issues,
+                    "files_with_issues": files_with_issues
+                }
+            }
+
+        finally:
+            # 清理临时目录
+            shutil.rmtree(extract_dir, ignore_errors=True)
+            # 删除压缩包文件（已分析完成）
+            try:
+                os.remove(archive_path)
+            except:
+                pass
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"压缩包分析失败: {str(e)}")
+
+@app.get("/api/analysis/archive/{archive_id}")
+async def get_archive_analysis_result(archive_id: int, ctx: Dict[str, Any] = Depends(require_auth)):
+    """获取压缩包分析结果"""
+    result = next((r for r in analysis_results if r.get("id") == archive_id), None)
+    if not result:
+        raise HTTPException(status_code=404, detail="分析结果不存在")
+
+    # 权限检查
+    is_admin = (str(ctx["user"].get("username", "")).lower() == "admin")
+    if not is_admin and result.get("owner_id", 1) != ctx["user"]["id"]:
+        raise HTTPException(status_code=403, detail="无权访问分析结果")
+
+    return result
+
 # 规则匹配逻辑
 
+
+def extract_archive(archive_path: str, extract_to: str) -> List[str]:
+    """解压压缩包并返回日志文件列表"""
+    log_files = []
+
+    try:
+        # 支持的日志文件扩展名
+        log_extensions = {'.log', '.txt', '.out', '.err', '.trace'}
+        # 支持的日志文件名（无扩展名）
+        log_names = {'syslog', 'messages', 'kern', 'auth', 'secure', 'access', 'error'}
+
+        if zipfile.is_zipfile(archive_path):
+            with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_to)
+        elif tarfile.is_tarfile(archive_path):
+            with tarfile.open(archive_path, 'r:*') as tar_ref:
+                tar_ref.extractall(extract_to)
+        else:
+            raise ValueError("不支持的压缩格式")
+
+        # 递归查找日志文件
+        for root, dirs, files in os.walk(extract_to):
+            for file in files:
+                file_path = os.path.join(root, file)
+                file_lower = file.lower()
+
+                # 检查扩展名
+                _, ext = os.path.splitext(file_lower)
+                if ext in log_extensions:
+                    log_files.append(file_path)
+                    continue
+
+                # 检查文件名
+                if any(name in file_lower for name in log_names):
+                    log_files.append(file_path)
+                    continue
+
+                # 检查是否为文本文件（简单检测）
+                try:
+                    with open(file_path, 'rb') as f:
+                        sample = f.read(1024)
+                        if sample and b'\x00' not in sample:  # 不包含空字节，可能是文本
+                            # 进一步检查是否包含日志特征
+                            try:
+                                text_sample = sample.decode('utf-8', errors='ignore').lower()
+                                if any(keyword in text_sample for keyword in ['error', 'warning', 'info', 'debug', 'exception', 'failed']):
+                                    log_files.append(file_path)
+                            except:
+                                pass
+                except:
+                    pass
+
+        return log_files
+    except Exception as e:
+        print(f"解压失败: {e}")
+        return []
+
+def analyze_log_file_content(file_path: str, relative_path: str = None) -> Dict[str, Any]:
+    """分析单个日志文件"""
+    try:
+        # 读取文件内容
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read(MAX_CONTENT_BYTES)  # 限制读取大小
+
+        if not content.strip():
+            return {
+                "file_path": relative_path or os.path.basename(file_path),
+                "file_size": 0,
+                "issues": [],
+                "error": "文件为空"
+            }
+
+        lines = content.split('\n')
+        issues = []
+        pre = _precompute_content(content)
+
+        # 应用所有启用的规则
+        for rule in detection_rules:
+            if not rule.get("enabled", True):
+                continue
+
+            matches = evaluate_rule_matches(content, rule, pre)
+            if not matches:
+                continue
+
+            # 处理匹配结果
+            for m in matches:
+                if m is None:
+                    line_number = 1
+                    context = '\n'.join(lines[:3])
+                    matched_text = ""
+                else:
+                    line_number = _line_number_from_pos(m.start(), pre["newline_positions"])
+                    context_start = max(0, line_number - 2)
+                    context_end = min(len(lines), line_number + 1)
+                    context = '\n'.join(lines[context_start:context_end])
+                    matched_text = m.group()
+
+                issues.append({
+                    "rule_name": rule["name"],
+                    "description": rule.get("description", ""),
+                    "line_number": line_number,
+                    "matched_text": matched_text,
+                    "context": context,
+                    "severity": "high" if ("panic" in rule["name"].lower() or "oom" in rule["name"].lower()) else "medium",
+                    "problem_type": rule["name"],
+                    "problem_description": rule.get("description", "")
+                })
+
+        return {
+            "file_path": relative_path or os.path.basename(file_path),
+            "file_size": len(content),
+            "total_lines": len(lines),
+            "issues": issues,
+            "issues_count": len(issues)
+        }
+
+    except Exception as e:
+        return {
+            "file_path": relative_path or os.path.basename(file_path),
+            "file_size": 0,
+            "issues": [],
+            "error": str(e)
+        }
 
 def _perform_analysis(file_id: int):
     file_info = next((f for f in uploaded_files if f["id"] == file_id), None)

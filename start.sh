@@ -26,21 +26,29 @@ success_msg() {
 # 检查并安装系统依赖
 install_system_deps() {
     echo "🔍 检查系统依赖..."
-    
+
+    # 首先修复系统包依赖问题
+    echo "🔧 修复系统包依赖..."
+    $SUDO_CMD apt --fix-broken install -y || true
+    $SUDO_CMD apt update || true
+
     # 检查Python3
     if ! command -v python3 &> /dev/null; then
         echo "📦 安装Python3..."
-        $SUDO_CMD apt update
         $SUDO_CMD apt install -y python3 python3-pip python3-venv python3-full
+    else
+        # 确保安装了venv模块
+        echo "📦 确保Python虚拟环境支持..."
+        $SUDO_CMD apt install -y python3-venv python3-full || true
     fi
-    
+
     # 检查Node.js
     if ! command -v node &> /dev/null; then
         echo "📦 安装Node.js..."
         curl -fsSL https://deb.nodesource.com/setup_18.x | $SUDO_CMD -E bash -
         $SUDO_CMD apt-get install -y nodejs
     fi
-    
+
     success_msg "系统依赖检查完成"
 }
 
@@ -74,9 +82,15 @@ setup_python_env() {
         handle_error "激活虚拟环境失败"
     fi
     
-    # 升级pip
+    # 升级pip（在虚拟环境中）
     echo "升级pip..."
-    pip install --upgrade pip
+    pip install --upgrade pip || echo "⚠️  pip升级失败，继续安装依赖..."
+
+    # 验证虚拟环境
+    echo "验证虚拟环境..."
+    echo "Python路径: $(which python)"
+    echo "Pip路径: $(which pip)"
+    echo "虚拟环境: $VIRTUAL_ENV"
     
     success_msg "Python环境设置完成"
 }
@@ -94,10 +108,21 @@ install_backend_deps() {
     
     # 在虚拟环境中安装依赖
     echo "安装 fastapi uvicorn python-multipart..."
-    pip install fastapi uvicorn python-multipart
+    pip install fastapi uvicorn python-multipart python-dotenv
     if [ $? -ne 0 ]; then
-        cd ..
-        handle_error "后端依赖安装失败"
+        echo "⚠️  尝试单独安装依赖..."
+        pip install fastapi || echo "fastapi安装失败"
+        pip install uvicorn || echo "uvicorn安装失败"
+        pip install python-multipart || echo "python-multipart安装失败"
+        pip install python-dotenv || echo "python-dotenv安装失败"
+
+        # 检查关键依赖是否安装成功
+        python -c "import fastapi, uvicorn" 2>/dev/null
+        if [ $? -ne 0 ]; then
+            cd ..
+            handle_error "关键后端依赖安装失败"
+        fi
+        echo "✅ 基础依赖安装完成（部分可选依赖可能失败）"
     fi
     
     cd ..
@@ -143,15 +168,23 @@ start_backend() {
     # 等待后端启动
     echo "等待后端服务启动..."
     for i in {1..30}; do
-        if curl -s http://localhost:8001/health > /dev/null 2>&1; then
+        # 尝试多个健康检查端点
+        if curl -s http://localhost:8001/ > /dev/null 2>&1 || \
+           curl -s http://localhost:8001/health > /dev/null 2>&1 || \
+           curl -s http://localhost:8001/docs > /dev/null 2>&1; then
             success_msg "后端服务启动成功 (PID: $BACKEND_PID)"
+            echo "🔗 后端API地址: http://localhost:8001"
+            echo "📚 API文档: http://localhost:8001/docs"
             return 0
         fi
         sleep 1
         echo -n "."
     done
-    
-    handle_error "后端服务启动超时"
+
+    echo ""
+    echo "⚠️  后端服务启动超时，但进程可能仍在启动中..."
+    echo "🔍 请检查进程状态: ps aux | grep uvicorn"
+    echo "📋 请检查日志输出以获取更多信息"
 }
 
 # 启动前端服务

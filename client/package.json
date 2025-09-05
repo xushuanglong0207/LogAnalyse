@@ -5,7 +5,7 @@
   "main": "public/electron.js",
   "homepage": "./",
   "private": true,
-  "author": "LogAnalyzer Team",
+  "author": "xushuanglong",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
